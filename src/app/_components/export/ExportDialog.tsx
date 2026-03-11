@@ -3,19 +3,21 @@
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { X, Image, FileText, Code, Download, Copy } from "lucide-react";
+import { X, Image, FileText, Code, Download, Copy, Braces } from "lucide-react";
 import type { Diagram, DatabaseType } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
 import { exportToPng, exportToSvg, downloadDataUrl } from "@/lib/export/image-export";
 import { exportToPdf } from "@/lib/export/pdf-export";
 import { exportDiagramToSQL } from "@/lib/sql-export";
+import { exportDiagramToMarkdown } from "@/lib/export/markdown-export";
+import { exportDiagramToMermaid } from "@/lib/export/mermaid-export";
 
 interface ExportDialogProps {
   diagram: Diagram;
   onClose: () => void;
 }
 
-type ExportTab = "image" | "pdf" | "sql";
+type ExportTab = "image" | "pdf" | "sql" | "markdown" | "mermaid";
 
 export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   const [tab, setTab] = useState<ExportTab>("image");
@@ -24,6 +26,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   const [transparent, setTransparent] = useState(false);
   const [targetDb, setTargetDb] = useState<DatabaseType>(diagram.databaseType);
   const [isExporting, setIsExporting] = useState(false);
+  const [mermaidOutput, setMermaidOutput] = useState("");
 
   const handleImageExport = useCallback(async () => {
     const viewport = document.querySelector(".react-flow__viewport") as HTMLElement;
@@ -87,6 +90,35 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     });
   }, [diagram, targetDb]);
 
+  const handleMarkdownExport = useCallback(() => {
+    const md = exportDiagramToMarkdown(diagram);
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    downloadDataUrl(url, `${diagram.name}.md`);
+    URL.revokeObjectURL(url);
+    toast.success("Exported as Markdown");
+  }, [diagram]);
+
+  const handleGenerateMermaid = useCallback(() => {
+    const mermaid = exportDiagramToMermaid(diagram);
+    setMermaidOutput(mermaid);
+  }, [diagram]);
+
+  const handleMermaidCopy = useCallback(() => {
+    if (!mermaidOutput) return;
+    navigator.clipboard.writeText(mermaidOutput).then(() => {
+      toast.success("Mermaid diagram copied to clipboard");
+    });
+  }, [mermaidOutput]);
+
+  const TAB_ITEMS: Array<{ id: ExportTab; label: string; icon: typeof Image }> = [
+    { id: "image", label: "Image", icon: Image },
+    { id: "pdf", label: "PDF", icon: FileText },
+    { id: "sql", label: "SQL", icon: Code },
+    { id: "markdown", label: "Markdown", icon: FileText },
+    { id: "mermaid", label: "Mermaid", icon: Braces },
+  ];
+
   const modalContent = (
     <>
       <div
@@ -95,31 +127,27 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
       />
       <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="animate-scale-in pointer-events-auto w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl"
+          className="animate-scale-in pointer-events-auto w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-            <h2 className="text-lg font-bold text-white">Export Diagram</h2>
-            <button onClick={onClose} className="rounded-lg p-2 hover:bg-slate-800">
-              <X className="h-5 w-5 text-slate-400" />
+          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+            <h2 className="text-lg font-bold text-foreground">Export Diagram</h2>
+            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent">
+              <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-slate-700">
-            {([
-              { id: "image" as const, label: "Image", icon: Image },
-              { id: "pdf" as const, label: "PDF", icon: FileText },
-              { id: "sql" as const, label: "SQL", icon: Code },
-            ]).map(({ id, label, icon: Icon }) => (
+          <div className="flex border-b border-border">
+            {TAB_ITEMS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
-                className={`flex flex-1 items-center justify-center gap-2 py-3 text-sm font-medium transition-colors ${
+                className={`flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors sm:text-sm sm:gap-2 ${
                   tab === id
                     ? "border-b-2 border-indigo-500 text-indigo-400"
-                    : "text-slate-400 hover:text-slate-200"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -133,7 +161,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
             {tab === "image" && (
               <>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">Format</label>
+                  <label className="mb-2 block text-sm font-medium text-foreground">Format</label>
                   <div className="flex gap-2">
                     {(["png", "svg"] as const).map((fmt) => (
                       <button
@@ -142,7 +170,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                         className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
                           imageFormat === fmt
                             ? "border-indigo-500 bg-indigo-500/20 text-indigo-300"
-                            : "border-slate-600 text-slate-400 hover:border-slate-500"
+                            : "border-border text-muted-foreground hover:border-border/80"
                         }`}
                       >
                         {fmt.toUpperCase()}
@@ -153,7 +181,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
 
                 {imageFormat === "png" && (
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-300">Scale</label>
+                    <label className="mb-2 block text-sm font-medium text-foreground">Scale</label>
                     <div className="flex gap-2">
                       {[1, 2, 3].map((s) => (
                         <button
@@ -162,7 +190,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                           className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
                             imageScale === s
                               ? "border-indigo-500 bg-indigo-500/20 text-indigo-300"
-                              : "border-slate-600 text-slate-400 hover:border-slate-500"
+                              : "border-border text-muted-foreground hover:border-border/80"
                           }`}
                         >
                           {s}x
@@ -172,12 +200,12 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                   </div>
                 )}
 
-                <label className="flex items-center gap-2 text-sm text-slate-300">
+                <label className="flex items-center gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
                     checked={transparent}
                     onChange={(e) => setTransparent(e.target.checked)}
-                    className="rounded border-slate-600"
+                    className="rounded border-border"
                   />
                   Transparent background
                 </label>
@@ -207,13 +235,13 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
             {tab === "sql" && (
               <>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-300">
+                  <label className="mb-2 block text-sm font-medium text-foreground">
                     Target Database
                   </label>
                   <select
                     value={targetDb}
                     onChange={(e) => setTargetDb(e.target.value as DatabaseType)}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 focus:border-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground focus:border-indigo-500 focus:outline-none"
                   >
                     {Object.entries(DATABASE_TYPE_LABELS).map(([key, label]) => (
                       <option key={key} value={key}>
@@ -233,11 +261,58 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                   </button>
                   <button
                     onClick={handleSQLCopy}
-                    className="flex items-center gap-2 rounded-xl border border-slate-600 px-4 py-3 font-semibold text-slate-300 hover:bg-slate-800"
+                    className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
                 </div>
+              </>
+            )}
+
+            {tab === "markdown" && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Export your schema documentation as a Markdown file with tables, columns, indexes, and relationships.
+                </p>
+                <button
+                  onClick={handleMarkdownExport}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
+                >
+                  <Download className="h-4 w-4" />
+                  Download .md
+                </button>
+              </>
+            )}
+
+            {tab === "mermaid" && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Generate a Mermaid ERD diagram that can be embedded in Markdown, GitHub, or any Mermaid-compatible renderer.
+                </p>
+                {!mermaidOutput ? (
+                  <button
+                    onClick={handleGenerateMermaid}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
+                  >
+                    <Code className="h-4 w-4" />
+                    Generate Mermaid ERD
+                  </button>
+                ) : (
+                  <>
+                    <textarea
+                      readOnly
+                      value={mermaidOutput}
+                      className="h-48 w-full rounded-lg border border-border bg-accent p-3 font-mono text-xs text-foreground focus:outline-none"
+                    />
+                    <button
+                      onClick={handleMermaidCopy}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 font-semibold text-foreground hover:bg-accent"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copy to Clipboard
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>
