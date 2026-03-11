@@ -16,14 +16,9 @@ import {
   Moon,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
-import { parseSQLToDiagram } from "@/lib/sql";
-import { autoLayout } from "@/lib/layout/auto-layout";
 import { SAMPLE_SCHEMAS } from "@/lib/sql/sample-schemas";
-import { parseDrizzleSchema } from "@/lib/drizzle/drizzle-parser";
-import { parsePrismaSchema } from "@/lib/prisma/prisma-parser";
-import { parseDBMLSchema } from "@/lib/dbml/dbml-parser";
-import { parseTypeORMSchema } from "@/lib/typeorm/typeorm-parser";
 import { SCHEMA_TEMPLATES } from "@/lib/sql/schema-templates";
+import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
 import type { Theme } from "@/hooks/use-theme";
 import { SchemaUpload } from "../schema/SchemaUpload";
 
@@ -78,27 +73,8 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
   const handleSQLParsed = useCallback(
     (sql: string, fileName?: string) => {
       try {
-        const isDBML = fileName?.endsWith(".dbml");
-        const isPrisma = fileName?.endsWith(".prisma");
-        const isTS = fileName?.endsWith(".ts") || fileName?.endsWith(".js");
-        const isTypeORM = isTS && /(@Entity|@Column|@PrimaryGeneratedColumn)/.test(sql);
-        const isDrizzle = isTS && !isTypeORM;
-        let diagram: Diagram;
-
-        if (isDBML) {
-          diagram = parseDBMLSchema(sql, fileName?.replace(/\.dbml$/i, ""));
-        } else if (isPrisma) {
-          diagram = parsePrismaSchema(sql, fileName?.replace(/\.prisma$/i, ""));
-        } else if (isTypeORM) {
-          diagram = parseTypeORMSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
-        } else if (isDrizzle) {
-          diagram = parseDrizzleSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
-        } else {
-          diagram = parseSQLToDiagram(sql, fileName?.replace(/\.sql$/i, ""));
-        }
-
-        const layouted = autoLayout(diagram.tables, diagram.relationships);
-        onDiagramCreated({ ...diagram, tables: layouted });
+        const diagram = parseSchemaFile(sql, fileName);
+        onDiagramCreated(diagram);
         toast.success(
           `Loaded ${diagram.tables.length} tables, ${diagram.relationships.length} relationships`
         );
@@ -248,6 +224,10 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
               "ClickHouse",
               "BigQuery",
               "Snowflake",
+              "Drizzle ORM",
+              "Prisma",
+              "DBML",
+              "TypeORM",
             ].map((db) => (
               <span
                 key={db}
@@ -256,18 +236,6 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
                 {db}
               </span>
             ))}
-            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-400">
-              Drizzle ORM <span className="text-[10px] font-bold uppercase">Beta</span>
-            </span>
-            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-400">
-              Prisma <span className="text-[10px] font-bold uppercase">Beta</span>
-            </span>
-            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-400">
-              DBML <span className="text-[10px] font-bold uppercase">Beta</span>
-            </span>
-            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-400">
-              TypeORM <span className="text-[10px] font-bold uppercase">Beta</span>
-            </span>
           </div>
         </div>
       </div>

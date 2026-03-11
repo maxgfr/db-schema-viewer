@@ -28,12 +28,7 @@ import { AIPanel } from "../ai/AIPanel";
 import { DataExplorer } from "../data/DataExplorer";
 import { APIKeySettings } from "../settings/APIKeySettings";
 import { SchemaDiffPanel } from "../analysis/SchemaDiffPanel";
-import { parseSQLToDiagram } from "@/lib/sql";
-import { parseDrizzleSchema } from "@/lib/drizzle/drizzle-parser";
-import { parsePrismaSchema } from "@/lib/prisma/prisma-parser";
-import { parseDBMLSchema } from "@/lib/dbml/dbml-parser";
-import { parseTypeORMSchema } from "@/lib/typeorm/typeorm-parser";
-import { autoLayout } from "@/lib/layout/auto-layout";
+import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
 
 interface EditorLayoutProps {
   diagram: Diagram;
@@ -111,33 +106,8 @@ export function EditorLayout({
   const handleNewSQL = useCallback(
     (sql: string, fileName?: string) => {
       try {
-        const isDBML = fileName?.endsWith(".dbml");
-        const isPrisma = fileName?.endsWith(".prisma");
-        const isTS = fileName?.endsWith(".ts") || fileName?.endsWith(".js");
-        const isTypeORM = isTS && /(@Entity|@Column|@PrimaryGeneratedColumn)/.test(sql);
-        const isDrizzle = isTS && !isTypeORM;
-        let newDiagram: Diagram;
-
-        if (isDBML) {
-          newDiagram = parseDBMLSchema(sql, fileName?.replace(/\.dbml$/i, ""));
-        } else if (isPrisma) {
-          newDiagram = parsePrismaSchema(sql, fileName?.replace(/\.prisma$/i, ""));
-        } else if (isTypeORM) {
-          newDiagram = parseTypeORMSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
-        } else if (isDrizzle) {
-          newDiagram = parseDrizzleSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
-        } else if (isTS) {
-          // Fallback for .ts files — try Drizzle
-          newDiagram = parseDrizzleSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
-        } else {
-          newDiagram = parseSQLToDiagram(sql, fileName?.replace(/\.sql$/i, ""));
-        }
-
-        const layouted = autoLayout(
-          newDiagram.tables,
-          newDiagram.relationships
-        );
-        onDiagramUpdate({ ...newDiagram, tables: layouted });
+        const newDiagram = parseSchemaFile(sql, fileName);
+        onDiagramUpdate(newDiagram);
         toast.success(
           `Loaded ${newDiagram.tables.length} tables, ${newDiagram.relationships.length} relationships`
         );
@@ -205,9 +175,10 @@ export function EditorLayout({
           <button
             onClick={() => setShowData(true)}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title="Upload a SQL dump to explore INSERT data in tables and charts"
           >
             <BarChart3 className="h-4 w-4" />
-            Data
+            Data Explorer
           </button>
           <button
             onClick={() => setShowDiff(true)}

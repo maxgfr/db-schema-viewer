@@ -2,18 +2,152 @@
 
 import { useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Upload, X, FileText, ClipboardPaste } from "lucide-react";
+import {
+  Upload,
+  X,
+  Database,
+  Code,
+  Layers,
+  Braces,
+  FileText,
+  Sparkles,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 interface SchemaUploadProps {
   onClose: () => void;
   onSQLParsed: (sql: string, fileName?: string) => void;
 }
 
+type SchemaFormat = "sql" | "drizzle" | "prisma" | "typeorm" | "dbml" | "auto";
+
+interface FormatOption {
+  id: SchemaFormat;
+  label: string;
+  icon: typeof Database;
+  description: string;
+  accepts: string;
+  extensions: string;
+  placeholder: string;
+  example: string;
+  synthesizedFileName: string | undefined;
+}
+
+const FORMAT_OPTIONS: FormatOption[] = [
+  {
+    id: "sql",
+    label: "SQL",
+    icon: Database,
+    description:
+      "PostgreSQL, MySQL, SQLite, MariaDB, Supabase, CockroachDB, ClickHouse, BigQuery, Snowflake",
+    accepts: ".sql,.txt",
+    extensions: ".sql, .txt",
+    placeholder: "Paste your SQL schema here...",
+    example: `CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL
+);`,
+    synthesizedFileName: "schema.sql",
+  },
+  {
+    id: "drizzle",
+    label: "Drizzle ORM",
+    icon: Code,
+    description: "TypeScript schema with pgTable, mysqlTable, or sqliteTable",
+    accepts: ".ts,.js",
+    extensions: ".ts, .js",
+    placeholder: "Paste your Drizzle schema here...",
+    example: `export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+});`,
+    synthesizedFileName: "schema.ts",
+  },
+  {
+    id: "prisma",
+    label: "Prisma",
+    icon: Layers,
+    description: "Prisma schema with model definitions",
+    accepts: ".prisma",
+    extensions: ".prisma",
+    placeholder: "Paste your Prisma schema here...",
+    example: `model User {
+  id    Int    @id @default(autoincrement())
+  email String @unique
+}`,
+    synthesizedFileName: "schema.prisma",
+  },
+  {
+    id: "typeorm",
+    label: "TypeORM",
+    icon: Braces,
+    description: "TypeScript entities with @Entity, @Column decorators",
+    accepts: ".ts,.js",
+    extensions: ".ts, .js",
+    placeholder: "Paste your TypeORM entity here...",
+    example: `@Entity()
+export class User {
+  @PrimaryGeneratedColumn()
+  id: number;
+}`,
+    synthesizedFileName: "schema.ts",
+  },
+  {
+    id: "dbml",
+    label: "DBML",
+    icon: FileText,
+    description: "Database Markup Language for schema definitions",
+    accepts: ".dbml",
+    extensions: ".dbml",
+    placeholder: "Paste your DBML schema here...",
+    example: `Table users {
+  id integer [pk, increment]
+  email varchar(255) [not null]
+}`,
+    synthesizedFileName: "schema.dbml",
+  },
+  {
+    id: "auto",
+    label: "Auto-Detect",
+    icon: Sparkles,
+    description: "Drop any supported file and we'll figure it out",
+    accepts: ".sql,.txt,.ts,.js,.prisma,.dbml",
+    extensions: ".sql, .txt, .ts, .js, .prisma, .dbml",
+    placeholder: "Paste any supported schema format here...",
+    example: "",
+    synthesizedFileName: undefined,
+  },
+];
+
 export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
-  const [tab, setTab] = useState<"file" | "paste">("file");
+  const [step, setStep] = useState<1 | 2>(1);
+  const [selectedFormat, setSelectedFormat] = useState<SchemaFormat | null>(
+    null
+  );
   const [pasteContent, setPasteContent] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+  const [showPaste, setShowPaste] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const formatOption = selectedFormat
+    ? FORMAT_OPTIONS.find((f) => f.id === selectedFormat)!
+    : null;
+
+  const handleFormatSelect = useCallback((format: SchemaFormat) => {
+    setSelectedFormat(format);
+    setStep(2);
+    setPasteContent("");
+    setShowPaste(false);
+  }, []);
+
+  const handleBack = useCallback(() => {
+    setStep(1);
+    setSelectedFormat(null);
+    setPasteContent("");
+    setShowPaste(false);
+  }, []);
 
   const handleFile = useCallback(
     (file: File) => {
@@ -41,11 +175,11 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
   );
 
   const handlePaste = useCallback(() => {
-    if (pasteContent.trim()) {
-      onSQLParsed(pasteContent);
+    if (pasteContent.trim() && formatOption) {
+      onSQLParsed(pasteContent, formatOption.synthesizedFileName);
       onClose();
     }
-  }, [pasteContent, onSQLParsed, onClose]);
+  }, [pasteContent, formatOption, onSQLParsed, onClose]);
 
   const modalContent = (
     <>
@@ -60,92 +194,143 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <h2 className="text-lg font-bold text-foreground">Import Schema</h2>
+            <div className="flex items-center gap-3">
+              {step === 2 && (
+                <button
+                  onClick={handleBack}
+                  className="rounded-lg p-1.5 transition-colors hover:bg-accent"
+                >
+                  <ArrowLeft className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
+              <div>
+                <h2 className="text-lg font-bold text-foreground">
+                  Import Schema
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {step === 1
+                    ? "Step 1 of 2 — Choose format"
+                    : `Step 2 of 2 — ${formatOption?.label}`}
+                </p>
+              </div>
+            </div>
             <button
               onClick={onClose}
               className="rounded-lg p-2 transition-colors hover:bg-accent"
             >
-              <X className="h-5 w-5 text-slate-400" />
-            </button>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-b border-border">
-            <button
-              onClick={() => setTab("file")}
-              className={`flex flex-1 items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                tab === "file"
-                  ? "border-b-2 border-indigo-500 text-indigo-400"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <FileText className="h-4 w-4" />
-              Upload File
-            </button>
-            <button
-              onClick={() => setTab("paste")}
-              className={`flex flex-1 items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                tab === "paste"
-                  ? "border-b-2 border-indigo-500 text-indigo-400"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <ClipboardPaste className="h-4 w-4" />
-              Paste SQL
+              <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
 
           {/* Content */}
           <div className="p-6">
-            {tab === "file" ? (
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-12 transition-colors ${
-                  isDragging
-                    ? "border-indigo-500 bg-indigo-500/10"
-                    : "border-slate-600 hover:border-slate-500 hover:bg-slate-800/50"
-                }`}
-              >
-                <Upload className="mb-4 h-10 w-10 text-slate-500" />
-                <p className="mb-1 text-sm font-medium text-slate-300">
-                  Drop your schema file here or click to browse
-                </p>
-                <p className="text-xs text-slate-500">
-                  SQL, Drizzle (.ts), Prisma (.prisma), DBML (.dbml), TypeORM (.ts){" "}
-                  <span className="text-amber-400">(ORM: Beta)</span>
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".sql,.txt,.ts,.js,.prisma,.dbml"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handleFile(file);
-                  }}
-                />
+            {step === 1 && (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {FORMAT_OPTIONS.map((format) => {
+                  const Icon = format.icon;
+                  return (
+                    <button
+                      key={format.id}
+                      onClick={() => handleFormatSelect(format.id)}
+                      className="group flex flex-col items-start gap-2 rounded-xl border border-border p-4 text-left transition-all hover:border-indigo-500/50 hover:bg-indigo-500/5"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 transition-colors group-hover:bg-indigo-500/20">
+                        <Icon className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">
+                          {format.label}
+                        </p>
+                        <p className="mt-0.5 line-clamp-2 text-[11px] leading-tight text-muted-foreground">
+                          {format.description}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            ) : (
+            )}
+
+            {step === 2 && formatOption && (
               <div className="space-y-4">
-                <textarea
-                  value={pasteContent}
-                  onChange={(e) => setPasteContent(e.target.value)}
-                  placeholder={`Paste your SQL here...\n\nCREATE TABLE users (\n  id SERIAL PRIMARY KEY,\n  email VARCHAR(255) NOT NULL\n);`}
-                  className="h-64 w-full resize-none rounded-xl border border-slate-600 bg-slate-800 p-4 font-mono text-sm text-slate-200 placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-                />
-                <button
-                  onClick={handlePaste}
-                  disabled={!pasteContent.trim()}
-                  className="w-full rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white transition-all hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                {/* Drag-and-drop zone */}
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-10 transition-colors ${
+                    isDragging
+                      ? "border-indigo-500 bg-indigo-500/10"
+                      : "border-border hover:border-muted-foreground/50 hover:bg-accent/50"
+                  }`}
                 >
-                  Parse SQL
-                </button>
+                  <Upload className="mb-3 h-8 w-8 text-muted-foreground" />
+                  <p className="mb-1 text-sm font-medium text-foreground">
+                    Drop your file here or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Accepted: {formatOption.extensions}
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={formatOption.accepts}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFile(file);
+                    }}
+                  />
+                </div>
+
+                {/* Example snippet */}
+                {formatOption.example && (
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                      Example {formatOption.label} format
+                    </p>
+                    <pre className="rounded-lg border border-border bg-accent/50 p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
+                      {formatOption.example}
+                    </pre>
+                  </div>
+                )}
+
+                {/* Paste section (expandable) */}
+                <div>
+                  <button
+                    onClick={() => setShowPaste(!showPaste)}
+                    className="flex w-full items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {showPaste ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                    Or paste content
+                  </button>
+
+                  {showPaste && (
+                    <div className="mt-3 space-y-3">
+                      <textarea
+                        value={pasteContent}
+                        onChange={(e) => setPasteContent(e.target.value)}
+                        placeholder={formatOption.placeholder}
+                        className="h-48 w-full resize-none rounded-xl border border-border bg-accent/50 p-4 font-mono text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
+                      />
+                      <button
+                        onClick={handlePaste}
+                        disabled={!pasteContent.trim()}
+                        className="w-full rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white transition-all hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Parse {formatOption.label}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

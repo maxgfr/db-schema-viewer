@@ -24,7 +24,15 @@ export function DataExplorer({ onClose }: DataExplorerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const PAGE_SIZE = 50;
 
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
   const handleFile = useCallback((file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("File too large", {
+        description: "Maximum file size is 5MB. Please use a smaller SQL dump.",
+      });
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -182,39 +190,46 @@ export function DataExplorer({ onClose }: DataExplorerProps) {
           </div>
 
           {tables.length === 0 ? (
-            <div
-              className={`flex flex-col items-center p-12 transition-colors ${
-                isDragOver ? "bg-indigo-500/10" : ""
-              }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <Upload className="mb-4 h-10 w-10 text-muted-foreground" />
-              <p className="mb-2 text-sm font-medium text-foreground">
-                Upload a SQL dump file with INSERT statements
+            <div className="flex flex-col items-center p-12">
+              <h3 className="mb-2 text-xl font-bold text-foreground">Explore Your Data</h3>
+              <p className="mb-6 max-w-md text-center text-sm text-muted-foreground">
+                Upload a SQL dump file containing INSERT INTO statements. You can explore data in tables, sort/filter, and generate charts. Max 5MB.
               </p>
-              <p className="mb-6 text-xs text-muted-foreground">
-                {isDragOver
-                  ? "Drop file here..."
-                  : "Max 5MB. Data is processed entirely in your browser. Drag & drop supported."}
-              </p>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-500"
+              <div
+                className={`flex w-full max-w-md flex-col items-center rounded-xl border-2 border-dashed border-border p-8 transition-colors ${
+                  isDragOver ? "border-indigo-500 bg-indigo-500/10" : ""
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
               >
-                Choose File
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".sql,.txt"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleFile(file);
-                }}
-              />
+                <Upload className="mb-4 h-10 w-10 text-muted-foreground" />
+                <p className="mb-2 text-sm font-medium text-foreground">
+                  {isDragOver ? "Drop file here..." : "Drag & drop a .sql file here"}
+                </p>
+                <p className="mb-4 text-xs text-muted-foreground">
+                  Data is processed entirely in your browser.
+                </p>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-500"
+                >
+                  Choose File
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".sql,.txt"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFile(file);
+                  }}
+                />
+              </div>
+              <p className="mt-4 max-w-md text-center text-xs text-muted-foreground">
+                This feature parses INSERT INTO statements from .sql files to let you explore the actual data in your schema.
+              </p>
             </div>
           ) : (
             <>

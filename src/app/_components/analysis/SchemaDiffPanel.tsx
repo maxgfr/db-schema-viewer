@@ -6,29 +6,11 @@ import { toast } from "sonner";
 import { X, Upload, Plus, Minus, RefreshCw, ArrowRight } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { diffSchemas, type SchemaDiff, type TableDiff, type FieldDiff } from "@/lib/analysis/schema-diff";
-import { parseSQLToDiagram } from "@/lib/sql";
-import { parseDrizzleSchema } from "@/lib/drizzle/drizzle-parser";
-import { parsePrismaSchema } from "@/lib/prisma/prisma-parser";
-import { parseDBMLSchema } from "@/lib/dbml/dbml-parser";
-import { parseTypeORMSchema } from "@/lib/typeorm/typeorm-parser";
+import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
 
 interface SchemaDiffPanelProps {
   currentDiagram: Diagram;
   onClose: () => void;
-}
-
-function parseSchemaToDiagram(content: string, fileName?: string): Diagram {
-  const isDBML = fileName?.endsWith(".dbml");
-  const isPrisma = fileName?.endsWith(".prisma");
-  const isTS = fileName?.endsWith(".ts") || fileName?.endsWith(".js");
-  const isTypeORM = isTS && /(@Entity|@Column|@PrimaryGeneratedColumn)/.test(content);
-  const isDrizzle = isTS && !isTypeORM;
-
-  if (isDBML) return parseDBMLSchema(content, fileName?.replace(/\.dbml$/i, ""));
-  if (isPrisma) return parsePrismaSchema(content, fileName?.replace(/\.prisma$/i, ""));
-  if (isTypeORM) return parseTypeORMSchema(content, fileName?.replace(/\.(ts|js)$/i, ""));
-  if (isDrizzle) return parseDrizzleSchema(content, fileName?.replace(/\.(ts|js)$/i, ""));
-  return parseSQLToDiagram(content, fileName?.replace(/\.sql$/i, ""));
 }
 
 function FieldDiffRow({ diff }: { diff: FieldDiff }) {
@@ -114,7 +96,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
   const handleCompare = useCallback(
     (content: string, fileName?: string) => {
       try {
-        const newDiagram = parseSchemaToDiagram(content, fileName);
+        const newDiagram = parseSchemaFile(content, fileName);
         const result = diffSchemas(currentDiagram, newDiagram);
         setDiff(result);
         toast.success(result.summary);
