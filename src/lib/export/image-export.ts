@@ -5,6 +5,11 @@ export interface ImageExportOptions {
   transparent?: boolean;
 }
 
+function getCanvasBackground(): string {
+  const isDark = document.documentElement.classList.contains("dark");
+  return isDark ? "#0f172a" : "#ffffff";
+}
+
 export async function exportToPng(
   element: HTMLElement,
   options: ImageExportOptions = {}
@@ -13,7 +18,7 @@ export async function exportToPng(
 
   const dataUrl = await toPng(element, {
     pixelRatio: scale,
-    backgroundColor: transparent ? undefined : "#0f172a",
+    backgroundColor: transparent ? undefined : getCanvasBackground(),
   });
 
   return dataUrl;
@@ -26,7 +31,7 @@ export async function exportToSvg(
   const { transparent = false } = options;
 
   const dataUrl = await toSvg(element, {
-    backgroundColor: transparent ? undefined : "#0f172a",
+    backgroundColor: transparent ? undefined : getCanvasBackground(),
   });
 
   return dataUrl;

@@ -16,29 +16,35 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
     function handleKeyDown(e: KeyboardEvent) {
       const isMod = e.metaKey || e.ctrlKey;
 
-      if (isMod && e.key === "s") {
+      // Cmd+Shift+S — Share (must check before Cmd+S)
+      if (isMod && e.shiftKey && e.key === "S") {
+        e.preventDefault();
+        handlers.onShare?.();
+        return;
+      }
+
+      if (isMod && !e.shiftKey && e.key === "s") {
         e.preventDefault();
         handlers.onSave?.();
+        return;
       }
 
       if (isMod && e.key === "e") {
         e.preventDefault();
         handlers.onExport?.();
+        return;
       }
 
       if (isMod && e.key === "k") {
         e.preventDefault();
         handlers.onAI?.();
+        return;
       }
 
       if (isMod && e.key === "i") {
         e.preventDefault();
         handlers.onImport?.();
-      }
-
-      if (isMod && e.shiftKey && e.key === "S") {
-        e.preventDefault();
-        handlers.onShare?.();
+        return;
       }
 
       if (e.key === "Escape") {

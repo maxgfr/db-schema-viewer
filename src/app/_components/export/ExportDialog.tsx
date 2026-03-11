@@ -163,7 +163,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
       />
       <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="animate-scale-in pointer-events-auto w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl"
+          className="animate-scale-in pointer-events-auto w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -175,18 +175,18 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-border">
+          <div className="flex overflow-x-auto border-b border-border">
             {TAB_ITEMS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
-                className={`flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors sm:text-sm sm:gap-2 ${
+                className={`flex shrink-0 items-center justify-center gap-1 px-3 py-3 text-xs font-medium transition-colors ${
                   tab === id
                     ? "border-b-2 border-indigo-500 text-indigo-400"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-3.5 w-3.5" />
                 {label}
               </button>
             ))}
