@@ -1,0 +1,44 @@
+{
+  "openai": {
+    "id": "openai",
+    "name": "OpenAI",
+    "npm": "@ai-sdk/openai",
+    "api": "https://api.openai.com/v1",
+    "models": {
+      "gpt-4o": { "id": "gpt-4o", "name": "GPT-4o", "description": "Most capable model" },
+      "gpt-4o-mini": { "id": "gpt-4o-mini", "name": "GPT-4o mini", "description": "Fast and affordable" },
+      "o3-mini": { "id": "o3-mini", "name": "o3-mini", "description": "Reasoning model" }
+    }
+  },
+  "anthropic": {
+    "id": "anthropic",
+    "name": "Anthropic",
+    "npm": "@ai-sdk/anthropic",
+    "api": "https://api.anthropic.com",
+    "models": {
+      "claude-sonnet-4-6": { "id": "claude-sonnet-4-6", "name": "Claude Sonnet 4.6", "description": "Best balance of speed and capability" },
+      "claude-haiku-4-5-20251001": { "id": "claude-haiku-4-5-20251001", "name": "Claude Haiku 4.5", "description": "Fast and efficient" },
+      "claude-opus-4-6": { "id": "claude-opus-4-6", "name": "Claude Opus 4.6", "description": "Most capable" }
+    }
+  },
+  "google": {
+    "id": "google",
+    "name": "Google",
+    "npm": "@ai-sdk/google",
+    "api": "https://generativelanguage.googleapis.com",
+    "models": {
+      "gemini-2.5-pro": { "id": "gemini-2.5-pro", "name": "Gemini 2.5 Pro", "description": "Most capable Gemini model" },
+      "gemini-2.5-flash": { "id": "gemini-2.5-flash", "name": "Gemini 2.5 Flash", "description": "Fast and efficient" }
+    }
+  },
+  "mistral": {
+    "id": "mistral",
+    "name": "Mistral",
+    "npm": "@ai-sdk/mistral",
+    "api": "https://api.mistral.ai",
+    "models": {
+      "mistral-large-latest": { "id": "mistral-large-latest", "name": "Mistral Large", "description": "Most capable Mistral model" },
+      "mistral-medium-latest": { "id": "mistral-medium-latest", "name": "Mistral Medium", "description": "Balanced performance" }
+    }
+  }
+}
