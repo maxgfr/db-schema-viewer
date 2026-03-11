@@ -11,10 +11,12 @@ import {
   BarChart3,
   FileText,
   Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { parseSQLToDiagram } from "@/lib/sql";
 import { autoLayout } from "@/lib/layout/auto-layout";
+import { SAMPLE_SCHEMAS } from "@/lib/sql/sample-schemas";
 import { SchemaUpload } from "../schema/SchemaUpload";
 
 interface LandingProps {
@@ -60,46 +62,6 @@ const FEATURES = [
   },
 ];
 
-const SAMPLE_SQL = `-- E-commerce Schema (PostgreSQL)
-CREATE TABLE users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  name VARCHAR(100) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE products (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  description TEXT,
-  price NUMERIC(10, 2) NOT NULL,
-  stock INTEGER DEFAULT 0,
-  category_id INTEGER REFERENCES categories(id),
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE categories (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL UNIQUE,
-  parent_id INTEGER REFERENCES categories(id)
-);
-
-CREATE TABLE orders (
-  id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(id),
-  status VARCHAR(20) DEFAULT 'pending',
-  total NUMERIC(10, 2) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE order_items (
-  id SERIAL PRIMARY KEY,
-  order_id INTEGER NOT NULL REFERENCES orders(id),
-  product_id INTEGER NOT NULL REFERENCES products(id),
-  quantity INTEGER NOT NULL DEFAULT 1,
-  unit_price NUMERIC(10, 2) NOT NULL
-);`;
-
 export function Landing({ onDiagramCreated }: LandingProps) {
   const [showUpload, setShowUpload] = useState(false);
 
@@ -121,9 +83,12 @@ export function Landing({ onDiagramCreated }: LandingProps) {
     [onDiagramCreated]
   );
 
-  const handleTrySample = useCallback(() => {
-    handleSQLParsed(SAMPLE_SQL, "E-commerce Schema");
-  }, [handleSQLParsed]);
+  const handleSample = useCallback(
+    (sql: string, name: string) => {
+      handleSQLParsed(sql, name);
+    },
+    [handleSQLParsed]
+  );
 
   return (
     <div className="min-h-screen">
@@ -154,15 +119,31 @@ export function Landing({ onDiagramCreated }: LandingProps) {
                 <Upload className="h-5 w-5" />
                 Upload SQL
               </button>
-              <button
-                onClick={handleTrySample}
-                className="flex items-center gap-2 rounded-xl border border-slate-600 bg-slate-800 px-6 py-3 font-semibold text-slate-200 transition-all hover:border-slate-500 hover:bg-slate-700"
-              >
-                <FileText className="h-5 w-5" />
-                Try Sample Schema
-              </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Sample Schemas */}
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        <h2 className="mb-6 text-center text-lg font-semibold text-slate-300">
+          Or try a sample schema
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {SAMPLE_SCHEMAS.map((sample) => (
+            <button
+              key={sample.name}
+              onClick={() => handleSample(sample.sql, sample.name)}
+              className="group flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-800/50 p-4 text-left transition-all hover:border-indigo-500/50 hover:bg-slate-800"
+            >
+              <FileText className="h-5 w-5 shrink-0 text-indigo-400" />
+              <div className="flex-1">
+                <div className="font-medium text-white">{sample.name}</div>
+                <div className="text-xs text-slate-500">{sample.description}</div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-600 transition-colors group-hover:text-indigo-400" />
+            </button>
+          ))}
         </div>
       </div>
 
@@ -212,6 +193,22 @@ export function Landing({ onDiagramCreated }: LandingProps) {
                 {db}
               </span>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Keyboard shortcuts info */}
+      <div className="border-t border-slate-800 py-8">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <p className="mb-3 text-xs font-medium text-slate-500 uppercase tracking-wider">
+            Keyboard Shortcuts
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
+            <span><kbd className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-slate-400">Cmd+I</kbd> Import</span>
+            <span><kbd className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-slate-400">Cmd+E</kbd> Export</span>
+            <span><kbd className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-slate-400">Cmd+K</kbd> AI Panel</span>
+            <span><kbd className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-slate-400">Cmd+Shift+S</kbd> Share</span>
+            <span><kbd className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-slate-400">Esc</kbd> Close</span>
           </div>
         </div>
       </div>

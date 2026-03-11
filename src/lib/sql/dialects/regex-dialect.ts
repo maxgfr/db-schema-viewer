@@ -7,13 +7,15 @@ export function parseWithRegex(sql: string, dbType: DatabaseType): SQLParseResul
 
   // Match CREATE TABLE statements
   const createTableRegex =
-    /CREATE\s+(?:OR\s+REPLACE\s+)?(?:EXTERNAL\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["'`]?(\w+)["'`]?\.)?["'`]?(\w+)["'`]?\s*\(([\s\S]*?)\)(?:\s*(?:ENGINE|PARTITION|CLUSTER|OPTIONS|WITH|AS)[\s\S]*?)?;/gi;
+    /CREATE\s+(?:OR\s+REPLACE\s+)?(?:EXTERNAL\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?((?:["'`]?\w+["'`]?\.)+)?["'`]?(\w+)["'`]?\s*\(([\s\S]*?)\)(?:\s*(?:ENGINE|PARTITION|CLUSTER|OPTIONS|WITH|AS)[\s\S]*?)?;/gi;
 
   let match;
   while ((match = createTableRegex.exec(sql)) !== null) {
-    const schema = match[1];
+    const qualPrefix = match[1];
     const tableName = match[2]!;
     const body = match[3]!;
+    // Extract first schema part from qualifier prefix (e.g. "mydb." or "warehouse.public.")
+    const schema = qualPrefix ? qualPrefix.replace(/["'`]/g, "").split(".").filter(Boolean)[0] : undefined;
 
     const columns = parseColumns(body, dbType);
     const tableRels = parseInlineFK(body, tableName);
@@ -30,12 +32,14 @@ export function parseWithRegex(sql: string, dbType: DatabaseType): SQLParseResul
 
   // Match CREATE VIEW
   const createViewRegex =
-    /CREATE\s+(?:OR\s+REPLACE\s+)?(?:MATERIALIZED\s+)?VIEW\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:["'`]?(\w+)["'`]?\.)?["'`]?(\w+)["'`]?/gi;
+    /CREATE\s+(?:OR\s+REPLACE\s+)?(?:MATERIALIZED\s+)?VIEW\s+(?:IF\s+NOT\s+EXISTS\s+)?((?:["'`]?\w+["'`]?\.)+)?["'`]?(\w+)["'`]?/gi;
 
   while ((match = createViewRegex.exec(sql)) !== null) {
+    const viewPrefix = match[1];
+    const viewSchema = viewPrefix ? viewPrefix.replace(/["'`]/g, "").split(".").filter(Boolean)[0] : undefined;
     tables.push({
       name: match[2]!,
-      schema: match[1],
+      schema: viewSchema,
       columns: [],
       indexes: [],
       isView: true,

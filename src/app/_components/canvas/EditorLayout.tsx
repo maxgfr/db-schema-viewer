@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
 import type { Diagram } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
 import { generateShareUrl, estimateUrlSize } from "@/lib/sharing/encode-state";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { SchemaCanvas } from "./SchemaCanvas";
 import { SchemaSidebar } from "../schema/SchemaSidebar";
 import { SchemaUpload } from "../schema/SchemaUpload";
@@ -42,6 +43,38 @@ export function EditorLayout({
   const [showData, setShowData] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const canvasRef = { current: null as HTMLDivElement | null };
+
+  const closeAll = useCallback(() => {
+    setShowUpload(false);
+    setShowExport(false);
+    setShowAI(false);
+    setShowData(false);
+    setShowSettings(false);
+  }, []);
+
+  const shortcutHandlers = useMemo(
+    () => ({
+      onImport: () => { closeAll(); setShowUpload(true); },
+      onExport: () => { closeAll(); setShowExport(true); },
+      onAI: () => { closeAll(); setShowAI(true); },
+      onEscape: closeAll,
+      onShare: () => {
+        const size = estimateUrlSize(diagram);
+        if (size > 8000) {
+          toast.warning("Schema is large", {
+            description: `URL is ~${Math.round(size / 1024)}KB. Very large URLs may not work in all browsers.`,
+          });
+        }
+        const url = generateShareUrl(diagram);
+        navigator.clipboard.writeText(url).then(() => {
+          toast.success("Share URL copied to clipboard!");
+        });
+      },
+    }),
+    [closeAll, diagram]
+  );
+
+  useKeyboardShortcuts(shortcutHandlers);
 
   const handleShare = useCallback(() => {
     const size = estimateUrlSize(diagram);
