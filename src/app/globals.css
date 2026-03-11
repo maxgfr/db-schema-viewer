@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* Dark theme (default) */
 @theme {
   --color-background: #0f172a;
   --color-foreground: #f8fafc;
@@ -28,6 +29,26 @@ body {
   color: var(--color-foreground);
 }
 
+/* Light theme overrides */
+html.light {
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-primary: #4f46e5;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #e2e8f0;
+  --color-secondary-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent: #f1f5f9;
+  --color-accent-foreground: #0f172a;
+  --color-destructive: #dc2626;
+  --color-border: #cbd5e1;
+  --color-input: #cbd5e1;
+  --color-ring: #4f46e5;
+}
+
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -49,4 +70,23 @@ body {
 /* React Flow overrides */
 .react-flow__background {
   background-color: var(--color-background) !important;
+}
+
+/* Light theme specific overrides */
+html.light .react-flow__background {
+  background-color: #f8fafc !important;
+}
+
+html.light .react-flow__minimap {
+  background-color: #f1f5f9 !important;
+}
+
+html.light .react-flow__controls button {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+html.light .react-flow__controls button:hover {
+  background-color: #f1f5f9;
 }

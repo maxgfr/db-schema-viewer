@@ -55,22 +55,22 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
       />
       <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="animate-scale-in pointer-events-auto w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl"
+          className="animate-scale-in pointer-events-auto w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-            <h2 className="text-lg font-bold text-white">Import SQL Schema</h2>
+          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+            <h2 className="text-lg font-bold text-foreground">Import Schema</h2>
             <button
               onClick={onClose}
-              className="rounded-lg p-2 transition-colors hover:bg-slate-800"
+              className="rounded-lg p-2 transition-colors hover:bg-accent"
             >
               <X className="h-5 w-5 text-slate-400" />
             </button>
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-slate-700">
+          <div className="flex border-b border-border">
             <button
               onClick={() => setTab("file")}
               className={`flex flex-1 items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
@@ -114,15 +114,16 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
               >
                 <Upload className="mb-4 h-10 w-10 text-slate-500" />
                 <p className="mb-1 text-sm font-medium text-slate-300">
-                  Drop your .sql file here or click to browse
+                  Drop your .sql or .ts file here or click to browse
                 </p>
                 <p className="text-xs text-slate-500">
-                  Supports CREATE TABLE, ALTER TABLE, and CREATE VIEW statements
+                  Supports SQL schemas and Drizzle ORM schema.ts files{" "}
+                  <span className="text-amber-400">(Beta)</span>
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".sql,.txt"
+                  accept=".sql,.txt,.ts,.js"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];

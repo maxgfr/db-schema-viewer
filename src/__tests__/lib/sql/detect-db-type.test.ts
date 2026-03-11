@@ -57,6 +57,16 @@ describe("detectDatabaseType", () => {
     expect(detectDatabaseType(sql)).toBe("supabase");
   });
 
+  it("detects CockroachDB from INTERLEAVE IN PARENT", () => {
+    const sql = `CREATE TABLE orders (id UUID PRIMARY KEY, user_id UUID) INTERLEAVE IN PARENT users (user_id);`;
+    expect(detectDatabaseType(sql)).toBe("cockroachdb");
+  });
+
+  it("detects CockroachDB from crdb_internal", () => {
+    const sql = `-- CockroachDB schema\nSELECT * FROM crdb_internal.tables;\nCREATE TABLE events (id UUID PRIMARY KEY, name STRING);`;
+    expect(detectDatabaseType(sql)).toBe("cockroachdb");
+  });
+
   it("returns generic for plain SQL", () => {
     const sql = `CREATE TABLE foo (id INT, name VARCHAR(50));`;
     expect(detectDatabaseType(sql)).toBe("generic");

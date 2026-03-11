@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback } from "react";
 import type { Diagram } from "@/lib/domain";
 import { getStateFromUrl } from "@/lib/sharing/encode-state";
 import { saveDiagram } from "@/lib/storage/local-storage";
+import { useTheme } from "@/hooks/use-theme";
 import { Landing } from "./_components/landing/Landing";
 import { EditorLayout } from "./_components/canvas/EditorLayout";
 
 export default function Home() {
   const [diagram, setDiagram] = useState<Diagram | null>(null);
   const [mounted, setMounted] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     setMounted(true);
@@ -51,9 +53,17 @@ export default function Home() {
         diagram={diagram}
         onDiagramUpdate={handleDiagramUpdated}
         onBack={handleBack}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
     );
   }
 
-  return <Landing onDiagramCreated={handleDiagramCreated} />;
+  return (
+    <Landing
+      onDiagramCreated={handleDiagramCreated}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+    />
+  );
 }

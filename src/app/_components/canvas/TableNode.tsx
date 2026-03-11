@@ -23,10 +23,10 @@ function TableNodeComponent({ data }: NodeProps) {
 
   return (
     <div
-      className={`min-w-[240px] max-w-[320px] rounded-lg border bg-slate-900 shadow-xl transition-shadow ${
+      className={`min-w-[240px] max-w-[320px] rounded-lg border bg-card shadow-xl transition-shadow ${
         isSelected
           ? "border-indigo-500 shadow-indigo-500/20"
-          : "border-slate-600 shadow-black/40"
+          : "border-border shadow-black/20"
       }`}
     >
       {/* Header */}
@@ -43,7 +43,7 @@ function TableNodeComponent({ data }: NodeProps) {
       </div>
 
       {/* Fields */}
-      <div className="divide-y divide-slate-700/50">
+      <div className="divide-y divide-border/50">
         {visibleFields.map((field) => (
           <TableNodeField key={field.id} field={field} />
         ))}
@@ -56,7 +56,7 @@ function TableNodeComponent({ data }: NodeProps) {
             e.stopPropagation();
             setExpanded(!expanded);
           }}
-          className="flex w-full items-center justify-center gap-1 rounded-b-lg border-t border-slate-700/50 py-1.5 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+          className="flex w-full items-center justify-center gap-1 rounded-b-lg border-t border-border/50 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           {expanded ? (
             <>
@@ -98,17 +98,17 @@ function TableNodeField({ field }: { field: DBField }) {
       <span
         className={`flex-1 truncate text-xs ${
           field.primaryKey
-            ? "font-semibold text-amber-200"
+            ? "font-semibold text-amber-500 dark:text-amber-200"
             : field.isForeignKey
-              ? "text-blue-200"
-              : "text-slate-300"
+              ? "text-blue-500 dark:text-blue-200"
+              : "text-foreground/80"
         }`}
       >
         {field.name}
       </span>
 
       {/* Type */}
-      <span className="font-mono text-[10px] text-slate-500">
+      <span className="font-mono text-[10px] text-muted-foreground">
         {field.type}
       </span>
 

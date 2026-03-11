@@ -118,3 +118,107 @@ describe("SQLite dialect", () => {
     expect(diagram.relationships.length).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe("CockroachDB dialect", () => {
+  it("parses CockroachDB tables (uses PostgreSQL parser)", () => {
+    const sql = `
+      CREATE TABLE users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email VARCHAR(255) NOT NULL UNIQUE,
+        name VARCHAR(100) NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+
+      CREATE TABLE orders (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id),
+        total DECIMAL(10,2) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending'
+      );
+    `;
+    const diagram = parseSQLWithType(sql, "cockroachdb");
+    expect(diagram.tables).toHaveLength(2);
+    expect(diagram.tables[0]!.name).toBe("users");
+    expect(diagram.tables[1]!.name).toBe("orders");
+    expect(diagram.relationships.length).toBeGreaterThanOrEqual(1);
+    expect(diagram.databaseType).toBe("cockroachdb");
+  });
+
+  it("parses CockroachDB with multiple FKs", () => {
+    const sql = `
+      CREATE TABLE tenants (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL
+      );
+
+      CREATE TABLE users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL REFERENCES tenants(id),
+        email VARCHAR(255) NOT NULL
+      );
+
+      CREATE TABLE documents (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        owner_id UUID NOT NULL REFERENCES users(id),
+        tenant_id UUID NOT NULL REFERENCES tenants(id),
+        title VARCHAR(255) NOT NULL
+      );
+    `;
+    const diagram = parseSQLWithType(sql, "cockroachdb");
+    expect(diagram.tables).toHaveLength(3);
+    expect(diagram.relationships.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("MariaDB dialect", () => {
+  it("parses MariaDB tables (uses MySQL parser)", () => {
+    const sql = `
+      -- MariaDB dump
+      CREATE TABLE users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        name VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=Aria DEFAULT CHARSET=utf8mb4;
+
+      CREATE TABLE posts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        content LONGTEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      ) ENGINE=Aria DEFAULT CHARSET=utf8mb4;
+    `;
+    const diagram = parseSQLWithType(sql, "mariadb");
+    expect(diagram.tables).toHaveLength(2);
+    expect(diagram.relationships.length).toBeGreaterThanOrEqual(1);
+    expect(diagram.databaseType).toBe("mariadb");
+  });
+});
+
+describe("Supabase dialect", () => {
+  it("parses Supabase tables (uses PostgreSQL parser)", () => {
+    const sql = `
+      CREATE TABLE profiles (
+        id UUID PRIMARY KEY REFERENCES auth.users(id),
+        username VARCHAR(50) NOT NULL UNIQUE,
+        avatar_url TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE posts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        author_id UUID NOT NULL REFERENCES profiles(id),
+        title VARCHAR(255) NOT NULL,
+        content TEXT,
+        published BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `;
+    const diagram = parseSQLWithType(sql, "supabase");
+    expect(diagram.tables).toHaveLength(2);
+    expect(diagram.tables[0]!.name).toBe("profiles");
+    expect(diagram.relationships.length).toBeGreaterThanOrEqual(1);
+    expect(diagram.databaseType).toBe("supabase");
+  });
+});

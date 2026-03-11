@@ -110,16 +110,12 @@ export function SchemaCanvas({
         defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#334155" />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} className="!text-border" />
         <MiniMap
           nodeStrokeWidth={3}
           pannable
           zoomable
-          style={{
-            backgroundColor: "#0f172a",
-            border: "1px solid #334155",
-            borderRadius: "8px",
-          }}
+          className="!rounded-lg !border !border-border !bg-muted"
         />
         <Controls />
         <MarkerDefinitions />

@@ -10,11 +10,14 @@ import {
   Brain,
   BarChart3,
   Settings,
+  Sun,
+  Moon,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
 import { generateShareUrl, estimateUrlSize } from "@/lib/sharing/encode-state";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import type { Theme } from "@/hooks/use-theme";
 import { SchemaCanvas } from "./SchemaCanvas";
 import { SchemaSidebar } from "../schema/SchemaSidebar";
 import { SchemaUpload } from "../schema/SchemaUpload";
@@ -23,18 +26,23 @@ import { AIPanel } from "../ai/AIPanel";
 import { DataExplorer } from "../data/DataExplorer";
 import { APIKeySettings } from "../settings/APIKeySettings";
 import { parseSQLToDiagram } from "@/lib/sql";
+import { parseDrizzleSchema } from "@/lib/drizzle/drizzle-parser";
 import { autoLayout } from "@/lib/layout/auto-layout";
 
 interface EditorLayoutProps {
   diagram: Diagram;
   onDiagramUpdate: (diagram: Diagram) => void;
   onBack: () => void;
+  theme: Theme;
+  onToggleTheme: () => void;
 }
 
 export function EditorLayout({
   diagram,
   onDiagramUpdate,
   onBack,
+  theme,
+  onToggleTheme,
 }: EditorLayoutProps) {
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -105,10 +113,22 @@ export function EditorLayout({
   const handleNewSQL = useCallback(
     (sql: string, fileName?: string) => {
       try {
-        const newDiagram = parseSQLToDiagram(
-          sql,
-          fileName?.replace(/\.sql$/i, "")
-        );
+        const isDrizzle =
+          fileName?.endsWith(".ts") || fileName?.endsWith(".js");
+        let newDiagram: Diagram;
+
+        if (isDrizzle) {
+          newDiagram = parseDrizzleSchema(
+            sql,
+            fileName?.replace(/\.(ts|js)$/i, "")
+          );
+        } else {
+          newDiagram = parseSQLToDiagram(
+            sql,
+            fileName?.replace(/\.sql$/i, "")
+          );
+        }
+
         const layouted = autoLayout(
           newDiagram.tables,
           newDiagram.relationships
@@ -118,7 +138,7 @@ export function EditorLayout({
           `Loaded ${newDiagram.tables.length} tables, ${newDiagram.relationships.length} relationships`
         );
       } catch (err) {
-        toast.error("Failed to parse SQL", {
+        toast.error("Failed to parse schema", {
           description: err instanceof Error ? err.message : "Unknown error",
         });
       }
@@ -129,19 +149,19 @@ export function EditorLayout({
   return (
     <div className="flex h-screen flex-col">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 border-b border-slate-700 bg-slate-900 px-4 py-2">
+      <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-2">
         <button
           onClick={onBack}
-          className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           title="Back to home"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
 
-        <div className="mx-2 h-6 w-px bg-slate-700" />
+        <div className="mx-2 h-6 w-px bg-border" />
 
         <div className="flex items-center gap-2">
-          <h1 className="text-sm font-semibold text-white">{diagram.name}</h1>
+          <h1 className="text-sm font-semibold text-foreground">{diagram.name}</h1>
           <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-xs font-medium text-indigo-300">
             {DATABASE_TYPE_LABELS[diagram.databaseType]}
           </span>
@@ -152,42 +172,52 @@ export function EditorLayout({
         <div className="flex items-center gap-1">
           <button
             onClick={() => setShowUpload(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Upload className="h-4 w-4" />
             Import
           </button>
           <button
             onClick={handleShare}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Share2 className="h-4 w-4" />
             Share
           </button>
           <button
             onClick={() => setShowExport(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Download className="h-4 w-4" />
             Export
           </button>
           <button
             onClick={() => setShowAI(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Brain className="h-4 w-4" />
             AI
           </button>
           <button
             onClick={() => setShowData(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <BarChart3 className="h-4 w-4" />
             Data
           </button>
+
+          <div className="mx-1 h-6 w-px bg-border" />
+
+          <button
+            onClick={onToggleTheme}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
           <button
             onClick={() => setShowSettings(true)}
-            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Settings className="h-4 w-4" />
           </button>
