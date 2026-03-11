@@ -77,7 +77,8 @@ export async function querySchema(
   question: string,
   onChunk: (chunk: string) => void,
   onComplete: (fullText: string) => void,
-  history: Array<{ prompt: string; response: string }> = []
+  history: Array<{ prompt: string; response: string }> = [],
+  abortSignal?: AbortSignal
 ): Promise<void> {
   const model = getModel(settings);
   const schemaContext = schemaToPromptContext(diagram);
@@ -94,6 +95,7 @@ DATABASE SCHEMA:
 ${schemaContext}`,
     prompt: `${historyText ? `Previous conversation:\n${historyText}\n\n` : ""}User question: ${question}`,
     temperature: 0.5,
+    abortSignal,
   });
 
   let fullText = "";

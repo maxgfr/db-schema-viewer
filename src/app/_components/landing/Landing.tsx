@@ -21,6 +21,9 @@ import { autoLayout } from "@/lib/layout/auto-layout";
 import { SAMPLE_SCHEMAS } from "@/lib/sql/sample-schemas";
 import { parseDrizzleSchema } from "@/lib/drizzle/drizzle-parser";
 import { parsePrismaSchema } from "@/lib/prisma/prisma-parser";
+import { parseDBMLSchema } from "@/lib/dbml/dbml-parser";
+import { parseTypeORMSchema } from "@/lib/typeorm/typeorm-parser";
+import { SCHEMA_TEMPLATES } from "@/lib/sql/schema-templates";
 import type { Theme } from "@/hooks/use-theme";
 import { SchemaUpload } from "../schema/SchemaUpload";
 
@@ -75,13 +78,19 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
   const handleSQLParsed = useCallback(
     (sql: string, fileName?: string) => {
       try {
-        const isDrizzle =
-          fileName?.endsWith(".ts") || fileName?.endsWith(".js");
+        const isDBML = fileName?.endsWith(".dbml");
         const isPrisma = fileName?.endsWith(".prisma");
+        const isTS = fileName?.endsWith(".ts") || fileName?.endsWith(".js");
+        const isTypeORM = isTS && /(@Entity|@Column|@PrimaryGeneratedColumn)/.test(sql);
+        const isDrizzle = isTS && !isTypeORM;
         let diagram: Diagram;
 
-        if (isPrisma) {
+        if (isDBML) {
+          diagram = parseDBMLSchema(sql, fileName?.replace(/\.dbml$/i, ""));
+        } else if (isPrisma) {
           diagram = parsePrismaSchema(sql, fileName?.replace(/\.prisma$/i, ""));
+        } else if (isTypeORM) {
+          diagram = parseTypeORMSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
         } else if (isDrizzle) {
           diagram = parseDrizzleSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
         } else {
@@ -177,6 +186,30 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
         </div>
       </div>
 
+      {/* Schema Templates */}
+      {SCHEMA_TEMPLATES.length > 0 && (
+        <div className="mx-auto max-w-6xl px-6 py-8">
+          <h2 className="mb-6 text-center text-lg font-semibold text-muted-foreground">
+            More templates
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {SCHEMA_TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.name}
+                onClick={() => handleSample(tpl.sql, tpl.name)}
+                className="group flex flex-col rounded-xl border border-border bg-card/50 p-4 text-left transition-all hover:border-indigo-500/50 hover:bg-card"
+              >
+                <span className="mb-1 rounded bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-indigo-400 self-start">
+                  {tpl.category}
+                </span>
+                <span className="mt-1 font-medium text-foreground">{tpl.name}</span>
+                <span className="mt-0.5 text-xs text-muted-foreground">{tpl.description}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Features Grid */}
       <div className="mx-auto max-w-6xl px-6 py-16">
         <h2 className="mb-10 text-center text-2xl font-bold text-foreground">
@@ -228,6 +261,12 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
             </span>
             <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-400">
               Prisma <span className="text-[10px] font-bold uppercase">Beta</span>
+            </span>
+            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-400">
+              DBML <span className="text-[10px] font-bold uppercase">Beta</span>
+            </span>
+            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-400">
+              TypeORM <span className="text-[10px] font-bold uppercase">Beta</span>
             </span>
           </div>
         </div>

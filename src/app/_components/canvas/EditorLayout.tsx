@@ -12,6 +12,7 @@ import {
   Settings,
   Sun,
   Moon,
+  GitCompareArrows,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
@@ -19,15 +20,19 @@ import { generateShareUrl, estimateUrlSize } from "@/lib/sharing/encode-state";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import type { Theme } from "@/hooks/use-theme";
 import { SchemaCanvas } from "./SchemaCanvas";
+import type { ERDNotation } from "./RelationshipEdge";
 import { SchemaSidebar } from "../schema/SchemaSidebar";
 import { SchemaUpload } from "../schema/SchemaUpload";
 import { ExportDialog } from "../export/ExportDialog";
 import { AIPanel } from "../ai/AIPanel";
 import { DataExplorer } from "../data/DataExplorer";
 import { APIKeySettings } from "../settings/APIKeySettings";
+import { SchemaDiffPanel } from "../analysis/SchemaDiffPanel";
 import { parseSQLToDiagram } from "@/lib/sql";
 import { parseDrizzleSchema } from "@/lib/drizzle/drizzle-parser";
 import { parsePrismaSchema } from "@/lib/prisma/prisma-parser";
+import { parseDBMLSchema } from "@/lib/dbml/dbml-parser";
+import { parseTypeORMSchema } from "@/lib/typeorm/typeorm-parser";
 import { autoLayout } from "@/lib/layout/auto-layout";
 
 interface EditorLayoutProps {
@@ -51,6 +56,8 @@ export function EditorLayout({
   const [showAI, setShowAI] = useState(false);
   const [showData, setShowData] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
+  const [erdNotation, setErdNotation] = useState<ERDNotation>("crowsfoot");
   const canvasRef = { current: null as HTMLDivElement | null };
 
   const closeAll = useCallback(() => {
@@ -59,6 +66,7 @@ export function EditorLayout({
     setShowAI(false);
     setShowData(false);
     setShowSettings(false);
+    setShowDiff(false);
   }, []);
 
   const handleShare = useCallback(() => {
@@ -103,26 +111,26 @@ export function EditorLayout({
   const handleNewSQL = useCallback(
     (sql: string, fileName?: string) => {
       try {
-        const isDrizzle =
-          fileName?.endsWith(".ts") || fileName?.endsWith(".js");
+        const isDBML = fileName?.endsWith(".dbml");
         const isPrisma = fileName?.endsWith(".prisma");
+        const isTS = fileName?.endsWith(".ts") || fileName?.endsWith(".js");
+        const isTypeORM = isTS && /(@Entity|@Column|@PrimaryGeneratedColumn)/.test(sql);
+        const isDrizzle = isTS && !isTypeORM;
         let newDiagram: Diagram;
 
-        if (isPrisma) {
-          newDiagram = parsePrismaSchema(
-            sql,
-            fileName?.replace(/\.prisma$/i, "")
-          );
+        if (isDBML) {
+          newDiagram = parseDBMLSchema(sql, fileName?.replace(/\.dbml$/i, ""));
+        } else if (isPrisma) {
+          newDiagram = parsePrismaSchema(sql, fileName?.replace(/\.prisma$/i, ""));
+        } else if (isTypeORM) {
+          newDiagram = parseTypeORMSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
         } else if (isDrizzle) {
-          newDiagram = parseDrizzleSchema(
-            sql,
-            fileName?.replace(/\.(ts|js)$/i, "")
-          );
+          newDiagram = parseDrizzleSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
+        } else if (isTS) {
+          // Fallback for .ts files — try Drizzle
+          newDiagram = parseDrizzleSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
         } else {
-          newDiagram = parseSQLToDiagram(
-            sql,
-            fileName?.replace(/\.sql$/i, "")
-          );
+          newDiagram = parseSQLToDiagram(sql, fileName?.replace(/\.sql$/i, ""));
         }
 
         const layouted = autoLayout(
@@ -201,6 +209,24 @@ export function EditorLayout({
             <BarChart3 className="h-4 w-4" />
             Data
           </button>
+          <button
+            onClick={() => setShowDiff(true)}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <GitCompareArrows className="h-4 w-4" />
+            Diff
+          </button>
+
+          <div className="mx-1 h-6 w-px bg-border" />
+
+          <button
+            onClick={() => setErdNotation(erdNotation === "crowsfoot" ? "chen" : "crowsfoot")}
+            className="rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={`ERD notation: ${erdNotation === "crowsfoot" ? "Crow's Foot" : "Chen"} (click to toggle)`}
+            aria-label="Toggle ERD notation"
+          >
+            {erdNotation === "crowsfoot" ? "Crow's Foot" : "Chen"}
+          </button>
 
           <div className="mx-1 h-6 w-px bg-border" />
 
@@ -214,6 +240,8 @@ export function EditorLayout({
           <button
             onClick={() => setShowSettings(true)}
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title="AI Settings"
+            aria-label="AI Settings"
           >
             <Settings className="h-4 w-4" />
           </button>
@@ -233,6 +261,7 @@ export function EditorLayout({
             selectedTableId={selectedTableId}
             onTableSelect={setSelectedTableId}
             onTablePositionUpdate={handleTablePositionUpdate}
+            notation={erdNotation}
           />
         </div>
       </div>
@@ -261,6 +290,12 @@ export function EditorLayout({
       )}
       {showSettings && (
         <APIKeySettings onClose={() => setShowSettings(false)} />
+      )}
+      {showDiff && (
+        <SchemaDiffPanel
+          currentDiagram={diagram}
+          onClose={() => setShowDiff(false)}
+        />
       )}
     </div>
   );

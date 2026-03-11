@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { X, Image, FileText, Code, Download, Copy, Braces } from "lucide-react";
+import { X, Image, FileText, Code, Download, Copy, Braces, Database, Layers } from "lucide-react";
 import type { Diagram, DatabaseType } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
 import { exportToPng, exportToSvg, downloadDataUrl } from "@/lib/export/image-export";
@@ -11,13 +11,15 @@ import { exportToPdf } from "@/lib/export/pdf-export";
 import { exportDiagramToSQL } from "@/lib/sql-export";
 import { exportDiagramToMarkdown } from "@/lib/export/markdown-export";
 import { exportDiagramToMermaid } from "@/lib/export/mermaid-export";
+import { exportDiagramToPrisma } from "@/lib/export/prisma-export";
+import { exportDiagramToDrizzle } from "@/lib/export/drizzle-export";
 
 interface ExportDialogProps {
   diagram: Diagram;
   onClose: () => void;
 }
 
-type ExportTab = "image" | "pdf" | "sql" | "markdown" | "mermaid";
+type ExportTab = "image" | "pdf" | "sql" | "markdown" | "mermaid" | "prisma" | "drizzle";
 
 export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   const [tab, setTab] = useState<ExportTab>("image");
@@ -111,12 +113,46 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     });
   }, [mermaidOutput]);
 
+  const handlePrismaExport = useCallback(() => {
+    const prisma = exportDiagramToPrisma(diagram);
+    const blob = new Blob([prisma], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    downloadDataUrl(url, `${diagram.name}.prisma`);
+    URL.revokeObjectURL(url);
+    toast.success("Exported as Prisma schema");
+  }, [diagram]);
+
+  const handlePrismaCopy = useCallback(() => {
+    const prisma = exportDiagramToPrisma(diagram);
+    navigator.clipboard.writeText(prisma).then(() => {
+      toast.success("Prisma schema copied to clipboard");
+    });
+  }, [diagram]);
+
+  const handleDrizzleExport = useCallback(() => {
+    const drizzle = exportDiagramToDrizzle(diagram);
+    const blob = new Blob([drizzle], { type: "text/typescript" });
+    const url = URL.createObjectURL(blob);
+    downloadDataUrl(url, `${diagram.name}.ts`);
+    URL.revokeObjectURL(url);
+    toast.success("Exported as Drizzle schema");
+  }, [diagram]);
+
+  const handleDrizzleCopy = useCallback(() => {
+    const drizzle = exportDiagramToDrizzle(diagram);
+    navigator.clipboard.writeText(drizzle).then(() => {
+      toast.success("Drizzle schema copied to clipboard");
+    });
+  }, [diagram]);
+
   const TAB_ITEMS: Array<{ id: ExportTab; label: string; icon: typeof Image }> = [
     { id: "image", label: "Image", icon: Image },
     { id: "pdf", label: "PDF", icon: FileText },
     { id: "sql", label: "SQL", icon: Code },
     { id: "markdown", label: "Markdown", icon: FileText },
     { id: "mermaid", label: "Mermaid", icon: Braces },
+    { id: "prisma", label: "Prisma", icon: Database },
+    { id: "drizzle", label: "Drizzle", icon: Layers },
   ];
 
   const modalContent = (
@@ -313,6 +349,52 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     </button>
                   </>
                 )}
+              </>
+            )}
+
+            {tab === "prisma" && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Export your schema as a Prisma schema file with models, relations, and field attributes.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handlePrismaExport}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download .prisma
+                  </button>
+                  <button
+                    onClick={handlePrismaCopy}
+                    className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {tab === "drizzle" && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Export your schema as Drizzle ORM TypeScript code with table definitions and column builders.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDrizzleExport}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download .ts
+                  </button>
+                  <button
+                    onClick={handleDrizzleCopy}
+                    className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
               </>
             )}
           </div>

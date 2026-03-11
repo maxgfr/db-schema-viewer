@@ -117,13 +117,13 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
                   Drop your schema file here or click to browse
                 </p>
                 <p className="text-xs text-slate-500">
-                  SQL, Drizzle (.ts), and Prisma (.prisma) supported{" "}
+                  SQL, Drizzle (.ts), Prisma (.prisma), DBML (.dbml), TypeORM (.ts){" "}
                   <span className="text-amber-400">(ORM: Beta)</span>
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".sql,.txt,.ts,.js,.prisma"
+                  accept=".sql,.txt,.ts,.js,.prisma,.dbml"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];

@@ -16,13 +16,14 @@ import {
 import "@xyflow/react/dist/style.css";
 import type { Diagram } from "@/lib/domain";
 import { TableNode } from "./TableNode";
-import { RelationshipEdge } from "./RelationshipEdge";
+import { RelationshipEdge, type ERDNotation } from "./RelationshipEdge";
 
 interface SchemaCanvasProps {
   diagram: Diagram;
   selectedTableId: string | null;
   onTableSelect: (tableId: string) => void;
   onTablePositionUpdate: (tableId: string, x: number, y: number) => void;
+  notation?: ERDNotation;
 }
 
 const nodeTypes = { table: TableNode };
@@ -33,6 +34,7 @@ export function SchemaCanvas({
   selectedTableId,
   onTableSelect,
   onTablePositionUpdate,
+  notation = "crowsfoot",
 }: SchemaCanvasProps) {
   const initialNodes: Node[] = useMemo(
     () =>
@@ -61,9 +63,9 @@ export function SchemaCanvas({
         target: rel.targetTableId,
         sourceHandle: `${rel.sourceFieldId}-right`,
         targetHandle: `${rel.targetFieldId}-left`,
-        data: { relationship: rel },
+        data: { relationship: rel, notation },
       })),
-    [diagram.relationships]
+    [diagram.relationships, notation]
   );
 
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
@@ -73,7 +75,7 @@ export function SchemaCanvas({
     (changes: NodeChange[]) => {
       onNodesChange(changes);
 
-      // Persist position changes
+      // Persist position changes only when drag ends
       for (const change of changes) {
         if (change.type === "position" && change.position && !change.dragging) {
           onTablePositionUpdate(
@@ -128,6 +130,7 @@ function MarkerDefinitions() {
   return (
     <svg style={{ position: "absolute", top: 0, left: 0 }}>
       <defs>
+        {/* Legacy markers */}
         <marker
           id="one"
           viewBox="0 0 10 10"
@@ -147,6 +150,29 @@ function MarkerDefinitions() {
           markerHeight="8"
         >
           <path d="M0,0 L5,5 L0,10" stroke="#94a3b8" strokeWidth="1.5" fill="none" />
+        </marker>
+        {/* Crow's Foot markers */}
+        <marker
+          id="cf-one"
+          viewBox="0 0 12 12"
+          refX="6"
+          refY="6"
+          markerWidth="8"
+          markerHeight="8"
+          orient="auto"
+        >
+          <line x1="6" y1="1" x2="6" y2="11" stroke="#6366f1" strokeWidth="2" />
+        </marker>
+        <marker
+          id="cf-many"
+          viewBox="0 0 12 12"
+          refX="1"
+          refY="6"
+          markerWidth="10"
+          markerHeight="10"
+          orient="auto"
+        >
+          <path d="M10,1 L1,6 L10,11" stroke="#6366f1" strokeWidth="1.5" fill="none" />
         </marker>
       </defs>
     </svg>

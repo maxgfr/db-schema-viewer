@@ -146,7 +146,8 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
           setStreamingText("");
           streamingTextRef.current = "";
         },
-        history
+        history,
+        controller.signal
       );
     } catch (err) {
       if ((err as Error)?.name === "AbortError") {
