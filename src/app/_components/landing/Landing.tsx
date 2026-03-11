@@ -20,6 +20,7 @@ import { parseSQLToDiagram } from "@/lib/sql";
 import { autoLayout } from "@/lib/layout/auto-layout";
 import { SAMPLE_SCHEMAS } from "@/lib/sql/sample-schemas";
 import { parseDrizzleSchema } from "@/lib/drizzle/drizzle-parser";
+import { parsePrismaSchema } from "@/lib/prisma/prisma-parser";
 import type { Theme } from "@/hooks/use-theme";
 import { SchemaUpload } from "../schema/SchemaUpload";
 
@@ -76,9 +77,12 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
       try {
         const isDrizzle =
           fileName?.endsWith(".ts") || fileName?.endsWith(".js");
+        const isPrisma = fileName?.endsWith(".prisma");
         let diagram: Diagram;
 
-        if (isDrizzle) {
+        if (isPrisma) {
+          diagram = parsePrismaSchema(sql, fileName?.replace(/\.prisma$/i, ""));
+        } else if (isDrizzle) {
           diagram = parseDrizzleSchema(sql, fileName?.replace(/\.(ts|js)$/i, ""));
         } else {
           diagram = parseSQLToDiagram(sql, fileName?.replace(/\.sql$/i, ""));
@@ -221,6 +225,9 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
             ))}
             <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-400">
               Drizzle ORM <span className="text-[10px] font-bold uppercase">Beta</span>
+            </span>
+            <span className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-sm text-amber-400">
+              Prisma <span className="text-[10px] font-bold uppercase">Beta</span>
             </span>
           </div>
         </div>

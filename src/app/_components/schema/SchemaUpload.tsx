@@ -114,16 +114,16 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
               >
                 <Upload className="mb-4 h-10 w-10 text-slate-500" />
                 <p className="mb-1 text-sm font-medium text-slate-300">
-                  Drop your .sql or .ts file here or click to browse
+                  Drop your schema file here or click to browse
                 </p>
                 <p className="text-xs text-slate-500">
-                  Supports SQL schemas and Drizzle ORM schema.ts files{" "}
-                  <span className="text-amber-400">(Beta)</span>
+                  SQL, Drizzle (.ts), and Prisma (.prisma) supported{" "}
+                  <span className="text-amber-400">(ORM: Beta)</span>
                 </p>
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".sql,.txt,.ts,.js"
+                  accept=".sql,.txt,.ts,.js,.prisma"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];

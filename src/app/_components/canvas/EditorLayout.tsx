@@ -27,6 +27,7 @@ import { DataExplorer } from "../data/DataExplorer";
 import { APIKeySettings } from "../settings/APIKeySettings";
 import { parseSQLToDiagram } from "@/lib/sql";
 import { parseDrizzleSchema } from "@/lib/drizzle/drizzle-parser";
+import { parsePrismaSchema } from "@/lib/prisma/prisma-parser";
 import { autoLayout } from "@/lib/layout/auto-layout";
 
 interface EditorLayoutProps {
@@ -115,9 +116,15 @@ export function EditorLayout({
       try {
         const isDrizzle =
           fileName?.endsWith(".ts") || fileName?.endsWith(".js");
+        const isPrisma = fileName?.endsWith(".prisma");
         let newDiagram: Diagram;
 
-        if (isDrizzle) {
+        if (isPrisma) {
+          newDiagram = parsePrismaSchema(
+            sql,
+            fileName?.replace(/\.prisma$/i, "")
+          );
+        } else if (isDrizzle) {
           newDiagram = parseDrizzleSchema(
             sql,
             fileName?.replace(/\.(ts|js)$/i, "")
