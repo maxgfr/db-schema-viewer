@@ -93,6 +93,13 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
       return;
     }
 
+    if (!settings.apiKey && !settings.customEndpoint) {
+      toast.error("No AI configured", {
+        description: "Go to Settings to configure an API key or a local Ollama endpoint.",
+      });
+      return;
+    }
+
     const userMsg = text.trim();
     if (!overrideInput) setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
@@ -160,8 +167,10 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
 
   const handleChallenge = useCallback(async () => {
     const settings = loadAISettings();
-    if (!settings) {
-      toast.error("Please configure your AI API key first");
+    if (!settings || (!settings.apiKey && !settings.customEndpoint)) {
+      toast.error("No AI configured", {
+        description: "Go to Settings to configure an API key or a local Ollama endpoint.",
+      });
       return;
     }
 

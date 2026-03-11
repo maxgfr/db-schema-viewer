@@ -146,6 +146,13 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
 
           {/* Content */}
           <div className="space-y-5 p-6">
+            {/* Security notice */}
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
+              <strong>100% client-side</strong> — your schema data and API keys never leave your browser.
+              All AI calls go directly from your browser to the provider. No backend, no proxy, no telemetry.
+              For full offline use, configure a local Ollama instance below.
+            </div>
+
             {/* Custom endpoint toggle */}
             <label className="flex cursor-pointer items-center gap-3">
               <input
@@ -155,7 +162,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
                 className="rounded border-border"
               />
               <Server className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-foreground">Use Custom Endpoint</span>
+              <span className="text-sm text-foreground">Use Custom / Local Endpoint (Ollama, LM Studio, etc.)</span>
             </label>
 
             {useCustomEndpoint ? (
@@ -169,6 +176,9 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
                     placeholder="http://localhost:11434/v1"
                     className="w-full rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
                   />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Ollama: <code className="rounded bg-accent px-1">http://localhost:11434/v1</code> — LM Studio: <code className="rounded bg-accent px-1">http://localhost:1234/v1</code>
+                  </p>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm text-foreground">Model Name</label>
@@ -176,7 +186,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
                     type="text"
                     value={customModel}
                     onChange={(e) => setCustomModel(e.target.value)}
-                    placeholder="llama3.2, mistral, etc."
+                    placeholder="llama3.2, mistral, qwen2.5, etc."
                     className="w-full rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -244,7 +254,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
                 </button>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Stored securely in a cookie. Never sent to our servers.
+                Stored in a secure cookie (SameSite=Strict). Sent only to the AI provider you chose, directly from your browser.
               </p>
             </div>
           </div>

@@ -33,18 +33,18 @@ function quoteIdentifier(name: string, dbType: DatabaseType): string {
     case "mysql":
     case "mariadb":
     case "clickhouse":
-      return `\`${name}\``;
+      return `\`${name.replace(/`/g, "``")}\``;
     case "postgresql":
     case "supabase":
     case "cockroachdb":
-      return `"${name}"`;
+      return `"${name.replace(/"/g, '""')}"`;
     case "sqlite":
-      return `"${name}"`;
+      return `"${name.replace(/"/g, '""')}"`;
     case "bigquery":
     case "snowflake":
       return name;
     default:
-      return `"${name}"`;
+      return `"${name.replace(/"/g, '""')}"`;
   }
 }
 

@@ -61,30 +61,6 @@ export function EditorLayout({
     setShowSettings(false);
   }, []);
 
-  const shortcutHandlers = useMemo(
-    () => ({
-      onImport: () => { closeAll(); setShowUpload(true); },
-      onExport: () => { closeAll(); setShowExport(true); },
-      onAI: () => { closeAll(); setShowAI(true); },
-      onEscape: closeAll,
-      onShare: () => {
-        const size = estimateUrlSize(diagram);
-        if (size > 8000) {
-          toast.warning("Schema is large", {
-            description: `URL is ~${Math.round(size / 1024)}KB. Very large URLs may not work in all browsers.`,
-          });
-        }
-        const url = generateShareUrl(diagram);
-        navigator.clipboard.writeText(url).then(() => {
-          toast.success("Share URL copied to clipboard!");
-        });
-      },
-    }),
-    [closeAll, diagram]
-  );
-
-  useKeyboardShortcuts(shortcutHandlers);
-
   const handleShare = useCallback(() => {
     const size = estimateUrlSize(diagram);
     if (size > 8000) {
@@ -97,6 +73,19 @@ export function EditorLayout({
       toast.success("Share URL copied to clipboard!");
     });
   }, [diagram]);
+
+  const shortcutHandlers = useMemo(
+    () => ({
+      onImport: () => { closeAll(); setShowUpload(true); },
+      onExport: () => { closeAll(); setShowExport(true); },
+      onAI: () => { closeAll(); setShowAI(true); },
+      onEscape: closeAll,
+      onShare: handleShare,
+    }),
+    [closeAll, handleShare]
+  );
+
+  useKeyboardShortcuts(shortcutHandlers);
 
   const handleTablePositionUpdate = useCallback(
     (tableId: string, x: number, y: number) => {
