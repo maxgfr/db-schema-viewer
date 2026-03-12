@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
+import { toast } from "sonner";
 import {
   Upload,
   X,
@@ -158,6 +159,9 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
           onSQLParsed(content, file.name);
           onClose();
         }
+      };
+      reader.onerror = () => {
+        toast.error("Failed to read file");
       };
       reader.readAsText(file);
     },

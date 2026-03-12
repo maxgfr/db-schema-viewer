@@ -51,7 +51,7 @@ function CrowsFootEdge({ id, edgePath, cardinality, sourceX, sourceY, targetX, t
 }) {
   // Crow's Foot: source side = FK side, target side = PK side
   // one-to-many: source has crow's foot (many), target has single line (one)
-  const sourceMarker = cardinality === "many-to-many" ? "url(#cf-many)" : "url(#cf-many)";
+  const sourceMarker = cardinality === "one-to-one" ? "url(#cf-one)" : "url(#cf-many)";
   const targetMarker = cardinality === "one-to-one" ? "url(#cf-one)" : cardinality === "many-to-many" ? "url(#cf-many)" : "url(#cf-one)";
 
   return (

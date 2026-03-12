@@ -116,6 +116,9 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
         const content = e.target?.result as string;
         if (content) handleCompare(content, file.name);
       };
+      reader.onerror = () => {
+        toast.error("Failed to read file");
+      };
       reader.readAsText(file);
     },
     [handleCompare]

@@ -52,6 +52,9 @@ export function DataExplorer({ onClose }: DataExplorerProps) {
         toast.error(err instanceof Error ? err.message : "Failed to parse dump");
       }
     };
+    reader.onerror = () => {
+      toast.error("Failed to read file");
+    };
     reader.readAsText(file);
   }, []);
 
@@ -148,17 +151,19 @@ export function DataExplorer({ onClose }: DataExplorerProps) {
 
   const handleExportCSV = useCallback(() => {
     if (!currentTable) return;
-    const header = currentTable.columns.join(",");
+    const escapeCSV = (str: string) => {
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+    const header = currentTable.columns.map(escapeCSV).join(",");
     const rows = filteredRows.map((row) =>
       currentTable.columns
         .map((col) => {
           const val = row[col];
           if (val === null) return "";
-          const str = String(val);
-          if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-            return `"${str.replace(/"/g, '""')}"`;
-          }
-          return str;
+          return escapeCSV(String(val));
         })
         .join(",")
     );

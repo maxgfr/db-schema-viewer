@@ -1,5 +1,5 @@
 import lzString from "lz-string";
-import type { Diagram } from "@/lib/domain";
+import { Diagram } from "@/lib/domain";
 
 export function encodeState(diagram: Diagram): string {
   const json = JSON.stringify(diagram);
@@ -11,12 +11,14 @@ export function decodeState(encoded: string): Diagram | null {
   try {
     const json = lzString.decompressFromEncodedURIComponent(encoded);
     if (!json) return null;
-    return JSON.parse(json) as Diagram;
+    const parsed = JSON.parse(json);
+    return Diagram.parse(parsed);
   } catch {
     // Try base64 fallback
     try {
       const json = atob(encoded);
-      return JSON.parse(json) as Diagram;
+      const parsed = JSON.parse(json);
+      return Diagram.parse(parsed);
     } catch {
       return null;
     }

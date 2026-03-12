@@ -171,93 +171,93 @@ src/__tests__/lib/
 
 ## Roadmap
 
-### Analyse de schéma avancée
+### Advanced Schema Analysis
 
-| Feature | Description | Priorité |
+| Feature | Description | Priority |
 |---------|-------------|----------|
-| **Relations détaillées sur le canvas** | Afficher la cardinalité complète (0..1, 1..1, 0..N, 1..N) sur les edges avec notation crow's foot, Chen ou UML au choix | Haute |
-| **Détection des anti-patterns** | Identifier automatiquement (sans AI) : tables sans PK, colonnes nullable FK, tables orphelines, FKs manquants évidents, colonnes `data`/`misc`/`info` suspectes | Haute |
-| **Score de qualité local** | Calculer un score (0-100) de qualité du schéma côté client (sans AI) : conventions de nommage, normalisation, couverture des index, cohérence des types | Haute |
-| **Métriques de schéma** | Nombre de tables, champs, relations, densité relationnelle, profondeur de hiérarchie FK, composantes connectées | Moyenne |
-| **Détection de types incohérents** | Signaler quand la même colonne logique (ex: `user_id`) a des types différents dans plusieurs tables | Moyenne |
-| **Validation de normalisation** | Détecter les violations de 1NF/2NF/3NF (colonnes multi-valeurs, dépendances transitives) côté client | Basse |
+| **Detailed relations on canvas** | Display full cardinality (0..1, 1..1, 0..N, 1..N) on edges with Crow's Foot, Chen, or UML notation | High |
+| **Anti-pattern detection** | Automatically detect (without AI): tables without PK, nullable FK columns, orphan tables, obvious missing FKs, suspicious `data`/`misc`/`info` columns | High |
+| **Local quality score** | Compute a client-side schema quality score (0-100) without AI: naming conventions, normalization, index coverage, type consistency | High |
+| **Schema metrics** | Table count, field count, relationship count, relational density, FK hierarchy depth, connected components | Medium |
+| **Inconsistent type detection** | Flag when the same logical column (e.g., `user_id`) has different types across tables | Medium |
+| **Normalization validation** | Detect 1NF/2NF/3NF violations (multi-value columns, transitive dependencies) client-side | Low |
 
-### AI — Ce qu'on peut faire de plus
+### AI — What More We Can Do
 
-| Feature | Description | Priorité |
+| Feature | Description | Priority |
 |---------|-------------|----------|
-| **Génération de migration SQL** | L'AI propose des migrations pour corriger les problèmes détectés (ADD INDEX, ALTER COLUMN, etc.) en SQL natif pour le dialecte source | Haute |
-| **Suggestion d'indexes** | Analyser les FK et les patterns de colonnes pour recommander des INDEX/UNIQUE manquants | Haute |
-| **Explain en langage naturel** | "Explique-moi ce schéma comme si j'étais un PM" — résumé business-friendly du modèle de données | Haute |
-| **Comparaison de schémas** | Uploader 2 schémas, l'AI décrit les différences et évalue la migration | Moyenne |
-| **Génération de requêtes** | "Donne-moi la requête pour récupérer les commandes d'un utilisateur avec les produits" — SQL contextuel | Moyenne |
-| **Review par catégorie** | Filtrer le challenge AI par catégorie (sécurité seule, performance seule, naming seul) | Moyenne |
-| **Export du rapport AI** | Télécharger le résultat du challenge en JSON, Markdown ou PDF | Moyenne |
-| **Historique des challenges** | Comparer le score avant/après correction pour suivre l'amélioration | Basse |
-| **Suggestions de tests SQL** | L'AI propose des requêtes de test pour valider les contraintes du schéma | Basse |
+| **SQL migration generation** | AI suggests migrations to fix detected issues (ADD INDEX, ALTER COLUMN, etc.) in native SQL for the source dialect | High |
+| **Index suggestions** | Analyze FKs and column patterns to recommend missing INDEX/UNIQUE constraints | High |
+| **Natural language explain** | "Explain this schema as if I were a PM" — business-friendly summary of the data model | High |
+| **Schema comparison** | Upload 2 schemas, AI describes differences and evaluates the migration | Medium |
+| **Query generation** | "Give me the query to retrieve a user's orders with products" — contextual SQL | Medium |
+| **Review by category** | Filter AI challenge by category (security only, performance only, naming only) | Medium |
+| **AI report export** | Download challenge results as JSON, Markdown, or PDF | Medium |
+| **Challenge history** | Compare score before/after fixes to track improvement | Low |
+| **SQL test suggestions** | AI suggests test queries to validate schema constraints | Low |
 
 ### Data & Charts
 
-| Feature | Description | Priorité |
+| Feature | Description | Priority |
 |---------|-------------|----------|
-| **Tri par colonne** | Cliquer sur un header pour trier ASC/DESC | Haute |
-| **Recherche dans les données** | Filtrer les lignes par valeur dans n'importe quelle colonne | Haute |
-| **Stats automatiques** | Min, Max, Avg, Median, Distinct count par colonne numérique | Haute |
-| **Export CSV** | Télécharger les données affichées en CSV | Moyenne |
-| **Histogrammes** | Distribution des valeurs pour les colonnes numériques | Moyenne |
-| **Drag-and-drop upload** | Glisser-déposer le dump SQL directement sur la zone de données | Moyenne |
-| **Corrélation matrix** | Matrice de corrélation entre colonnes numériques (heatmap) | Basse |
-| **Date binning** | Grouper automatiquement les colonnes date par jour/semaine/mois/année | Basse |
+| **Column sorting** | Click a header to sort ASC/DESC | High |
+| **Data search** | Filter rows by value in any column | High |
+| **Automatic stats** | Min, Max, Avg, Median, Distinct count per numeric column | High |
+| **CSV export** | Download displayed data as CSV | Medium |
+| **Histograms** | Value distribution for numeric columns | Medium |
+| **Drag-and-drop upload** | Drag and drop the SQL dump directly onto the data area | Medium |
+| **Correlation matrix** | Correlation matrix between numeric columns (heatmap) | Low |
+| **Date binning** | Automatically group date columns by day/week/month/year | Low |
 
-### Export & Partage
+### Export & Sharing
 
-| Feature | Description | Priorité |
+| Feature | Description | Priority |
 |---------|-------------|----------|
-| **PDF multi-pages** | Page 1 = diagramme, pages suivantes = détail par table (champs, types, FK, indexes) | Haute |
-| **SQL export amélioré** | ON DELETE/UPDATE CASCADE, INDEX, CHECK, COMMENT ON, ENUM, CREATE VIEW | Haute |
-| **Export Markdown** | Table récapitulative de chaque table au format Markdown (pour les docs) | Moyenne |
-| **Export DBML** | Convertir le schéma au format DBML (dbdiagram.io) | Moyenne |
-| **Export Mermaid** | Générer un diagramme ERD au format Mermaid (pour les README GitHub) | Moyenne |
-| **Export PlantUML** | Générer un schéma PlantUML | Basse |
-| **Embed snippet** | Générer un `<iframe>` embarquable avec le schéma encodé | Basse |
+| **Multi-page PDF** | Page 1 = diagram, following pages = per-table detail (fields, types, FKs, indexes) | High |
+| **Enhanced SQL export** | ON DELETE/UPDATE CASCADE, INDEX, CHECK, COMMENT ON, ENUM, CREATE VIEW | High |
+| **Markdown export** | Summary table for each table in Markdown format (for docs) | Medium |
+| **DBML export** | Convert schema to DBML format (dbdiagram.io) | Medium |
+| **Mermaid export** | Generate an ERD diagram in Mermaid format (for GitHub READMEs) | Medium |
+| **PlantUML export** | Generate a PlantUML schema | Low |
+| **Embed snippet** | Generate an embeddable `<iframe>` with the encoded schema | Low |
 
-### ORM Loaders supplémentaires (Beta)
+### Additional ORM Loaders (Beta)
 
-| ORM | Pattern à parser | Priorité |
-|-----|-----------------|----------|
-| **TypeORM** | `@Entity()`, `@Column()`, `@PrimaryGeneratedColumn()`, `@ManyToOne()`, `@OneToMany()` | Moyenne |
-| **DBML** | `Table users { id int [pk] }`, `Ref: posts.user_id > users.id` | Moyenne |
-| **Sequelize** | `define('User', { ... })`, `belongsTo()`, `hasMany()` | Basse |
-| **MikroORM** | `@Entity()`, `@Property()`, `@ManyToOne()` | Basse |
-| **Kysely** | `interface Database { users: UsersTable }` + migrations | Basse |
+| ORM | Patterns to Parse | Priority |
+|-----|-------------------|----------|
+| **TypeORM** | `@Entity()`, `@Column()`, `@PrimaryGeneratedColumn()`, `@ManyToOne()`, `@OneToMany()` | Medium |
+| **DBML** | `Table users { id int [pk] }`, `Ref: posts.user_id > users.id` | Medium |
+| **Sequelize** | `define('User', { ... })`, `belongsTo()`, `hasMany()` | Low |
+| **MikroORM** | `@Entity()`, `@Property()`, `@ManyToOne()` | Low |
+| **Kysely** | `interface Database { users: UsersTable }` + migrations | Low |
 
-### Tests à ajouter
+### Tests to Add
 
-| Catégorie | Tests manquants | Priorité |
-|-----------|----------------|----------|
-| **AI prompts** | Tester `schemaToPromptContext()` : format de sortie, gestion des cas limites (0 tables, tables sans champs, noms spéciaux) | Haute |
-| **SQL export roundtrip** | Parser un SQL → exporter vers un autre dialecte → re-parser et vérifier que les tables/FK sont préservées | Haute |
-| **Drizzle edge cases** | `.default(sql`...`)`, enums, multi-line definitions, commentaires dans le code, imports aliasés | Haute |
-| **Prisma edge cases** | `@@map`, `@map`, relations many-to-many explicites, `@ignore`, composite FK, views | Haute |
-| **URL sharing roundtrip** | Encoder un gros schéma → décoder → vérifier l'intégrité complète (y compris positions) | Moyenne |
-| **Auto-layout** | Tester avec 50+ tables, composantes déconnectées, self-references | Moyenne |
-| **Dump parser edge cases** | Caractères Unicode, valeurs NULL mixtes, INSERT avec SELECT, multi-line values | Moyenne |
-| **Type inference** | Tester UUID, JSON, dates ISO complètes, valeurs monétaires, pourcentages | Moyenne |
-| **Integration tests** | Tester le flux complet upload → parse → layout → export (avec Testing Library) | Basse |
-| **Performance tests** | Mesurer le temps de parsing pour des schémas de 100+, 500+, 1000+ tables | Basse |
+| Category | Missing Tests | Priority |
+|----------|---------------|----------|
+| **AI prompts** | Test `schemaToPromptContext()`: output format, edge case handling (0 tables, tables without fields, special names) | High |
+| **SQL export roundtrip** | Parse SQL → export to another dialect → re-parse and verify tables/FKs are preserved | High |
+| **Drizzle edge cases** | `.default(sql`...`)`, enums, multi-line definitions, code comments, aliased imports | High |
+| **Prisma edge cases** | `@@map`, `@map`, explicit many-to-many relations, `@ignore`, composite FK, views | High |
+| **URL sharing roundtrip** | Encode a large schema → decode → verify full integrity (including positions) | Medium |
+| **Auto-layout** | Test with 50+ tables, disconnected components, self-references | Medium |
+| **Dump parser edge cases** | Unicode characters, mixed NULL values, INSERT with SELECT, multi-line values | Medium |
+| **Type inference** | Test UUID, JSON, full ISO dates, monetary values, percentages | Medium |
+| **Integration tests** | Test the full flow: upload → parse → layout → export (with Testing Library) | Low |
+| **Performance tests** | Measure parsing time for schemas with 100+, 500+, 1000+ tables | Low |
 
 ### UX & UI
 
-| Feature | Description | Priorité |
+| Feature | Description | Priority |
 |---------|-------------|----------|
-| **Notation ERD toggle** | Basculer entre crow's foot, Chen, et UML pour les relations | Haute |
-| **Zoom sur table** | Double-clic sur une table dans le sidebar = zoom + centrage | Moyenne |
-| **Sidebar stats enrichies** | Nb champs, nb FK, nb index par table + indicateurs visuels | Moyenne |
-| **Table grouping** | Grouper les tables par schema (public, auth, etc.) dans le sidebar | Moyenne |
-| **Expand/Collapse all** | Boutons pour tout développer/réduire dans le sidebar | Moyenne |
-| **Annotations canvas** | Post-its cliquables sur le canvas pour ajouter des notes | Basse |
-| **PWA** | Service worker, mode offline, installation locale | Basse |
-| **i18n** | Support FR/EN | Basse |
+| **ERD notation toggle** | Switch between Crow's Foot, Chen, and UML for relations | High |
+| **Zoom to table** | Double-click a table in the sidebar = zoom + center | Medium |
+| **Enhanced sidebar stats** | Field count, FK count, index count per table + visual indicators | Medium |
+| **Table grouping** | Group tables by schema (public, auth, etc.) in the sidebar | Medium |
+| **Expand/Collapse all** | Buttons to expand/collapse all items in the sidebar | Medium |
+| **Canvas annotations** | Clickable sticky notes on the canvas for adding notes | Low |
+| **PWA** | Service worker, offline mode, local installation | Low |
+| **i18n** | FR/EN language support | Low |
 
 ---
 
@@ -303,21 +303,21 @@ src/
 
 ---
 
-## Ce que cette approche "tout en local" permet
+## What This "Fully Local" Approach Enables
 
-L'avantage fondamental d'un viewer 100% client-side est qu'il peut être utilisé :
+The fundamental advantage of a 100% client-side viewer is that it can be used:
 
-1. **En entreprise sans crainte de fuite** — aucune donnée de schéma ne transite par un serveur tiers. L'outil peut être déployé sur un intranet ou utilisé offline.
+1. **In enterprises without data leak concerns** — no schema data is transmitted to a third-party server. The tool can be deployed on an intranet or used offline.
 
-2. **Pour l'audit de sécurité** — analyser un schéma de production sans l'exposer. Le challenge AI envoie uniquement la structure (noms de tables/colonnes/types), jamais les données.
+2. **For security audits** — analyze a production schema without exposing it. The AI challenge sends only the structure (table/column names and types), never actual data.
 
-3. **Pour la documentation** — générer des PDF multi-pages avec le diagramme + la liste des tables/champs à inclure dans une doc technique.
+3. **For documentation** — generate multi-page PDFs with the diagram + table/field details to include in technical documentation.
 
-4. **Pour l'enseignement** — les étudiants peuvent visualiser et comprendre les relations (0..1, 1..N, N:M), les clés primaires, les foreign keys sans installer de SGBD.
+4. **For teaching** — students can visualize and understand relationships (0..1, 1..N, N:M), primary keys, and foreign keys without installing a DBMS.
 
-5. **Pour le code review** — uploader un schema.prisma ou un schema.ts directement depuis le repo, visualiser les relations, puis lancer un challenge AI pour détecter les problèmes avant le merge.
+5. **For code review** — upload a schema.prisma or schema.ts directly from the repo, visualize relationships, then run an AI challenge to detect issues before merging.
 
-6. **Pour la migration** — importer un schéma PostgreSQL, l'exporter en MySQL pour voir les différences de types, détecter les incompatibilités.
+6. **For migration** — import a PostgreSQL schema, export it as MySQL to see type differences and detect incompatibilities.
 
 ---
 
