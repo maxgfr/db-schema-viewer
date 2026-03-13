@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { X, Image, FileText, Code, Download, Copy, Braces, Database, Layers } from "lucide-react";
+import { X, Image, FileText, Code, Download, Copy, Braces, Database, Layers, Loader2 } from "lucide-react";
 import type { Diagram, DatabaseType } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
 import { exportToPng, exportToSvg, downloadDataUrl } from "@/lib/export/image-export";
@@ -169,7 +169,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
             <h2 className="text-lg font-bold text-foreground">Export Diagram</h2>
-            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent">
+            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent" aria-label="Close export dialog">
               <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
@@ -251,7 +251,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                   disabled={isExporting}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
                 >
-                  <Download className="h-4 w-4" />
+                  {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   {isExporting ? "Exporting..." : `Export ${imageFormat.toUpperCase()}`}
                 </button>
               </>
@@ -263,7 +263,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                 disabled={isExporting}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
               >
-                <Download className="h-4 w-4" />
+                {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 {isExporting ? "Generating PDF..." : "Export PDF"}
               </button>
             )}
@@ -298,6 +298,8 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                   <button
                     onClick={handleSQLCopy}
                     className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
+                    aria-label="Copy SQL to clipboard"
+                    title="Copy SQL to clipboard"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -368,6 +370,8 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                   <button
                     onClick={handlePrismaCopy}
                     className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
+                    aria-label="Copy Prisma schema to clipboard"
+                    title="Copy Prisma schema to clipboard"
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -391,6 +395,8 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                   <button
                     onClick={handleDrizzleCopy}
                     className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
+                    aria-label="Copy Drizzle schema to clipboard"
+                    title="Copy Drizzle schema to clipboard"
                   >
                     <Copy className="h-4 w-4" />
                   </button>

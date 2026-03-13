@@ -15,6 +15,36 @@ interface RelationshipEdgeData {
   notation?: ERDNotation;
 }
 
+/** Cardinality label with a semi-transparent background pill for readability. */
+function CardinalityLabel({ x, y, label, variant = "default" }: { x: number; y: number; label: string; variant?: "default" | "chen" }) {
+  const textClass = variant === "chen"
+    ? "fill-indigo-300 text-[11px] font-bold"
+    : "fill-slate-300 text-[10px] font-semibold";
+
+  return (
+    <g>
+      <rect
+        x={x - 8}
+        y={y - 18}
+        width={16}
+        height={16}
+        rx={4}
+        className="fill-card/90"
+        stroke="none"
+      />
+      <text
+        x={x}
+        y={y - 7}
+        className={textClass}
+        textAnchor="middle"
+        dominantBaseline="central"
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
 function RelationshipEdgeComponent({
   id,
   sourceX,
@@ -49,10 +79,11 @@ function CrowsFootEdge({ id, edgePath, cardinality, sourceX, sourceY, targetX, t
   id: string; edgePath: string; cardinality: string;
   sourceX: number; sourceY: number; targetX: number; targetY: number;
 }) {
-  // Crow's Foot: source side = FK side, target side = PK side
-  // one-to-many: source has crow's foot (many), target has single line (one)
   const sourceMarker = cardinality === "one-to-one" ? "url(#cf-one)" : "url(#cf-many)";
   const targetMarker = cardinality === "one-to-one" ? "url(#cf-one)" : cardinality === "many-to-many" ? "url(#cf-many)" : "url(#cf-one)";
+
+  const sourceLabel = cardinality === "many-to-many" ? "N" : cardinality === "one-to-one" ? "1" : "N";
+  const targetLabel = cardinality === "one-to-many" ? "1" : cardinality === "many-to-many" ? "N" : "1";
 
   return (
     <>
@@ -67,24 +98,16 @@ function CrowsFootEdge({ id, edgePath, cardinality, sourceX, sourceY, targetX, t
           markerEnd: targetMarker,
         }}
       />
-      {/* Source label */}
-      <text
+      <CardinalityLabel
         x={sourceX + (sourceX < targetX ? 14 : -14)}
-        y={sourceY - 10}
-        className="fill-slate-400 text-[9px] font-medium"
-        textAnchor="middle"
-      >
-        {cardinality === "many-to-many" ? "N" : cardinality === "one-to-one" ? "1" : "N"}
-      </text>
-      {/* Target label */}
-      <text
+        y={sourceY}
+        label={sourceLabel}
+      />
+      <CardinalityLabel
         x={targetX + (targetX < sourceX ? 14 : -14)}
-        y={targetY - 10}
-        className="fill-slate-400 text-[9px] font-medium"
-        textAnchor="middle"
-      >
-        {cardinality === "one-to-many" ? "1" : cardinality === "many-to-many" ? "N" : "1"}
-      </text>
+        y={targetY}
+        label={targetLabel}
+      />
     </>
   );
 }
@@ -93,7 +116,6 @@ function ChenEdge({ id, edgePath, cardinality, sourceX, sourceY, targetX, target
   id: string; edgePath: string; cardinality: string;
   sourceX: number; sourceY: number; targetX: number; targetY: number;
 }) {
-  // Chen notation uses diamond shape for relationship and labels on edges
   const midX = (sourceX + targetX) / 2;
   const midY = (sourceY + targetY) / 2;
 
@@ -119,24 +141,18 @@ function ChenEdge({ id, edgePath, cardinality, sourceX, sourceY, targetX, target
         strokeWidth="1.5"
         opacity="0.9"
       />
-      {/* Source cardinality */}
-      <text
+      <CardinalityLabel
         x={sourceX + (sourceX < targetX ? 14 : -14)}
-        y={sourceY - 10}
-        className="fill-indigo-300 text-[11px] font-bold"
-        textAnchor="middle"
-      >
-        {sourceLabel}
-      </text>
-      {/* Target cardinality */}
-      <text
+        y={sourceY}
+        label={sourceLabel}
+        variant="chen"
+      />
+      <CardinalityLabel
         x={targetX + (targetX < sourceX ? 14 : -14)}
-        y={targetY - 10}
-        className="fill-indigo-300 text-[11px] font-bold"
-        textAnchor="middle"
-      >
-        {targetLabel}
-      </text>
+        y={targetY}
+        label={targetLabel}
+        variant="chen"
+      />
     </>
   );
 }

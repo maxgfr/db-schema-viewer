@@ -1,0 +1,33 @@
+name: Update models.json daily
+
+on:
+  schedule:
+    # UTC timezone, daily at 06:00
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: true
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Run fetch-models script
+        run: |
+          node ./scripts/fetch-models.mjs
+
+      - name: Commit and push updated catalog (if any)
+        uses: maxgfr/github-commit-push-file@main
+        with:
+          commit_name: "chore(models): refresh public/models.json (scheduled)"

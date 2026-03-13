@@ -243,7 +243,7 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <h2 className="text-lg font-bold text-foreground">AI Assistant</h2>
-            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent">
+            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent" aria-label="Close AI panel">
               <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
@@ -279,14 +279,20 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
             <>
               <div className="flex-1 space-y-4 overflow-y-auto p-4">
                 {messages.length === 0 && !streamingText && (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    <p className="mb-4">Ask questions about your schema:</p>
+                  <div className="flex flex-col items-center gap-4 py-10 text-center">
+                    <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Ask anything about your schema</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {diagram.tables.length} tables, {diagram.relationships.length} relationships loaded
+                      </p>
+                    </div>
                     <div className="flex flex-wrap justify-center gap-2">
                       {QUICK_ACTIONS.map((action) => (
                         <button
                           key={action.label}
                           onClick={() => handleSend(action.prompt)}
-                          className="rounded-lg border border-border bg-accent px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent/80"
+                          className="rounded-lg border border-border bg-accent px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-indigo-500/50 hover:bg-indigo-500/10"
                         >
                           {action.label}
                         </button>
@@ -309,6 +315,7 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
                         onClick={() => handleCopyMessage(msg.content)}
                         className="absolute right-2 top-2 rounded p-1 opacity-0 transition-opacity hover:bg-accent group-hover:opacity-100"
                         title="Copy message"
+                        aria-label="Copy message"
                       >
                         <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
@@ -340,6 +347,7 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
                       onClick={handleStop}
                       className="rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-500"
                       title="Stop generating"
+                      aria-label="Stop generating"
                     >
                       <Square className="h-4 w-4" />
                     </button>
@@ -348,6 +356,7 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
                       onClick={() => handleSend()}
                       disabled={!input.trim()}
                       className="rounded-lg bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-500 disabled:opacity-50"
+                      aria-label="Send message"
                     >
                       <Send className="h-4 w-4" />
                     </button>

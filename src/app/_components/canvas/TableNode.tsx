@@ -23,9 +23,9 @@ function TableNodeComponent({ data }: NodeProps) {
 
   return (
     <div
-      className={`min-w-[240px] max-w-[320px] rounded-lg border bg-card shadow-xl transition-shadow ${
+      className={`min-w-[240px] max-w-[320px] rounded-lg border bg-card shadow-xl transition-all duration-200 ${
         isSelected
-          ? "border-indigo-500 shadow-indigo-500/20"
+          ? "border-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.3)] ring-1 ring-indigo-500/40"
           : "border-border shadow-black/20"
       }`}
     >

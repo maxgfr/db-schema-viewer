@@ -125,9 +125,14 @@ export function EditorLayout({
       {/* Toolbar */}
       <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-2">
         <button
-          onClick={onBack}
+          onClick={() => {
+            if (window.confirm("Go back to home? Any unsaved layout changes will be lost.")) {
+              onBack();
+            }
+          }}
           className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           title="Back to home"
+          aria-label="Back to home"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -205,6 +210,7 @@ export function EditorLayout({
             onClick={onToggleTheme}
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
