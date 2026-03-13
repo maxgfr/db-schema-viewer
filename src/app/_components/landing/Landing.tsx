@@ -14,6 +14,8 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  Star,
+  Github,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { SAMPLE_SCHEMAS } from "@/lib/sql/sample-schemas";
@@ -135,6 +137,15 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
                 <Upload className="h-5 w-5" />
                 Upload SQL
               </button>
+              <a
+                href="https://github.com/maxgfr/db-schema-viewer"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-3 font-semibold text-foreground transition-all hover:border-amber-500/50 hover:bg-accent"
+              >
+                <Star className="h-5 w-5 text-amber-400" />
+                Star on GitHub
+              </a>
             </div>
           </div>
         </div>
@@ -260,10 +271,31 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
       {/* Footer */}
       <div className="border-t border-border py-8">
         <div className="mx-auto max-w-6xl px-6 text-center text-sm text-muted-foreground">
-          <p>
-            Open source on GitHub. Built with Next.js, React Flow, and
-            Tailwind CSS.
-          </p>
+          <div className="flex items-center justify-center gap-2">
+            <p>
+              Built with Next.js, React Flow, and Tailwind CSS.
+            </p>
+            <span className="text-border">|</span>
+            <a
+              href="https://github.com/maxgfr/db-schema-viewer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Github className="h-4 w-4" />
+              GitHub
+            </a>
+            <span className="text-border">|</span>
+            <a
+              href="https://github.com/maxgfr/db-schema-viewer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-amber-400"
+            >
+              <Star className="h-4 w-4" />
+              Star
+            </a>
+          </div>
         </div>
       </div>
 
