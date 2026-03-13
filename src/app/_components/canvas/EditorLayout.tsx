@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   GitCompareArrows,
+  Github,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
@@ -222,6 +223,16 @@ export function EditorLayout({
           >
             <Settings className="h-4 w-4" />
           </button>
+          <a
+            href="https://github.com/maxgfr/db-schema-viewer"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title="GitHub Repository"
+            aria-label="GitHub Repository"
+          >
+            <Github className="h-4 w-4" />
+          </a>
         </div>
       </div>
 
