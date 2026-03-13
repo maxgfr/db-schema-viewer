@@ -43,3 +43,13 @@ export function downloadDataUrl(dataUrl: string, filename: string): void {
   link.href = dataUrl;
   link.click();
 }
+
+export function downloadBlob(content: string, filename: string, mimeType: string): void {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = url;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

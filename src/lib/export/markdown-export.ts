@@ -1,4 +1,5 @@
 import type { Diagram } from "@/lib/domain";
+import { exportDiagramToMermaid } from "./mermaid-export";
 
 export function exportDiagramToMarkdown(diagram: Diagram): string {
   const lines: string[] = [];
@@ -51,6 +52,16 @@ export function exportDiagramToMarkdown(diagram: Diagram): string {
       }
       lines.push("");
     }
+  }
+
+  // Mermaid ERD
+  if (diagram.tables.length > 0) {
+    lines.push("## Entity Relationship Diagram");
+    lines.push("");
+    lines.push("```mermaid");
+    lines.push(exportDiagramToMermaid(diagram));
+    lines.push("```");
+    lines.push("");
   }
 
   // Relationships
