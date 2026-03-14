@@ -3,7 +3,7 @@
 import { memo, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { KeyRound, Link, ChevronDown, ChevronUp } from "lucide-react";
-import type { DBTable, DBField, DBRelationship } from "@/lib/domain";
+import type { DBTable, DBRelationship } from "@/lib/domain";
 
 interface TableNodeData {
   table: DBTable;
@@ -20,6 +20,9 @@ function TableNodeComponent({ data }: NodeProps) {
   const visibleFields = expanded
     ? table.fields
     : table.fields.slice(0, MAX_VISIBLE_FIELDS);
+  const hiddenFields = expanded
+    ? []
+    : table.fields.slice(MAX_VISIBLE_FIELDS);
 
   return (
     <div
@@ -42,12 +45,59 @@ function TableNodeComponent({ data }: NodeProps) {
         )}
       </div>
 
-      {/* Fields */}
+      {/* Fields — handles rendered inline (not in sub-component) for React Flow v12 compatibility */}
       <div className="divide-y divide-border/50">
         {visibleFields.map((field) => (
-          <TableNodeField key={field.id} field={field} />
+          <div key={field.id} className="group relative flex items-center gap-2 px-3 py-1.5">
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={`${field.id}-left`}
+              className="!h-2 !w-2 !border-slate-500 !bg-slate-700"
+              style={{ top: "50%" }}
+            />
+            <div className="flex w-5 items-center justify-center">
+              {field.primaryKey ? (
+                <KeyRound className="h-3.5 w-3.5 text-amber-400" />
+              ) : field.isForeignKey ? (
+                <Link className="h-3.5 w-3.5 text-blue-400" />
+              ) : null}
+            </div>
+            <span
+              className={`flex-1 truncate text-xs ${
+                field.primaryKey
+                  ? "font-semibold text-amber-500 dark:text-amber-200"
+                  : field.isForeignKey
+                    ? "text-blue-500 dark:text-blue-200"
+                    : "text-foreground/80"
+              }`}
+            >
+              {field.name}
+            </span>
+            <span className="font-mono text-[10px] text-muted-foreground">
+              {field.type}
+            </span>
+            {!field.nullable && (
+              <span className="text-[10px] font-medium text-rose-400">!</span>
+            )}
+            <Handle
+              type="source"
+              position={Position.Right}
+              id={`${field.id}-right`}
+              className="!h-2 !w-2 !border-slate-500 !bg-slate-700"
+              style={{ top: "50%" }}
+            />
+          </div>
         ))}
       </div>
+
+      {/* Hidden handles for collapsed fields */}
+      {hiddenFields.map((field) => (
+        <div key={field.id} className="relative" style={{ height: 0 }}>
+          <Handle type="target" position={Position.Left} id={`${field.id}-left`} className="!h-0 !w-0 !min-h-0 !min-w-0 !border-0 !bg-transparent" />
+          <Handle type="source" position={Position.Right} id={`${field.id}-right`} className="!h-0 !w-0 !min-h-0 !min-w-0 !border-0 !bg-transparent" />
+        </div>
+      ))}
 
       {/* Expand toggle */}
       {needsExpand && (
@@ -69,62 +119,6 @@ function TableNodeComponent({ data }: NodeProps) {
           )}
         </button>
       )}
-    </div>
-  );
-}
-
-function TableNodeField({ field }: { field: DBField }) {
-  return (
-    <div className="group relative flex items-center gap-2 px-3 py-1.5">
-      {/* Left handle */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id={`${field.id}-left`}
-        className="!h-2 !w-2 !border-slate-500 !bg-slate-700"
-        style={{ top: "50%" }}
-      />
-
-      {/* Icons */}
-      <div className="flex w-5 items-center justify-center">
-        {field.primaryKey ? (
-          <KeyRound className="h-3.5 w-3.5 text-amber-400" />
-        ) : field.isForeignKey ? (
-          <Link className="h-3.5 w-3.5 text-blue-400" />
-        ) : null}
-      </div>
-
-      {/* Name */}
-      <span
-        className={`flex-1 truncate text-xs ${
-          field.primaryKey
-            ? "font-semibold text-amber-500 dark:text-amber-200"
-            : field.isForeignKey
-              ? "text-blue-500 dark:text-blue-200"
-              : "text-foreground/80"
-        }`}
-      >
-        {field.name}
-      </span>
-
-      {/* Type */}
-      <span className="font-mono text-[10px] text-muted-foreground">
-        {field.type}
-      </span>
-
-      {/* Nullable */}
-      {!field.nullable && (
-        <span className="text-[10px] font-medium text-rose-400">!</span>
-      )}
-
-      {/* Right handle */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id={`${field.id}-right`}
-        className="!h-2 !w-2 !border-slate-500 !bg-slate-700"
-        style={{ top: "50%" }}
-      />
     </div>
   );
 }

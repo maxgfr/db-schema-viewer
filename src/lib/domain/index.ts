@@ -41,7 +41,10 @@ export const DBField = z.object({
   primaryKey: z.boolean().default(false),
   unique: z.boolean().default(false),
   nullable: z.boolean().default(true),
-  default: z.string().optional(),
+  default: z.preprocess(
+    (val) => (typeof val === "object" && val !== null ? JSON.stringify(val) : val),
+    z.string().optional(),
+  ),
   comment: z.string().optional(),
   isForeignKey: z.boolean().default(false),
   references: z

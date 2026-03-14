@@ -72,8 +72,8 @@ export const viewport: Viewport = {
 const themeScript = `
 (function() {
   try {
-    var t = localStorage.getItem('db-schema-viewer-theme');
-    if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    var m = localStorage.getItem('db-schema-viewer-theme');
+    var t = (m === 'light' || m === 'dark') ? m : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
     document.documentElement.classList.add(t);
   } catch(e) {
     document.documentElement.classList.add('dark');

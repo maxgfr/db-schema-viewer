@@ -12,6 +12,7 @@ import {
   Settings,
   Sun,
   Moon,
+  Monitor,
   GitCompareArrows,
   Github,
   FileCode,
@@ -20,7 +21,7 @@ import type { Diagram } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
 import { generateShareUrl, estimateUrlSize } from "@/lib/sharing/encode-state";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
-import type { Theme } from "@/hooks/use-theme";
+import type { Theme, ThemeMode } from "@/hooks/use-theme";
 import { SchemaCanvas } from "./SchemaCanvas";
 import type { ERDNotation } from "./RelationshipEdge";
 import { SchemaSidebar } from "../schema/SchemaSidebar";
@@ -38,6 +39,7 @@ interface EditorLayoutProps {
   onDiagramUpdate: (diagram: Diagram) => void;
   onBack: () => void;
   theme: Theme;
+  themeMode: ThemeMode;
   onToggleTheme: () => void;
 }
 
@@ -46,6 +48,7 @@ export function EditorLayout({
   onDiagramUpdate,
   onBack,
   theme,
+  themeMode,
   onToggleTheme,
 }: EditorLayoutProps) {
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
@@ -211,12 +214,12 @@ export function EditorLayout({
           <div className="mx-1 h-6 w-px bg-border" />
 
           <button
-            onClick={() => setErdNotation(erdNotation === "crowsfoot" ? "chen" : "crowsfoot")}
+            onClick={() => setErdNotation(erdNotation === "crowsfoot" ? "uml" : "crowsfoot")}
             className="rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={`ERD notation: ${erdNotation === "crowsfoot" ? "Crow's Foot" : "Chen"} (click to toggle)`}
+            title={`Notation: ${erdNotation === "crowsfoot" ? "Crow's Foot (1, N)" : "UML (0..*, 1)"} — click to toggle`}
             aria-label="Toggle ERD notation"
           >
-            {erdNotation === "crowsfoot" ? "Crow's Foot" : "Chen"}
+            {erdNotation === "crowsfoot" ? "Crow's Foot" : "UML"}
           </button>
 
           <div className="mx-1 h-6 w-px bg-border" />
@@ -224,10 +227,10 @@ export function EditorLayout({
           <button
             onClick={onToggleTheme}
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            title={`Theme: ${themeMode} (click to cycle)`}
+            aria-label={`Theme: ${themeMode} (click to cycle)`}
           >
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {themeMode === "system" ? <Monitor className="h-4 w-4" /> : theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           <button
             onClick={() => setShowSettings(true)}
@@ -259,6 +262,7 @@ export function EditorLayout({
         />
         <div className="flex-1" ref={(el) => { canvasRef.current = el; }}>
           <SchemaCanvas
+            key={`${diagram.id}-${erdNotation}`}
             diagram={diagram}
             selectedTableId={selectedTableId}
             onTableSelect={setSelectedTableId}
