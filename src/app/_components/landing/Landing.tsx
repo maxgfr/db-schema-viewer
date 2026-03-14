@@ -20,6 +20,7 @@ import {
 import type { Diagram } from "@/lib/domain";
 import { SAMPLE_SCHEMAS } from "@/lib/sql/sample-schemas";
 import { SCHEMA_TEMPLATES } from "@/lib/sql/schema-templates";
+import { EXAMPLE_SCHEMAS } from "@/lib/examples/example-schemas";
 import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
 import type { Theme } from "@/hooks/use-theme";
 import { SchemaUpload } from "../schema/SchemaUpload";
@@ -76,7 +77,7 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
     (sql: string, fileName?: string) => {
       try {
         const diagram = parseSchemaFile(sql, fileName);
-        onDiagramCreated(diagram);
+        onDiagramCreated({ ...diagram, sourceContent: sql });
         toast.success(
           `Loaded ${diagram.tables.length} tables, ${diagram.relationships.length} relationships`
         );
@@ -184,7 +185,7 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
             {SCHEMA_TEMPLATES.map((tpl) => (
               <button
                 key={tpl.name}
-                onClick={() => handleSample(tpl.sql, tpl.name)}
+                onClick={() => handleSample(tpl.sql, tpl.fileName ?? tpl.name)}
                 className="group flex flex-col rounded-xl border border-border bg-card/50 p-4 text-left transition-all hover:border-indigo-500/50 hover:bg-card"
               >
                 <span className="mb-1 rounded bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-indigo-400 self-start">
@@ -192,6 +193,30 @@ export function Landing({ onDiagramCreated, theme, onToggleTheme }: LandingProps
                 </span>
                 <span className="mt-1 font-medium text-foreground">{tpl.name}</span>
                 <span className="mt-0.5 text-xs text-muted-foreground">{tpl.description}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Example Schemas (multi-format) */}
+      {EXAMPLE_SCHEMAS.length > 0 && (
+        <div className="mx-auto max-w-6xl px-6 py-8">
+          <h2 className="mb-6 text-center text-lg font-semibold text-muted-foreground">
+            Multi-format examples
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {EXAMPLE_SCHEMAS.map((ex) => (
+              <button
+                key={`${ex.name}-${ex.category}`}
+                onClick={() => handleSample(ex.sql, ex.fileName ?? ex.name)}
+                className="group flex flex-col rounded-xl border border-border bg-card/50 p-4 text-left transition-all hover:border-indigo-500/50 hover:bg-card"
+              >
+                <span className="mb-1 rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-400 self-start">
+                  {ex.category}
+                </span>
+                <span className="mt-1 font-medium text-foreground">{ex.name}</span>
+                <span className="mt-0.5 text-xs text-muted-foreground">{ex.description}</span>
               </button>
             ))}
           </div>

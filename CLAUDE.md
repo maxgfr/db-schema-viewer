@@ -53,6 +53,7 @@ src/
         DataExplorer.tsx              # SQL dump exploration (INSERT data)
         DataCharts.tsx                # Recharts visualizations
       analysis/SchemaDiffPanel.tsx    # Schema diff: compare current vs uploaded schema
+      source/SourceViewer.tsx         # View original schema source code
       settings/APIKeySettings.tsx     # AI provider/key/endpoint configuration
   lib/
     domain/index.ts                   # Core types: DBTable, DBField, Diagram, DatabaseType
@@ -74,6 +75,7 @@ src/
       mermaid-export.ts               # Diagram → Mermaid ERD
       prisma-export.ts                # Diagram → Prisma schema
       drizzle-export.ts               # Diagram → Drizzle ORM TypeScript
+    examples/example-schemas.ts       # Multi-format example schemas (Drizzle, Prisma, DBML, TypeORM)
     drizzle/drizzle-parser.ts         # Drizzle ORM .ts → Diagram
     prisma/prisma-parser.ts           # .prisma → Diagram
     dbml/dbml-parser.ts               # .dbml → Diagram
@@ -95,7 +97,7 @@ src/
   hooks/
     use-keyboard-shortcuts.ts        # Cmd+I/E/K/S, Cmd+Shift+S, Escape
     use-theme.ts                     # Dark/light theme with localStorage persistence
-  __tests__/                         # Mirrors lib/ structure, 26 test files, 217+ tests
+  __tests__/                         # Mirrors lib/ structure, 32 test files, 300+ tests
 ```
 
 ## Architecture Decisions
@@ -129,7 +131,18 @@ src/
 - Import from `@/lib/...` (path alias works in vitest via resolve.alias)
 - DOM-dependent code (image-export, pdf-export) is not unit-tested — needs real browser
 - AI service is not unit-tested — requires SDK mocking
-- Run `pnpm test:ci` before committing
+- Example schema fixtures in `examples/` (Drizzle, Prisma, DBML, TypeORM) are parsed and validated in tests
+
+### Pre-commit checks
+
+All four must pass before committing:
+
+```bash
+pnpm typecheck        # TypeScript strict mode — no errors allowed
+pnpm lint             # ESLint — no warnings allowed
+pnpm test:ci          # Vitest single run — all tests must pass
+pnpm build            # Production build — must succeed
+```
 
 ## CI/CD
 

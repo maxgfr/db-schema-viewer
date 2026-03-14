@@ -3,6 +3,8 @@ export interface SchemaTemplate {
   description: string;
   category: string;
   sql: string;
+  /** Synthesized filename for format detection (e.g., "schema.ts" for Drizzle). Defaults to SQL. */
+  fileName?: string;
 }
 
 export const SCHEMA_TEMPLATES: SchemaTemplate[] = [

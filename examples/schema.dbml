@@ -1,0 +1,158 @@
+// ========================================
+// Social Network Database Schema - DBML
+// ========================================
+
+Table users {
+  id            int       [pk, increment]
+  username      varchar   [unique, not null]
+  email         varchar   [unique, not null]
+  password_hash varchar   [not null]
+  display_name  varchar   [not null]
+  bio           text
+  avatar_url    varchar
+  cover_url     varchar
+  is_verified   boolean   [default: false]
+  is_private    boolean   [default: false]
+  created_at    timestamp [default: `now()`]
+  updated_at    timestamp [default: `now()`]
+
+  indexes {
+    username
+    email
+  }
+}
+
+Table posts {
+  id         int       [pk, increment]
+  author_id  int       [not null, ref: > users.id]
+  content    text
+  media_url  varchar
+  media_type varchar   [note: 'image, video, gif']
+  is_pinned  boolean   [default: false]
+  visibility varchar   [default: 'public', note: 'public, followers, private']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+
+  indexes {
+    author_id
+    created_at
+  }
+}
+
+Table comments {
+  id                int       [pk, increment]
+  post_id           int       [not null, ref: > posts.id]
+  author_id         int       [not null, ref: > users.id]
+  parent_comment_id int       [ref: > comments.id, note: 'for nested replies']
+  content           text      [not null]
+  created_at        timestamp [default: `now()`]
+  updated_at        timestamp [default: `now()`]
+
+  indexes {
+    post_id
+    author_id
+  }
+}
+
+Table likes {
+  id             int       [pk, increment]
+  user_id        int       [not null, ref: > users.id]
+  likeable_id    int       [not null]
+  likeable_type  varchar   [not null, note: 'post, comment']
+  created_at     timestamp [default: `now()`]
+
+  indexes {
+    (user_id, likeable_id, likeable_type) [unique]
+  }
+}
+
+Table follows {
+  id          int       [pk, increment]
+  follower_id int       [not null, ref: > users.id]
+  following_id int      [not null, ref: > users.id]
+  status      varchar   [default: 'accepted', note: 'pending, accepted, blocked']
+  created_at  timestamp [default: `now()`]
+
+  indexes {
+    (follower_id, following_id) [unique]
+    follower_id
+    following_id
+  }
+}
+
+Table conversations {
+  id         int       [pk, increment]
+  is_group   boolean   [default: false]
+  name       varchar   [note: 'for group chats']
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table conversation_participants {
+  id              int       [pk, increment]
+  conversation_id int       [not null, ref: > conversations.id]
+  user_id         int       [not null, ref: > users.id]
+  joined_at       timestamp [default: `now()`]
+  last_read_at    timestamp
+
+  indexes {
+    (conversation_id, user_id) [unique]
+  }
+}
+
+Table messages {
+  id              int       [pk, increment]
+  conversation_id int       [not null, ref: > conversations.id]
+  sender_id       int       [not null, ref: > users.id]
+  content         text      [not null]
+  media_url       varchar
+  is_read         boolean   [default: false]
+  created_at      timestamp [default: `now()`]
+
+  indexes {
+    conversation_id
+    sender_id
+  }
+}
+
+Table notifications {
+  id           int       [pk, increment]
+  recipient_id int       [not null, ref: > users.id]
+  actor_id     int       [not null, ref: > users.id]
+  type         varchar   [not null, note: 'like, comment, follow, mention, message']
+  entity_id    int
+  entity_type  varchar   [note: 'post, comment, follow, message']
+  is_read      boolean   [default: false]
+  created_at   timestamp [default: `now()`]
+
+  indexes {
+    recipient_id
+    (recipient_id, is_read)
+  }
+}
+
+Table hashtags {
+  id   int     [pk, increment]
+  name varchar [unique, not null]
+}
+
+Table post_hashtags {
+  id         int [pk, increment]
+  post_id    int [not null, ref: > posts.id]
+  hashtag_id int [not null, ref: > hashtags.id]
+
+  indexes {
+    (post_id, hashtag_id) [unique]
+  }
+}
+
+Table bookmarks {
+  id         int       [pk, increment]
+  user_id    int       [not null, ref: > users.id]
+  post_id    int       [not null, ref: > posts.id]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    (user_id, post_id) [unique]
+  }
+}

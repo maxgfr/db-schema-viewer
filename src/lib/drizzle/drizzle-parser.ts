@@ -25,8 +25,12 @@ export function parseDrizzleSchema(content: string, name?: string): Diagram {
   const tables: DrizzleTable[] = [];
   const relationships: ParsedRelationship[] = [];
 
+  // Detect dialect before stripping imports (imports contain dialect hints)
   const dialect = detectDrizzleDialect(content);
   const databaseType = drizzleDialectToDBType(dialect);
+
+  // Strip imports and TypeScript-only syntax that can interfere with regex parsing
+  content = stripTypeScriptImports(content);
 
   // Extract enum definitions (for callback-syntax type resolution)
   const enumMap = extractPgEnums(content);
@@ -69,6 +73,25 @@ export function parseDrizzleSchema(content: string, name?: string): Diagram {
   }));
 
   return buildDiagram(parsedTables, relationships, databaseType, name ?? "Drizzle Schema");
+}
+
+// ── Import stripping ──────────────────────────────────────────────
+
+/**
+ * Remove TypeScript import statements and $type<...>() annotations
+ * that can interfere with regex-based parsing.
+ */
+function stripTypeScriptImports(content: string): string {
+  // Remove single-line and multi-line import statements
+  content = content.replace(
+    /^\s*import\s[\s\S]*?from\s+["'][^"']*["']\s*;?\s*$/gm,
+    "",
+  );
+  // Remove side-effect imports: import "module";
+  content = content.replace(/^\s*import\s+["'][^"']*["']\s*;?\s*$/gm, "");
+  // Remove .$type<...>() annotations (reference imported types)
+  content = content.replace(/\.\$type\s*<[^>]*>\s*\(\s*\)/g, "");
+  return content;
 }
 
 // ── Dialect detection ──────────────────────────────────────────────

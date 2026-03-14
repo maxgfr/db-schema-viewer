@@ -1,0 +1,241 @@
+// ========================================
+// Social Network Database Schema - Prisma
+// ========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ────────────────────────────────────────────
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  bio          String?  @db.Text
+  avatarUrl    String?  @map("avatar_url")
+  coverUrl     String?  @map("cover_url")
+  isVerified   Boolean  @default(false) @map("is_verified")
+  isPrivate    Boolean  @default(false) @map("is_private")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  posts                    Post[]
+  comments                 Comment[]
+  likes                    Like[]
+  followers                Follow[]                  @relation("Following")
+  following                Follow[]                  @relation("Follower")
+  sentMessages             Message[]
+  conversationParticipants ConversationParticipant[]
+  notificationsReceived    Notification[]             @relation("Recipient")
+  notificationsSent        Notification[]             @relation("Actor")
+  bookmarks                Bookmark[]
+
+  @@index([username])
+  @@index([email])
+  @@map("users")
+}
+
+// ─── Post ────────────────────────────────────────────
+
+model Post {
+  id         Int      @id @default(autoincrement())
+  authorId   Int      @map("author_id")
+  content    String?  @db.Text
+  mediaUrl   String?  @map("media_url")
+  mediaType  String?  @map("media_type") // image, video, gif
+  isPinned   Boolean  @default(false) @map("is_pinned")
+  visibility String   @default("public") // public, followers, private
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  hashtags  PostHashtag[]
+  bookmarks Bookmark[]
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+// ─── Comment ─────────────────────────────────────────
+
+model Comment {
+  id              Int      @id @default(autoincrement())
+  postId          Int      @map("post_id")
+  authorId        Int      @map("author_id")
+  parentCommentId Int?     @map("parent_comment_id")
+  content         String   @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  post          Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentComment Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: SetNull)
+  replies       Comment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@index([authorId])
+  @@map("comments")
+}
+
+// ─── Like ────────────────────────────────────────────
+
+model Like {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  likeableId   Int      @map("likeable_id")
+  likeableType String   @map("likeable_type") // post, comment
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, likeableId, likeableType])
+  @@map("likes")
+}
+
+// ─── Follow ──────────────────────────────────────────
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int      @map("follower_id")
+  followingId Int      @map("following_id")
+  status      String   @default("accepted") // pending, accepted, blocked
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+// ─── Conversation ────────────────────────────────────
+
+model Conversation {
+  id        Int      @id @default(autoincrement())
+  isGroup   Boolean  @default(false) @map("is_group")
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+// ─── ConversationParticipant ─────────────────────────
+
+model ConversationParticipant {
+  id             Int       @id @default(autoincrement())
+  conversationId Int       @map("conversation_id")
+  userId         Int       @map("user_id")
+  joinedAt       DateTime  @default(now()) @map("joined_at")
+  lastReadAt     DateTime? @map("last_read_at")
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+// ─── Message ─────────────────────────────────────────
+
+model Message {
+  id             Int      @id @default(autoincrement())
+  conversationId Int      @map("conversation_id")
+  senderId       Int      @map("sender_id")
+  content        String   @db.Text
+  mediaUrl       String?  @map("media_url")
+  isRead         Boolean  @default(false) @map("is_read")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@map("messages")
+}
+
+// ─── Notification ────────────────────────────────────
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  recipientId Int      @map("recipient_id")
+  actorId     Int      @map("actor_id")
+  type        String   // like, comment, follow, mention, message
+  entityId    Int?     @map("entity_id")
+  entityType  String?  @map("entity_type") // post, comment, follow, message
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  recipient User @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User @relation("Actor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId])
+  @@index([recipientId, isRead])
+  @@map("notifications")
+}
+
+// ─── Hashtag ─────────────────────────────────────────
+
+model Hashtag {
+  id    Int           @id @default(autoincrement())
+  name  String        @unique
+  posts PostHashtag[]
+
+  @@map("hashtags")
+}
+
+// ─── PostHashtag (join table) ────────────────────────
+
+model PostHashtag {
+  id        Int @id @default(autoincrement())
+  postId    Int @map("post_id")
+  hashtagId Int @map("hashtag_id")
+
+  // Relations
+  post    Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtag Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, hashtagId])
+  @@map("post_hashtags")
+}
+
+// ─── Bookmark ────────────────────────────────────────
+
+model Bookmark {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  postId    Int      @map("post_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("bookmarks")
+}

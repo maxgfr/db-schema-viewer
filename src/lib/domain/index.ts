@@ -93,5 +93,7 @@ export const Diagram = z.object({
   relationships: z.array(DBRelationship),
   createdAt: z.string(),
   updatedAt: z.string().optional(),
+  /** Original schema source code (SQL, Drizzle, Prisma, etc.) — preserved for "View Source". */
+  sourceContent: z.string().optional(),
 });
 export type Diagram = z.infer<typeof Diagram>;

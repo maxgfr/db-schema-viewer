@@ -14,6 +14,7 @@ import {
   Moon,
   GitCompareArrows,
   Github,
+  FileCode,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
@@ -29,6 +30,7 @@ import { AIPanel } from "../ai/AIPanel";
 import { DataExplorer } from "../data/DataExplorer";
 import { APIKeySettings } from "../settings/APIKeySettings";
 import { SchemaDiffPanel } from "../analysis/SchemaDiffPanel";
+import { SourceViewer } from "../source/SourceViewer";
 import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
 
 interface EditorLayoutProps {
@@ -53,6 +55,7 @@ export function EditorLayout({
   const [showData, setShowData] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
+  const [showSource, setShowSource] = useState(false);
   const [erdNotation, setErdNotation] = useState<ERDNotation>("crowsfoot");
   const canvasRef = { current: null as HTMLDivElement | null };
 
@@ -63,6 +66,7 @@ export function EditorLayout({
     setShowData(false);
     setShowSettings(false);
     setShowDiff(false);
+    setShowSource(false);
   }, []);
 
   const handleShare = useCallback(() => {
@@ -108,7 +112,7 @@ export function EditorLayout({
     (sql: string, fileName?: string) => {
       try {
         const newDiagram = parseSchemaFile(sql, fileName);
-        onDiagramUpdate(newDiagram);
+        onDiagramUpdate({ ...newDiagram, sourceContent: sql });
         toast.success(
           `Loaded ${newDiagram.tables.length} tables, ${newDiagram.relationships.length} relationships`
         );
@@ -157,6 +161,16 @@ export function EditorLayout({
             <Upload className="h-4 w-4" />
             Import
           </button>
+          {diagram.sourceContent && (
+            <button
+              onClick={() => setShowSource(true)}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="View original schema source code"
+            >
+              <FileCode className="h-4 w-4" />
+              Source
+            </button>
+          )}
           <button
             onClick={handleShare}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -283,6 +297,13 @@ export function EditorLayout({
         <SchemaDiffPanel
           currentDiagram={diagram}
           onClose={() => setShowDiff(false)}
+        />
+      )}
+      {showSource && diagram.sourceContent && (
+        <SourceViewer
+          sourceContent={diagram.sourceContent}
+          diagramName={diagram.name}
+          onClose={() => setShowSource(false)}
         />
       )}
     </div>

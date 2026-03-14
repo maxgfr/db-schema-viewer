@@ -2,7 +2,10 @@ import lzString from "lz-string";
 import { Diagram } from "@/lib/domain";
 
 export function encodeState(diagram: Diagram): string {
-  const json = JSON.stringify(diagram);
+  // Strip sourceContent from shared URLs to keep them small
+  const { sourceContent: _, ...shareable } = diagram;
+  void _;
+  const json = JSON.stringify(shareable);
   const compressed = lzString.compressToEncodedURIComponent(json);
   return compressed;
 }
