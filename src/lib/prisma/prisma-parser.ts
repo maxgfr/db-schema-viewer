@@ -1,5 +1,7 @@
 import type { Diagram, DatabaseType } from "@/lib/domain";
-import { generateId, getTableColor } from "@/lib/utils";
+import type { ParsedColumn, ParsedRelationship, ParsedIndex } from "@/lib/parsing/types";
+import { buildDiagram } from "@/lib/parsing/build-diagram";
+import { extractBraceBlock } from "@/lib/parsing/extract-brace-block";
 
 interface PrismaField {
   name: string;
@@ -39,8 +41,20 @@ export function parsePrismaSchema(content: string, name?: string): Diagram {
   const databaseType = detectPrismaProvider(content);
   const enums = extractEnums(content);
   const models = extractModels(content, enums);
-  return buildPrismaDiagram(models, databaseType, name);
+
+  const parsedTables = models.map((model) => ({
+    name: model.dbName || model.name,
+    columns: modelFieldsToColumns(model),
+    indexes: modelIndexes(model),
+    isView: false,
+  }));
+
+  const relationships = resolveRelationships(models);
+
+  return buildDiagram(parsedTables, relationships, databaseType, name ?? "Prisma Schema");
 }
+
+// ── Provider detection ─────────────────────────────────────────────
 
 function detectPrismaProvider(content: string): DatabaseType {
   const dsMatch = /datasource\s+\w+\s*\{([^}]*)\}/s.exec(content);
@@ -64,23 +78,27 @@ function detectPrismaProvider(content: string): DatabaseType {
   }
 }
 
+// ── Enum extraction ────────────────────────────────────────────────
+
 function extractEnums(content: string): PrismaEnum[] {
   const enums: PrismaEnum[] = [];
   const enumRegex = /enum\s+(\w+)\s*\{([^}]*)\}/g;
 
   let match;
   while ((match = enumRegex.exec(content)) !== null) {
-    const name = match[1]!;
+    const enumName = match[1]!;
     const body = match[2]!;
     const values = body
       .split("\n")
       .map((l) => l.replace(/\/\/.*$/, "").trim())
       .filter((l) => l.length > 0 && !l.startsWith("//"));
-    enums.push({ name, values });
+    enums.push({ name: enumName, values });
   }
 
   return enums;
 }
+
+// ── Model extraction ───────────────────────────────────────────────
 
 function extractModels(content: string, enums: PrismaEnum[]): PrismaModel[] {
   const models: PrismaModel[] = [];
@@ -101,22 +119,10 @@ function extractModels(content: string, enums: PrismaEnum[]): PrismaModel[] {
   return models;
 }
 
-function extractBraceBlock(content: string, startIdx: number): string | null {
-  let depth = 0;
-  for (let i = startIdx; i < content.length; i++) {
-    if (content[i] === "{") depth++;
-    else if (content[i] === "}") {
-      depth--;
-      if (depth === 0) return content.substring(startIdx + 1, i);
-    }
-  }
-  return null;
-}
-
 function parseModelBody(
   modelName: string,
   body: string,
-  enumNames: Set<string>
+  enumNames: Set<string>,
 ): PrismaModel {
   const fields: PrismaField[] = [];
   let compositeId: string[] | undefined;
@@ -138,11 +144,11 @@ function parseModelBody(
 
     // @@unique([field1, field2])
     const compositeUniqueMatch = line.match(
-      /@@unique\s*\(\s*\[([^\]]+)\]\s*\)/
+      /@@unique\s*\(\s*\[([^\]]+)\]\s*\)/,
     );
     if (compositeUniqueMatch) {
       compositeUniques.push(
-        compositeUniqueMatch[1]!.split(",").map((s) => s.trim())
+        compositeUniqueMatch[1]!.split(",").map((s) => s.trim()),
       );
       continue;
     }
@@ -161,13 +167,11 @@ function parseModelBody(
       continue;
     }
 
-    // Skip model-level attributes we don't handle
+    // Skip other model-level attributes
     if (line.startsWith("@@")) continue;
 
     // Parse field: name Type? @attributes
-    const fieldMatch = line.match(
-      /^(\w+)\s+(\w+)(\[\])?\s*(\?)?\s*(.*)?$/
-    );
+    const fieldMatch = line.match(/^(\w+)\s+(\w+)(\[\])?\s*(\?)?\s*(.*)?$/);
     if (!fieldMatch) continue;
 
     const fieldName = fieldMatch[1]!;
@@ -177,21 +181,21 @@ function parseModelBody(
     const attrs = fieldMatch[5] || "";
 
     // Skip pure relation fields (type is another model and no @relation with fields)
-    const isRelationField = !isScalarType(fieldType) && !enumNames.has(fieldType);
-    if (isRelationField && isList) continue; // Many-side of relation, no FK here
+    const isRelationField =
+      !isScalarType(fieldType) && !enumNames.has(fieldType);
+    if (isRelationField && isList) continue;
 
     const isPK = /@id\b/.test(attrs);
     const isUnique = /@unique\b/.test(attrs);
     const isUpdatedAt = /@updatedAt\b/.test(attrs);
 
-    // Extract @default
     const defaultMatch = attrs.match(/@default\s*\(([^)]+)\)/);
     const defaultValue = defaultMatch ? defaultMatch[1]!.trim() : undefined;
 
     // Extract @relation
     let relation: PrismaField["relation"] | undefined;
     const relationMatch = attrs.match(
-      /@relation\s*\(\s*(?:name:\s*["']\w+["'],?\s*)?(?:fields:\s*\[([^\]]+)\])?\s*,?\s*(?:references:\s*\[([^\]]+)\])?\s*(?:,\s*onDelete:\s*\w+)?\s*(?:,\s*onUpdate:\s*\w+)?\s*\)/
+      /@relation\s*\(\s*(?:name:\s*["']\w+["'],?\s*)?(?:fields:\s*\[([^\]]+)\])?\s*,?\s*(?:references:\s*\[([^\]]+)\])?\s*(?:,\s*onDelete:\s*\w+)?\s*(?:,\s*onUpdate:\s*\w+)?\s*\)/,
     );
     if (relationMatch && relationMatch[1] && relationMatch[2]) {
       relation = {
@@ -228,8 +232,81 @@ function parseModelBody(
     }
   }
 
-  return { name: modelName, dbName, fields, compositeId, compositeUniques, indexes };
+  return {
+    name: modelName,
+    dbName,
+    fields,
+    compositeId,
+    compositeUniques,
+    indexes,
+  };
 }
+
+// ── Convert Prisma model fields to shared ParsedColumn[] ──────────
+
+function modelFieldsToColumns(model: PrismaModel): ParsedColumn[] {
+  return model.fields.map((field) => ({
+    name: field.map || field.name,
+    type: field.type,
+    primaryKey: field.isPrimaryKey,
+    unique: field.isUnique,
+    nullable: field.isOptional,
+    default: field.default,
+  }));
+}
+
+function modelIndexes(model: PrismaModel): ParsedIndex[] {
+  return (model.indexes || []).map((cols) => ({
+    name: `idx_${model.name.toLowerCase()}_${cols.join("_")}`,
+    columns: cols,
+    unique: false,
+  }));
+}
+
+// ── Relationship resolution ────────────────────────────────────────
+
+function resolveRelationships(models: PrismaModel[]): ParsedRelationship[] {
+  const relationships: ParsedRelationship[] = [];
+  for (const model of models) {
+    const sourceTableName = model.dbName || model.name;
+
+    for (const field of model.fields) {
+      // Convention: field ending with Id (e.g., authorId) references Author model
+      const idMatch = field.name.match(/^(.+?)Id$/i);
+      if (!idMatch) continue;
+
+      const refName = idMatch[1]!;
+      const targetModel = models.find(
+        (m) =>
+          m.name.toLowerCase() === refName.toLowerCase() ||
+          m.name.toLowerCase() === refName.toLowerCase() + "s",
+      );
+
+      if (!targetModel) continue;
+
+      const targetTableName = targetModel.dbName || targetModel.name;
+
+      // Find PK field in target model
+      const targetPK = targetModel.fields.find((f) => f.isPrimaryKey);
+      if (!targetPK) continue;
+
+      const sourceColumnName = field.map || field.name;
+      const targetColumnName = targetPK.map || targetPK.name;
+
+      relationships.push({
+        sourceTable: sourceTableName,
+        sourceColumn: sourceColumnName,
+        targetTable: targetTableName,
+        targetColumn: targetColumnName,
+        cardinality: field.isUnique ? "one-to-one" : "one-to-many",
+      });
+    }
+  }
+
+  return relationships;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────
 
 function isScalarType(type: string): boolean {
   const scalars = new Set([
@@ -263,187 +340,3 @@ function mapPrismaType(type: string, enumNames: Set<string>): string {
   return map[type] || type;
 }
 
-function buildPrismaDiagram(
-  models: PrismaModel[],
-  databaseType: DatabaseType,
-  name?: string
-): Diagram {
-  // First pass: extract relations from model bodies by re-reading model fields that are relation types
-  // We need the original content... but we already parsed models. Let's use a different approach:
-  // Build the diagram from models, then use a second function to resolve relations.
-
-  const tables = models.map((model, index) => ({
-    id: generateId(),
-    name: model.dbName || model.name,
-    schema: undefined,
-    fields: model.fields.map((field) => ({
-      id: generateId(),
-      name: field.map || field.name,
-      type: field.type,
-      primaryKey: field.isPrimaryKey,
-      unique: field.isUnique,
-      nullable: field.isOptional,
-      default: field.default,
-      isForeignKey: false,
-      references: undefined as { table: string; field: string } | undefined,
-    })),
-    indexes: (model.indexes || []).map((cols) => ({
-      id: generateId(),
-      name: `idx_${model.name.toLowerCase()}_${cols.join("_")}`,
-      columns: cols,
-      unique: false,
-    })),
-    x: 0,
-    y: 0,
-    color: getTableColor(index),
-    isView: false,
-  }));
-
-  // Now resolve relations. We need to go back to the Prisma content...
-  // Actually, we need to extract relations differently.
-  // Let's re-parse the relations from model bodies in a separate pass.
-  const relationships = resolveRelations(models, tables);
-
-  return {
-    id: generateId(),
-    name: name ?? "Prisma Schema",
-    databaseType,
-    tables,
-    relationships,
-    createdAt: new Date().toISOString(),
-  };
-}
-
-interface DiagramTable {
-  id: string;
-  name: string;
-  fields: {
-    id: string;
-    name: string;
-    type: string;
-    primaryKey: boolean;
-    unique: boolean;
-    nullable: boolean;
-    default?: string;
-    isForeignKey: boolean;
-    references: { table: string; field: string } | undefined;
-  }[];
-  indexes: { id: string; name: string; columns: string[]; unique: boolean }[];
-}
-
-function resolveRelations(
-  models: PrismaModel[],
-  tables: DiagramTable[]
-) {
-  const tableByModelName = new Map(
-    models.map((m, i) => [m.name, tables[i]!])
-  );
-
-  const relationships: {
-    id: string;
-    sourceTableId: string;
-    sourceFieldId: string;
-    targetTableId: string;
-    targetFieldId: string;
-    cardinality: "one-to-one" | "one-to-many" | "many-to-many";
-  }[] = [];
-
-  for (const model of models) {
-    const sourceTable = tableByModelName.get(model.name);
-    if (!sourceTable) continue;
-
-    for (const field of model.fields) {
-      // Convention: field ending with Id (e.g., authorId) references Author model
-      const idMatch = field.name.match(/^(.+?)Id$/i);
-      if (!idMatch) continue;
-
-      // Try to find the target model
-      const refName = idMatch[1]!;
-      const targetModelName = models.find(
-        (m) =>
-          m.name.toLowerCase() === refName.toLowerCase() ||
-          m.name.toLowerCase() === refName.toLowerCase() + "s"
-      )?.name;
-
-      if (!targetModelName) continue;
-
-      const targetTable = tableByModelName.get(targetModelName);
-      if (!targetTable) continue;
-
-      // Find the FK field in source table
-      const sourceField = sourceTable.fields.find(
-        (f) => f.name === (field.map || field.name)
-      );
-      if (!sourceField) continue;
-
-      // Find the PK field in target table (usually "id")
-      const targetField = targetTable.fields.find((f) => f.primaryKey);
-      if (!targetField) continue;
-
-      // Mark as FK
-      sourceField.isForeignKey = true;
-      sourceField.references = {
-        table: targetTable.name,
-        field: targetField.name,
-      };
-
-      relationships.push({
-        id: generateId(),
-        sourceTableId: sourceTable.id,
-        sourceFieldId: sourceField.id,
-        targetTableId: targetTable.id,
-        targetFieldId: targetField.id,
-        cardinality: field.isUnique ? "one-to-one" : "one-to-many",
-      });
-    }
-  }
-
-  return relationships;
-}
-
-/**
- * Re-parse Prisma content to resolve @relation directives explicitly.
- * This is more accurate than convention-based matching.
- */
-export function parsePrismaRelations(
-  content: string,
-): { source: string; sourceField: string; target: string; targetField: string }[] {
-  const relations: {
-    source: string;
-    sourceField: string;
-    target: string;
-    targetField: string;
-  }[] = [];
-
-  const modelRegex = /model\s+(\w+)\s*\{/g;
-  let match;
-
-  while ((match = modelRegex.exec(content)) !== null) {
-    const modelName = match[1]!;
-    const startIdx = content.indexOf("{", match.index);
-    const body = extractBraceBlock(content, startIdx);
-    if (!body) continue;
-
-    // Find relation fields: fieldName ModelType @relation(fields: [...], references: [...])
-    const relFieldRegex =
-      /(\w+)\s+(\w+)\??\s+@relation\s*\([^)]*fields:\s*\[([^\]]+)\][^)]*references:\s*\[([^\]]+)\][^)]*\)/g;
-
-    let relMatch;
-    while ((relMatch = relFieldRegex.exec(body)) !== null) {
-      const targetModelName = relMatch[2]!;
-      const sourceFields = relMatch[3]!.split(",").map((s) => s.trim());
-      const targetFields = relMatch[4]!.split(",").map((s) => s.trim());
-
-      for (let i = 0; i < sourceFields.length; i++) {
-        relations.push({
-          source: modelName,
-          sourceField: sourceFields[i]!,
-          target: targetModelName,
-          targetField: targetFields[i] || "id",
-        });
-      }
-    }
-  }
-
-  return relations;
-}

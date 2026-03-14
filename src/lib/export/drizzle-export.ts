@@ -1,16 +1,5 @@
 import type { Diagram, DBTable, DBField } from "@/lib/domain";
-
-/**
- * Convert a name to camelCase for JS variable names.
- */
-function toCamelCase(name: string): string {
-  const parts = name.split(/[_\-\s]+/);
-  return parts
-    .map((part, i) =>
-      i === 0 ? part.toLowerCase() : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase(),
-    )
-    .join("");
-}
+import { toCamelCase } from "./case-utils";
 
 type DrizzleDialect = "pg" | "mysql" | "sqlite";
 

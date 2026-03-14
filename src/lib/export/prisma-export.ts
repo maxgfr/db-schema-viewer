@@ -1,4 +1,5 @@
-import type { Diagram, DBTable, DBField, DBRelationship } from "@/lib/domain";
+import type { Diagram, DBTable, DBField } from "@/lib/domain";
+import { toCamelCase } from "./case-utils";
 
 /**
  * Naively singularize a word (handles common English plural suffixes).
@@ -22,24 +23,11 @@ function singularize(word: string): string {
  */
 function toPascalCase(name: string): string {
   const parts = name.split(/[_\-\s]+/);
-  // Singularize the last part to get a singular model name
   if (parts.length > 0) {
     parts[parts.length - 1] = singularize(parts[parts.length - 1]!);
   }
   return parts
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join("");
-}
-
-/**
- * Convert a snake_case column name to camelCase field name.
- */
-function toCamelCase(name: string): string {
-  const parts = name.split(/[_\-\s]+/);
-  return parts
-    .map((part, i) =>
-      i === 0 ? part.toLowerCase() : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase(),
-    )
     .join("");
 }
 
@@ -131,7 +119,7 @@ function mapSqlTypeToPrisma(sqlType: string): string {
 /**
  * Build Prisma attribute annotations for a field.
  */
-function buildFieldAttributes(field: DBField, table: DBTable, relationships: DBRelationship[], allTables: DBTable[]): string {
+function buildFieldAttributes(field: DBField): string {
   const attrs: string[] = [];
 
   if (field.primaryKey) {
@@ -157,24 +145,6 @@ function buildFieldAttributes(field: DBField, table: DBTable, relationships: DBR
 
   if (field.unique && !field.primaryKey) {
     attrs.push("@unique");
-  }
-
-  // Check if this field is the source of a relationship and add @relation
-  for (const rel of relationships) {
-    if (rel.sourceTableId === table.id && rel.sourceFieldId === field.id) {
-      const targetTable = allTables.find((t) => t.id === rel.targetTableId);
-      const targetField = targetTable?.fields.find((f) => f.id === rel.targetFieldId);
-      if (targetTable && targetField) {
-        const targetModelName = toPascalCase(targetTable.name);
-        const relationFieldName = toCamelCase(
-          field.name.replace(/_id$/i, "").replace(/Id$/, "") || targetTable.name,
-        );
-        // The relation attribute is placed on the relation field, not the scalar field
-        // We'll handle it when we generate relation fields
-        void relationFieldName;
-        void targetModelName;
-      }
-    }
   }
 
   // Map column name if camelCase differs from original
@@ -259,7 +229,7 @@ export function exportDiagramToPrisma(diagram: Diagram): string {
       const prismaType = mapSqlTypeToPrisma(field.type);
       const camelName = toCamelCase(field.name);
       const nullable = field.nullable && !field.primaryKey ? "?" : "";
-      const attrs = buildFieldAttributes(field, table, diagram.relationships, diagram.tables);
+      const attrs = buildFieldAttributes(field);
       lines.push(`  ${camelName} ${prismaType}${nullable}${attrs}`);
     }
 

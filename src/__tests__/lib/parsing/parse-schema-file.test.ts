@@ -180,6 +180,61 @@ describe("parseSchemaFile", () => {
     expect(diagram.id).toBe("drizzle-id");
   });
 
+  it("auto-detects Drizzle from content when no fileName is provided", () => {
+    const content = `
+      import { pgTableCreator } from "drizzle-orm/pg-core";
+      export const createTable = pgTableCreator((name) => \`app_\${name}\`);
+      export const users = createTable("user", (d) => ({
+        id: d.varchar({ length: 255 }).notNull().primaryKey(),
+        email: d.varchar({ length: 255 }).notNull(),
+      }));
+    `;
+    const diagram = parseSchemaFile(content);
+
+    expect(parseDrizzleSchema).toHaveBeenCalledWith(content, undefined);
+    expect(diagram.id).toBe("drizzle-id");
+  });
+
+  it("auto-detects Prisma from content when no fileName is provided", () => {
+    const content = `
+      model User {
+        id    Int    @id @default(autoincrement())
+        email String @unique
+      }
+    `;
+    const diagram = parseSchemaFile(content);
+
+    expect(parsePrismaSchema).toHaveBeenCalledWith(content, undefined);
+    expect(diagram.id).toBe("prisma-id");
+  });
+
+  it("auto-detects DBML from content when no fileName is provided", () => {
+    const content = `
+      Table users {
+        id integer [pk, increment]
+        email varchar
+      }
+    `;
+    const diagram = parseSchemaFile(content);
+
+    expect(parseDBMLSchema).toHaveBeenCalledWith(content, undefined);
+    expect(diagram.id).toBe("dbml-id");
+  });
+
+  it("auto-detects TypeORM from content when no fileName is provided", () => {
+    const content = `
+      @Entity()
+      export class User {
+        @PrimaryGeneratedColumn()
+        id: number;
+      }
+    `;
+    const diagram = parseSchemaFile(content);
+
+    expect(parseTypeORMSchema).toHaveBeenCalledWith(content, undefined);
+    expect(diagram.id).toBe("typeorm-id");
+  });
+
   it("returns tables with auto-layout applied (x,y positions set)", () => {
     const sql = `
       CREATE TABLE users (

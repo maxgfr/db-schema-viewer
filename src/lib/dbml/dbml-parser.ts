@@ -1,5 +1,7 @@
 import type { Diagram, Cardinality } from "@/lib/domain";
-import { generateId, getTableColor } from "@/lib/utils";
+import type { ParsedColumn, ParsedRelationship } from "@/lib/parsing/types";
+import { buildDiagram } from "@/lib/parsing/build-diagram";
+import { extractBraceBlock } from "@/lib/parsing/extract-brace-block";
 
 interface DBMLColumn {
   name: string;
@@ -37,42 +39,51 @@ interface DBMLRef {
  * Uses regex-based parsing.
  */
 export function parseDBMLSchema(content: string, name?: string): Diagram {
-  // Strip single-line and block comments
   const cleaned = stripComments(content);
 
   const tables = extractTables(cleaned);
   const standaloneRefs = extractStandaloneRefs(cleaned);
 
-  return buildDBMLDiagram(tables, standaloneRefs, name);
+  // Build alias → real name lookup
+  const aliasMap = new Map<string, string>();
+  for (const t of tables) {
+    if (t.alias) aliasMap.set(t.alias.toLowerCase(), t.name);
+  }
+
+  const resolveTable = (ref: string): string =>
+    aliasMap.get(ref.toLowerCase()) || ref;
+
+  // Convert to shared types
+  const parsedTables = tables.map((dt) => ({
+    name: dt.name,
+    schema: dt.schema,
+    columns: dbmlColumnsToShared(dt.columns),
+    indexes: [] as { name: string; columns: string[]; unique: boolean }[],
+    isView: false,
+  }));
+
+  // Merge all refs: inline + standalone, normalize direction, deduplicate
+  const allRefs = collectAllRefs(tables, standaloneRefs);
+  const relationships = deduplicateRefs(allRefs, resolveTable);
+
+  return buildDiagram(parsedTables, relationships, "generic", name ?? "DBML Schema");
 }
 
+// ── Comment stripping ──────────────────────────────────────────────
+
 function stripComments(content: string): string {
-  // Remove block comments
   let result = content.replace(/\/\*[\s\S]*?\*\//g, "");
-  // Remove single-line comments
   result = result.replace(/\/\/.*$/gm, "");
   return result;
 }
 
-function extractBraceBlock(content: string, startIdx: number): string | null {
-  let depth = 0;
-  for (let i = startIdx; i < content.length; i++) {
-    if (content[i] === "{") depth++;
-    else if (content[i] === "}") {
-      depth--;
-      if (depth === 0) return content.substring(startIdx + 1, i);
-    }
-  }
-  return null;
-}
+// ── Table extraction ───────────────────────────────────────────────
 
 function extractTables(content: string): DBMLTable[] {
   const tables: DBMLTable[] = [];
 
-  // Match: Table schema.name as alias { ... }
-  // Or: Table name as alias { ... }
-  // Or: Table name { ... }
-  const tableRegex = /Table\s+((?:(\w+)\.)?(\w+))(?:\s+as\s+(\w+))?\s*\{/gi;
+  const tableRegex =
+    /Table\s+((?:(\w+)\.)?(\w+))(?:\s+as\s+(\w+))?\s*\{/gi;
 
   let match;
   while ((match = tableRegex.exec(content)) !== null) {
@@ -86,23 +97,21 @@ function extractTables(content: string): DBMLTable[] {
     const body = extractBraceBlock(content, startIdx);
     if (!body) continue;
 
-    const columns = parseDBMLColumns(body);
-
     tables.push({
       name: tableName,
       alias,
       schema,
-      columns,
+      columns: parseDBMLColumns(body),
     });
   }
 
   return tables;
 }
 
+// ── Column parsing ─────────────────────────────────────────────────
+
 function parseDBMLColumns(body: string): DBMLColumn[] {
   const columns: DBMLColumn[] = [];
-
-  // Skip indexes block within the table body
   const lines = body.split("\n");
 
   let inIndexesBlock = false;
@@ -112,7 +121,6 @@ function parseDBMLColumns(body: string): DBMLColumn[] {
     const line = rawLine.trim();
     if (!line) continue;
 
-    // Track indexes { ... } blocks to skip them
     if (/^indexes\s*\{/i.test(line)) {
       inIndexesBlock = true;
       braceDepth = 1;
@@ -124,30 +132,22 @@ function parseDBMLColumns(body: string): DBMLColumn[] {
         if (ch === "{") braceDepth++;
         else if (ch === "}") braceDepth--;
       }
-      if (braceDepth <= 0) {
-        inIndexesBlock = false;
-      }
+      if (braceDepth <= 0) inIndexesBlock = false;
       continue;
     }
 
-    // Skip Note blocks
     if (/^Note\s*[:{]/i.test(line)) continue;
 
-    // Parse column: name type [attributes]
     const colMatch = line.match(
-      /^(\w+)\s+([\w().,\s]+?)(?:\s*\[([^\]]*)\])?\s*$/
+      /^(\w+)\s+([\w().,\s]+?)(?:\s*\[([^\]]*)\])?\s*$/,
     );
     if (!colMatch) continue;
 
-    const colName = colMatch[1]!;
-    const colType = colMatch[2]!.trim();
-    const attrsStr = colMatch[3] || "";
+    const attrs = parseAttributes(colMatch[3] || "");
 
-    const attrs = parseAttributes(attrsStr);
-
-    const column: DBMLColumn = {
-      name: colName,
-      type: colType.toUpperCase(),
+    columns.push({
+      name: colMatch[1]!,
+      type: colMatch[2]!.trim().toUpperCase(),
       primaryKey: attrs.pk,
       unique: attrs.unique,
       nullable: attrs.nullable,
@@ -155,9 +155,7 @@ function parseDBMLColumns(body: string): DBMLColumn[] {
       default: attrs.default,
       note: attrs.note,
       ref: attrs.ref,
-    };
-
-    columns.push(column);
+    });
   }
 
   return columns;
@@ -171,11 +169,7 @@ interface ParsedAttributes {
   notNull: boolean;
   default?: string;
   note?: string;
-  ref?: {
-    type: ">" | "<" | "-" | "<>";
-    table: string;
-    column: string;
-  };
+  ref?: { type: ">" | "<" | "-" | "<>"; table: string; column: string };
 }
 
 function parseAttributes(attrsStr: string): ParsedAttributes {
@@ -188,66 +182,45 @@ function parseAttributes(attrsStr: string): ParsedAttributes {
   };
 
   if (!attrsStr.trim()) {
-    // Default: nullable when no attributes
     result.nullable = true;
     return result;
   }
 
-  // Check for pk / primary key
-  if (/\bpk\b/i.test(attrsStr) || /\bprimary\s+key\b/i.test(attrsStr)) {
+  if (/\bpk\b/i.test(attrsStr) || /\bprimary\s+key\b/i.test(attrsStr))
     result.pk = true;
-  }
-
-  // Check for increment
-  if (/\bincrement\b/i.test(attrsStr)) {
-    result.increment = true;
-  }
-
-  // Check for unique
-  if (/\bunique\b/i.test(attrsStr)) {
-    result.unique = true;
-  }
-
-  // Check for not null
-  if (/\bnot\s+null\b/i.test(attrsStr)) {
-    result.notNull = true;
-  }
-
-  // Check for null
-  if (/(?<!\bnot\s)\bnull\b/i.test(attrsStr) && !/\bnot\s+null\b/i.test(attrsStr)) {
+  if (/\bincrement\b/i.test(attrsStr)) result.increment = true;
+  if (/\bunique\b/i.test(attrsStr)) result.unique = true;
+  if (/\bnot\s+null\b/i.test(attrsStr)) result.notNull = true;
+  if (
+    /(?<!\bnot\s)\bnull\b/i.test(attrsStr) &&
+    !/\bnot\s+null\b/i.test(attrsStr)
+  )
     result.nullable = true;
-  }
 
-  // Default: if neither null nor not null specified, nullable unless pk
-  if (!result.notNull && !result.nullable) {
-    result.nullable = !result.pk;
-  }
+  if (!result.notNull && !result.nullable) result.nullable = !result.pk;
+  if (result.notNull) result.nullable = false;
 
-  if (result.notNull) {
-    result.nullable = false;
-  }
-
-  // Extract default value
-  const defaultMatch = attrsStr.match(/\bdefault\s*:\s*(`[^`]*`|'[^']*'|"[^"]*"|\S+)/i);
+  const defaultMatch = attrsStr.match(
+    /\bdefault\s*:\s*(`[^`]*`|'[^']*'|"[^"]*"|\S+)/i,
+  );
   if (defaultMatch) {
     let val = defaultMatch[1]!;
-    // Remove surrounding quotes/backticks
-    if ((val.startsWith("`") && val.endsWith("`")) ||
-        (val.startsWith("'") && val.endsWith("'")) ||
-        (val.startsWith('"') && val.endsWith('"'))) {
+    if (
+      (val.startsWith("`") && val.endsWith("`")) ||
+      (val.startsWith("'") && val.endsWith("'")) ||
+      (val.startsWith('"') && val.endsWith('"'))
+    ) {
       val = val.slice(1, -1);
     }
     result.default = val;
   }
 
-  // Extract note
   const noteMatch = attrsStr.match(/\bnote\s*:\s*'([^']*)'/i);
-  if (noteMatch) {
-    result.note = noteMatch[1];
-  }
+  if (noteMatch) result.note = noteMatch[1];
 
-  // Extract inline ref: ref: > table.column
-  const refMatch = attrsStr.match(/\bref\s*:\s*([><\-]|<>)\s*(\w+)\.(\w+)/i);
+  const refMatch = attrsStr.match(
+    /\bref\s*:\s*([><\-]|<>)\s*(\w+)\.(\w+)/i,
+  );
   if (refMatch) {
     result.ref = {
       type: refMatch[1] as ">" | "<" | "-" | "<>",
@@ -259,63 +232,29 @@ function parseAttributes(attrsStr: string): ParsedAttributes {
   return result;
 }
 
+// ── Standalone Ref extraction ──────────────────────────────────────
+
 function extractStandaloneRefs(content: string): DBMLRef[] {
   const refs: DBMLRef[] = [];
 
-  // Match: Ref: table1.col > table2.col
-  // Or: Ref name: table1.col > table2.col
-  // Or: Ref name { table1.col > table2.col }
+  // Ref: / Ref name:
   const refLineRegex =
     /Ref(?:\s+\w+)?\s*:\s*(\w+)\.(\w+)\s*([><\-]|<>)\s*(\w+)\.(\w+)/gi;
 
   let match;
   while ((match = refLineRegex.exec(content)) !== null) {
-    const table1 = match[1]!;
-    const col1 = match[2]!;
-    const refType = match[3] as ">" | "<" | "-" | "<>";
-    const table2 = match[4]!;
-    const col2 = match[5]!;
-
-    if (refType === ">") {
-      // many-to-one: table1.col references table2.col
-      refs.push({
-        sourceTable: table1,
-        sourceColumn: col1,
-        targetTable: table2,
-        targetColumn: col2,
-        type: ">",
-      });
-    } else if (refType === "<") {
-      // one-to-many: table2.col references table1.col
-      refs.push({
-        sourceTable: table2,
-        sourceColumn: col2,
-        targetTable: table1,
-        targetColumn: col1,
-        type: "<",
-      });
-    } else if (refType === "-") {
-      // one-to-one
-      refs.push({
-        sourceTable: table1,
-        sourceColumn: col1,
-        targetTable: table2,
-        targetColumn: col2,
-        type: "-",
-      });
-    } else if (refType === "<>") {
-      // many-to-many
-      refs.push({
-        sourceTable: table1,
-        sourceColumn: col1,
-        targetTable: table2,
-        targetColumn: col2,
-        type: "<>",
-      });
-    }
+    refs.push(
+      normalizeRef(
+        match[1]!,
+        match[2]!,
+        match[3] as DBMLRef["type"],
+        match[4]!,
+        match[5]!,
+      ),
+    );
   }
 
-  // Also match Ref blocks: Ref name { table1.col > table2.col }
+  // Ref blocks: Ref name { ... }
   const refBlockRegex = /Ref(?:\s+\w+)?\s*\{([^}]*)\}/gi;
   let blockMatch;
   while ((blockMatch = refBlockRegex.exec(content)) !== null) {
@@ -324,55 +263,91 @@ function extractStandaloneRefs(content: string): DBMLRef[] {
       /(\w+)\.(\w+)\s*([><\-]|<>)\s*(\w+)\.(\w+)/g;
     let innerMatch;
     while ((innerMatch = innerRefRegex.exec(body)) !== null) {
-      const table1 = innerMatch[1]!;
-      const col1 = innerMatch[2]!;
-      const refType = innerMatch[3] as ">" | "<" | "-" | "<>";
-      const table2 = innerMatch[4]!;
-      const col2 = innerMatch[5]!;
-
-      if (refType === ">") {
-        refs.push({
-          sourceTable: table1,
-          sourceColumn: col1,
-          targetTable: table2,
-          targetColumn: col2,
-          type: ">",
-        });
-      } else if (refType === "<") {
-        refs.push({
-          sourceTable: table2,
-          sourceColumn: col2,
-          targetTable: table1,
-          targetColumn: col1,
-          type: "<",
-        });
-      } else if (refType === "-") {
-        refs.push({
-          sourceTable: table1,
-          sourceColumn: col1,
-          targetTable: table2,
-          targetColumn: col2,
-          type: "-",
-        });
-      } else if (refType === "<>") {
-        refs.push({
-          sourceTable: table1,
-          sourceColumn: col1,
-          targetTable: table2,
-          targetColumn: col2,
-          type: "<>",
-        });
-      }
+      refs.push(
+        normalizeRef(
+          innerMatch[1]!,
+          innerMatch[2]!,
+          innerMatch[3] as DBMLRef["type"],
+          innerMatch[4]!,
+          innerMatch[5]!,
+        ),
+      );
     }
   }
 
   return refs;
 }
 
-function refTypeToCardinality(type: ">" | "<" | "-" | "<>"): Cardinality {
+/** Normalize a ref so source is always the FK side. */
+function normalizeRef(
+  table1: string,
+  col1: string,
+  type: DBMLRef["type"],
+  table2: string,
+  col2: string,
+): DBMLRef {
+  if (type === "<") {
+    // Reverse: table2 is the FK side
+    return {
+      sourceTable: table2,
+      sourceColumn: col2,
+      targetTable: table1,
+      targetColumn: col1,
+      type: "<",
+    };
+  }
+  return {
+    sourceTable: table1,
+    sourceColumn: col1,
+    targetTable: table2,
+    targetColumn: col2,
+    type,
+  };
+}
+
+// ── Ref merging / deduplication ────────────────────────────────────
+
+function dbmlColumnsToShared(columns: DBMLColumn[]): ParsedColumn[] {
+  return columns.map((col) => ({
+    name: col.name,
+    type: col.type,
+    primaryKey: col.primaryKey,
+    unique: col.unique,
+    nullable: col.nullable,
+    default: col.default,
+    comment: col.note,
+    // Inline refs are handled via collectAllRefs, not on ParsedColumn
+    references: col.ref
+      ? { table: col.ref.table, column: col.ref.column }
+      : undefined,
+  }));
+}
+
+function collectAllRefs(tables: DBMLTable[], standaloneRefs: DBMLRef[]): DBMLRef[] {
+  const allRefs: DBMLRef[] = [...standaloneRefs];
+
+  for (const dt of tables) {
+    for (const col of dt.columns) {
+      if (!col.ref) continue;
+
+      allRefs.push(
+        normalizeRef(
+          dt.name,
+          col.name,
+          col.ref.type,
+          col.ref.table,
+          col.ref.column,
+        ),
+      );
+    }
+  }
+
+  return allRefs;
+}
+
+function refTypeToCardinality(type: DBMLRef["type"]): Cardinality {
   switch (type) {
     case ">":
-      return "one-to-many";
     case "<":
       return "one-to-many";
     case "-":
@@ -382,145 +357,28 @@ function refTypeToCardinality(type: ">" | "<" | "-" | "<>"): Cardinality {
   }
 }
 
-function buildDBMLDiagram(
-  dbmlTables: DBMLTable[],
-  standaloneRefs: DBMLRef[],
-  name?: string
-): Diagram {
-  const tables = dbmlTables.map((dt, index) => ({
-    id: generateId(),
-    name: dt.name,
-    schema: dt.schema,
-    fields: dt.columns.map((col) => ({
-      id: generateId(),
-      name: col.name,
-      type: col.type,
-      primaryKey: col.primaryKey,
-      unique: col.unique,
-      nullable: col.nullable,
-      default: col.default,
-      comment: col.note,
-      isForeignKey: !!col.ref,
-      references: col.ref
-        ? { table: col.ref.table, field: col.ref.column }
-        : undefined,
-    })),
-    indexes: [] as { id: string; name: string; columns: string[]; unique: boolean }[],
-    x: 0,
-    y: 0,
-    color: getTableColor(index),
-    isView: false,
-  }));
+function deduplicateRefs(
+  allRefs: DBMLRef[],
+  resolveTable: (name: string) => string,
+): ParsedRelationship[] {
+  const relationships: ParsedRelationship[] = [];
+  const seen = new Set<string>();
 
-  // Build lookup maps
-  // Support resolving table names and aliases
-  const tableByName = new Map<string, (typeof tables)[number]>();
-  for (let i = 0; i < dbmlTables.length; i++) {
-    const dt = dbmlTables[i]!;
-    const t = tables[i]!;
-    tableByName.set(dt.name.toLowerCase(), t);
-    if (dt.alias) {
-      tableByName.set(dt.alias.toLowerCase(), t);
-    }
-  }
-
-  const relationships: {
-    id: string;
-    sourceTableId: string;
-    sourceFieldId: string;
-    targetTableId: string;
-    targetFieldId: string;
-    cardinality: Cardinality;
-  }[] = [];
-
-  // Collect all refs: inline + standalone
-  const allRefs: DBMLRef[] = [...standaloneRefs];
-
-  // Extract inline refs from columns
-  for (const dt of dbmlTables) {
-    for (const col of dt.columns) {
-      if (col.ref) {
-        if (col.ref.type === ">") {
-          allRefs.push({
-            sourceTable: dt.name,
-            sourceColumn: col.name,
-            targetTable: col.ref.table,
-            targetColumn: col.ref.column,
-            type: col.ref.type,
-          });
-        } else if (col.ref.type === "<") {
-          allRefs.push({
-            sourceTable: col.ref.table,
-            sourceColumn: col.ref.column,
-            targetTable: dt.name,
-            targetColumn: col.name,
-            type: col.ref.type,
-          });
-        } else if (col.ref.type === "-") {
-          allRefs.push({
-            sourceTable: dt.name,
-            sourceColumn: col.name,
-            targetTable: col.ref.table,
-            targetColumn: col.ref.column,
-            type: col.ref.type,
-          });
-        } else if (col.ref.type === "<>") {
-          allRefs.push({
-            sourceTable: dt.name,
-            sourceColumn: col.name,
-            targetTable: col.ref.table,
-            targetColumn: col.ref.column,
-            type: col.ref.type,
-          });
-        }
-      }
-    }
-  }
-
-  // Deduplicate refs
-  const seenRefs = new Set<string>();
   for (const ref of allRefs) {
-    const key = `${ref.sourceTable.toLowerCase()}.${ref.sourceColumn.toLowerCase()}-${ref.targetTable.toLowerCase()}.${ref.targetColumn.toLowerCase()}`;
-    if (seenRefs.has(key)) continue;
-    seenRefs.add(key);
-
-    const sourceTable = tableByName.get(ref.sourceTable.toLowerCase());
-    const targetTable = tableByName.get(ref.targetTable.toLowerCase());
-    if (!sourceTable || !targetTable) continue;
-
-    const sourceField = sourceTable.fields.find(
-      (f) => f.name.toLowerCase() === ref.sourceColumn.toLowerCase()
-    );
-    const targetField = targetTable.fields.find(
-      (f) => f.name.toLowerCase() === ref.targetColumn.toLowerCase()
-    );
-    if (!sourceField || !targetField) continue;
-
-    // Mark as FK
-    sourceField.isForeignKey = true;
-    if (!sourceField.references) {
-      sourceField.references = {
-        table: targetTable.name,
-        field: targetField.name,
-      };
-    }
+    const src = resolveTable(ref.sourceTable);
+    const tgt = resolveTable(ref.targetTable);
+    const key = `${src.toLowerCase()}.${ref.sourceColumn.toLowerCase()}-${tgt.toLowerCase()}.${ref.targetColumn.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
 
     relationships.push({
-      id: generateId(),
-      sourceTableId: sourceTable.id,
-      sourceFieldId: sourceField.id,
-      targetTableId: targetTable.id,
-      targetFieldId: targetField.id,
+      sourceTable: src,
+      sourceColumn: ref.sourceColumn,
+      targetTable: tgt,
+      targetColumn: ref.targetColumn,
       cardinality: refTypeToCardinality(ref.type),
     });
   }
 
-  return {
-    id: generateId(),
-    name: name ?? "DBML Schema",
-    databaseType: "generic",
-    tables,
-    relationships,
-    createdAt: new Date().toISOString(),
-  };
+  return relationships;
 }

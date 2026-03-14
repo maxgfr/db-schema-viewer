@@ -1,6 +1,6 @@
 import { Parser } from "node-sql-parser";
 import type { DatabaseType } from "@/lib/domain";
-import type { SQLParseResult, ParsedTable, ParsedColumn, ParsedIndex, ParsedRelationship } from "../sql-import";
+import type { ParseResult, ParsedTable, ParsedColumn, ParsedIndex, ParsedRelationship } from "@/lib/parsing/types";
 
 
 function preprocessSQL(sql: string, dbType: DatabaseType): string {
@@ -152,7 +152,7 @@ export function parseWithNodeSqlParser(
   sql: string,
   dialect: string,
   dbType: DatabaseType
-): SQLParseResult {
+): ParseResult {
   const preprocessed = preprocessSQL(sql, dbType);
   const parser = new Parser();
 

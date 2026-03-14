@@ -1,7 +1,7 @@
 import type { DatabaseType } from "@/lib/domain";
-import type { SQLParseResult, ParsedTable, ParsedColumn, ParsedRelationship } from "../sql-import";
+import type { ParseResult, ParsedTable, ParsedColumn, ParsedRelationship } from "@/lib/parsing/types";
 
-export function parseWithRegex(sql: string, dbType: DatabaseType): SQLParseResult {
+export function parseWithRegex(sql: string, dbType: DatabaseType): ParseResult {
   const tables: ParsedTable[] = [];
   const relationships: ParsedRelationship[] = [];
 
