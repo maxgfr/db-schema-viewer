@@ -91,13 +91,17 @@ function TableNodeComponent({ data }: NodeProps) {
         ))}
       </div>
 
-      {/* Hidden handles for collapsed fields */}
-      {hiddenFields.map((field) => (
-        <div key={field.id} className="relative" style={{ height: 0 }}>
-          <Handle type="target" position={Position.Left} id={`${field.id}-left`} className="!h-0 !w-0 !min-h-0 !min-w-0 !border-0 !bg-transparent" />
-          <Handle type="source" position={Position.Right} id={`${field.id}-right`} className="!h-0 !w-0 !min-h-0 !min-w-0 !border-0 !bg-transparent" />
+      {/* Hidden handles for collapsed fields — 1px size so React Flow can measure positions */}
+      {hiddenFields.length > 0 && (
+        <div className="relative overflow-hidden" style={{ height: 0 }}>
+          {hiddenFields.map((field) => (
+            <div key={field.id} className="relative">
+              <Handle type="target" position={Position.Left} id={`${field.id}-left`} className="!h-px !w-px !border-0 !bg-transparent !opacity-0" />
+              <Handle type="source" position={Position.Right} id={`${field.id}-right`} className="!h-px !w-px !border-0 !bg-transparent !opacity-0" />
+            </div>
+          ))}
         </div>
-      ))}
+      )}
 
       {/* Expand toggle */}
       {needsExpand && (

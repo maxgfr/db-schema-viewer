@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import type { Diagram } from "@/lib/domain";
 import { getStateFromUrl, generateShareUrl } from "@/lib/sharing/encode-state";
@@ -12,7 +12,9 @@ import { EditorLayout } from "./_components/canvas/EditorLayout";
 export default function Home() {
   const [diagram, setDiagram] = useState<Diagram | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { theme, mode, toggleTheme } = useTheme();
+  const urlSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -20,14 +22,10 @@ export default function Home() {
     // Priority: URL param > last opened diagram
     const hasUrlParam = typeof window !== "undefined" && /[?&]d=/.test(window.location.search);
     if (hasUrlParam) {
-      console.log("[db-schema-viewer] URL has ?d= param, attempting to decode...");
-      console.log("[db-schema-viewer] search length:", window.location.search.length);
       const fromUrl = getStateFromUrl();
       if (fromUrl) {
-        console.log("[db-schema-viewer] Decoded OK:", fromUrl.tables.length, "tables,", fromUrl.relationships.length, "rels");
         setDiagram(fromUrl);
       } else {
-        console.error("[db-schema-viewer] Failed to decode URL — see warnings above for details");
         toast.error("Failed to load shared schema", {
           description: "The URL may be corrupted or truncated. Try getting a fresh share link.",
         });
@@ -36,34 +34,39 @@ export default function Home() {
     }
   }, []);
 
-  // Keep URL in sync with current diagram so users can copy it directly
+  // Keep URL in sync with current diagram (debounced to avoid lag on drag)
   useEffect(() => {
     if (!diagram) return;
-    const url = generateShareUrl(diagram);
-    // Extract path + search from the full URL
-    const parsed = new URL(url);
-    window.history.replaceState({}, "", parsed.pathname + parsed.search);
+    if (urlSyncTimer.current) clearTimeout(urlSyncTimer.current);
+    urlSyncTimer.current = setTimeout(() => {
+      const url = generateShareUrl(diagram);
+      const parsed = new URL(url);
+      window.history.replaceState({}, "", parsed.pathname + parsed.search);
+    }, 500);
+    return () => { if (urlSyncTimer.current) clearTimeout(urlSyncTimer.current); };
   }, [diagram]);
 
-  // Warn before reload/close when a diagram is loaded
+  // Warn before reload/close only when there are unsaved changes
   useEffect(() => {
-    if (!diagram) return;
+    if (!hasUnsavedChanges) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [diagram]);
+  }, [hasUnsavedChanges]);
 
   const handleDiagramCreated = useCallback((d: Diagram) => {
     setDiagram(d);
     saveDiagram(d);
+    setHasUnsavedChanges(false);
   }, []);
 
   const handleDiagramUpdated = useCallback((d: Diagram) => {
     const updated = { ...d, updatedAt: new Date().toISOString() };
     setDiagram(updated);
     saveDiagram(updated);
+    setHasUnsavedChanges(true);
   }, []);
 
   const handleBack = useCallback(() => {
