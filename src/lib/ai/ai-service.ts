@@ -233,6 +233,48 @@ export async function generateCustomChart(
   return object.chart;
 }
 
+export async function queryData(
+  settings: AISettings,
+  table: ParsedDumpTable,
+  columnTypes: Record<string, string>,
+  question: string,
+  onChunk: (chunk: string) => void,
+  onComplete: (fullText: string) => void,
+  history: Array<{ prompt: string; response: string }> = [],
+  abortSignal?: AbortSignal
+): Promise<void> {
+  const model = getModel(settings);
+  const summary = summarizeTable(table, columnTypes);
+
+  const dataRows = table.rows.slice(0, 30).map((row) =>
+    table.columns.map((c) => `${c}=${row[c] ?? "NULL"}`).join(", ")
+  );
+
+  const dataContext = `${summary}\n\nData rows (first ${Math.min(30, table.rows.length)} of ${table.rows.length}):\n${dataRows.map((r, i) => `  ${i + 1}. { ${r} }`).join("\n")}`;
+
+  const historyText = history
+    .map((h) => `User: ${h.prompt}\nAssistant: ${h.response}`)
+    .join("\n\n");
+
+  const result = streamText({
+    model,
+    system: `You are a data analyst expert. Analyze the following dataset and answer questions about it. Provide insights, patterns, anomalies, and recommendations based on the data. Be concise and specific, referencing actual values from the data.
+
+DATASET:
+${dataContext}`,
+    prompt: `${historyText ? `Previous conversation:\n${historyText}\n\n` : ""}User question: ${question}`,
+    temperature: 0.5,
+    abortSignal,
+  });
+
+  let fullText = "";
+  for await (const textPart of result.textStream) {
+    fullText += textPart;
+    onChunk(textPart);
+  }
+  onComplete(fullText);
+}
+
 export async function challengeSchema(
   settings: AISettings,
   diagram: Diagram

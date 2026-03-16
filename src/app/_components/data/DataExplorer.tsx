@@ -21,12 +21,14 @@ import {
   ToggleLeft,
   FileQuestion,
   Trash2,
+  MessageSquare,
 } from "lucide-react";
 import { parseSQLDump, type ParsedDumpTable } from "@/lib/dump/dump-parser";
 import { generateFakeData } from "@/lib/dump/fake-data-generator";
 import { inferColumnTypes, type InferredType } from "@/lib/dump/data-types";
 import type { Diagram } from "@/lib/domain";
 import { DataCharts } from "./DataCharts";
+import { DataChat } from "./DataChat";
 
 interface DataExplorerProps {
   onClose: () => void;
@@ -55,7 +57,7 @@ const TYPE_COLOR: Record<InferredType, string> = {
 export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerProps) {
   const [tables, setTables] = useState<ParsedDumpTable[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [view, setView] = useState<"table" | "chart">("table");
+  const [view, setView] = useState<"table" | "chart" | "chat">("table");
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -432,11 +434,19 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                   </button>
                   <button
                     onClick={() => setView("chart")}
-                    className={`flex items-center gap-1 rounded-r-lg px-3 py-1.5 text-sm transition-colors ${
+                    className={`flex items-center gap-1 px-3 py-1.5 text-sm transition-colors ${
                       view === "chart" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <BarChart3 className="h-3.5 w-3.5" /> Charts
+                  </button>
+                  <button
+                    onClick={() => setView("chat")}
+                    className={`flex items-center gap-1 rounded-r-lg px-3 py-1.5 text-sm transition-colors ${
+                      view === "chat" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" /> Chat
                   </button>
                 </div>
               </div>
@@ -584,6 +594,10 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
 
                 {view === "chart" && currentTable && (
                   <DataCharts table={currentTable} />
+                )}
+
+                {view === "chat" && currentTable && (
+                  <DataChat table={currentTable} />
                 )}
               </div>
 

@@ -3,6 +3,7 @@
 import { memo } from "react";
 import {
   getSmoothStepPath,
+  EdgeLabelRenderer,
   type EdgeProps,
   BaseEdge,
 } from "@xyflow/react";
@@ -38,21 +39,26 @@ function RelationshipEdgeComponent({
     borderRadius: 8,
   });
 
+  // Determine labels based on notation and cardinality
+  let sourceLabel: string;
+  let targetLabel: string;
+
   if (notation === "uml") {
-    return <UMLEdge id={id} edgePath={edgePath} cardinality={cardinality} sourceX={sourceX} sourceY={sourceY} targetX={targetX} targetY={targetY} />;
+    sourceLabel = cardinality === "one-to-one" ? "1" : "0..*";
+    targetLabel = cardinality === "many-to-many" ? "0..*" : "1";
+  } else {
+    sourceLabel = cardinality === "one-to-one" ? "1" : "N";
+    targetLabel = cardinality === "many-to-many" ? "N" : "1";
   }
 
-  return <CrowsFootEdge id={id} edgePath={edgePath} cardinality={cardinality} sourceX={sourceX} sourceY={sourceY} targetX={targetX} targetY={targetY} />;
-}
+  const isUML = notation === "uml";
+  const strokeColor = isUML ? "#8b5cf6" : "#6366f1";
+  const sourceMarker = !isUML ? (cardinality === "one-to-one" ? "url(#cf-one)" : "url(#cf-many)") : undefined;
+  const targetMarker = !isUML ? (cardinality === "one-to-one" ? "url(#cf-one)" : cardinality === "many-to-many" ? "url(#cf-many)" : "url(#cf-one)") : undefined;
 
-// ── Crow's Foot notation ──────────────────────────────────────────
-
-function CrowsFootEdge({ id, edgePath, cardinality, sourceX, sourceY, targetX, targetY }: {
-  id: string; edgePath: string; cardinality: string;
-  sourceX: number; sourceY: number; targetX: number; targetY: number;
-}) {
-  const sourceMarker = cardinality === "one-to-one" ? "url(#cf-one)" : "url(#cf-many)";
-  const targetMarker = cardinality === "one-to-one" ? "url(#cf-one)" : cardinality === "many-to-many" ? "url(#cf-many)" : "url(#cf-one)";
+  // Source handle is always Position.Right → label offset to the right
+  // Target handle is always Position.Left → label offset to the left
+  const labelOffset = 20;
 
   return (
     <>
@@ -60,83 +66,32 @@ function CrowsFootEdge({ id, edgePath, cardinality, sourceX, sourceY, targetX, t
         id={id}
         path={edgePath}
         style={{
-          stroke: "#6366f1",
+          stroke: strokeColor,
           strokeWidth: 1.5,
-          opacity: 0.7,
+          opacity: isUML ? 0.8 : 0.7,
           markerStart: sourceMarker,
           markerEnd: targetMarker,
         }}
       />
-      <CrowsFootLabel x={sourceX} y={sourceY} side={sourceX < targetX ? "right" : "left"} cardinality={cardinality} end="source" />
-      <CrowsFootLabel x={targetX} y={targetY} side={targetX < sourceX ? "right" : "left"} cardinality={cardinality} end="target" />
+      <EdgeLabelRenderer>
+        <div
+          className="nodrag nopan pointer-events-none absolute rounded bg-card px-1 py-0.5 text-[10px] font-semibold text-indigo-600 dark:text-indigo-300"
+          style={{
+            transform: `translate(-50%, -50%) translate(${sourceX + labelOffset}px, ${sourceY}px)`,
+          }}
+        >
+          {sourceLabel}
+        </div>
+        <div
+          className="nodrag nopan pointer-events-none absolute rounded bg-card px-1 py-0.5 text-[10px] font-semibold text-indigo-600 dark:text-indigo-300"
+          style={{
+            transform: `translate(-50%, -50%) translate(${targetX - labelOffset}px, ${targetY}px)`,
+          }}
+        >
+          {targetLabel}
+        </div>
+      </EdgeLabelRenderer>
     </>
-  );
-}
-
-function CrowsFootLabel({ x, y, side, cardinality, end }: {
-  x: number; y: number; side: "left" | "right"; cardinality: string; end: "source" | "target";
-}) {
-  const offset = side === "right" ? 16 : -16;
-
-  let label: string;
-  if (end === "source") {
-    label = cardinality === "one-to-one" ? "1" : "N";
-  } else {
-    label = cardinality === "many-to-many" ? "N" : "1";
-  }
-
-  return (
-    <g>
-      <rect x={x + offset - 8} y={y - 10} width={16} height={16} rx={4} className="fill-card/90" stroke="none" />
-      <text x={x + offset} y={y + 1} className="fill-slate-300 text-[10px] font-semibold" textAnchor="middle" dominantBaseline="central">
-        {label}
-      </text>
-    </g>
-  );
-}
-
-// ── UML notation ──────────────────────────────────────────────────
-
-function UMLEdge({ id, edgePath, cardinality, sourceX, sourceY, targetX, targetY }: {
-  id: string; edgePath: string; cardinality: string;
-  sourceX: number; sourceY: number; targetX: number; targetY: number;
-}) {
-  return (
-    <>
-      <BaseEdge
-        id={id}
-        path={edgePath}
-        style={{
-          stroke: "#8b5cf6",
-          strokeWidth: 1.5,
-          opacity: 0.8,
-        }}
-      />
-      <UMLLabel x={sourceX} y={sourceY} side={sourceX < targetX ? "right" : "left"} cardinality={cardinality} end="source" />
-      <UMLLabel x={targetX} y={targetY} side={targetX < sourceX ? "right" : "left"} cardinality={cardinality} end="target" />
-    </>
-  );
-}
-
-function UMLLabel({ x, y, side, cardinality, end }: {
-  x: number; y: number; side: "left" | "right"; cardinality: string; end: "source" | "target";
-}) {
-  const offset = side === "right" ? 20 : -20;
-
-  let label: string;
-  if (end === "source") {
-    label = cardinality === "one-to-one" ? "1" : cardinality === "many-to-many" ? "0..*" : "0..*";
-  } else {
-    label = cardinality === "many-to-many" ? "0..*" : "1";
-  }
-
-  return (
-    <g>
-      <rect x={x + offset - 14} y={y - 10} width={28} height={16} rx={4} className="fill-card/90" stroke="none" />
-      <text x={x + offset} y={y + 1} className="fill-purple-300 text-[10px] font-bold" textAnchor="middle" dominantBaseline="central">
-        {label}
-      </text>
-    </g>
   );
 }
 
