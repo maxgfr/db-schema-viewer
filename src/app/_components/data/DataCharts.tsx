@@ -2,7 +2,19 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { Download, Sparkles, Loader2, Send, X, BarChart3, TrendingUp, PieChart as PieChartIcon, ScatterChart as ScatterIcon, AreaChart as AreaIcon, RotateCcw } from "lucide-react";
+import {
+  Download,
+  Sparkles,
+  Loader2,
+  Send,
+  X,
+  BarChart3,
+  TrendingUp,
+  PieChart as PieChartIcon,
+  ScatterChart as ScatterIcon,
+  AreaChart as AreaIcon,
+  RotateCcw,
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -29,17 +41,23 @@ import {
   generateCustomChart,
   type ChartSuggestion,
 } from "@/lib/ai/ai-service";
+import { useDataExplorer, type ChartType, type Aggregation } from "./DataExplorerContext";
 
 interface DataChartsProps {
   table: ParsedDumpTable;
 }
 
-type ChartType = "bar" | "line" | "pie" | "scatter" | "area";
-type Aggregation = "sum" | "avg" | "count" | "min" | "max" | "none";
-
 const COLORS = [
-  "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e", "#ef4444",
-  "#f97316", "#eab308", "#22c55e", "#14b8a6", "#06b6d4",
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#f43f5e",
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#14b8a6",
+  "#06b6d4",
 ];
 
 const CHART_TYPE_ICONS: Record<ChartType, typeof BarChart3> = {
@@ -59,7 +77,10 @@ function useThemeColors() {
     };
     check();
     const observer = new MutationObserver(check);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
     return () => observer.disconnect();
   }, []);
 
@@ -92,7 +113,8 @@ function processChartData(
   const groups = new Map<string, number[]>();
   for (const row of table.rows) {
     const key = String(row[xCol] ?? "");
-    const val = typeof row[yCol] === "number" ? row[yCol] : Number(row[yCol]) || 0;
+    const val =
+      typeof row[yCol] === "number" ? row[yCol] : Number(row[yCol]) || 0;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(val);
   }
@@ -100,12 +122,23 @@ function processChartData(
   return Array.from(groups.entries()).map(([key, vals]) => {
     let y: number;
     switch (aggregation) {
-      case "sum": y = vals.reduce((a, b) => a + b, 0); break;
-      case "avg": y = vals.reduce((a, b) => a + b, 0) / vals.length; break;
-      case "count": y = vals.length; break;
-      case "min": y = Math.min(...vals); break;
-      case "max": y = Math.max(...vals); break;
-      default: y = vals[0] ?? 0;
+      case "sum":
+        y = vals.reduce((a, b) => a + b, 0);
+        break;
+      case "avg":
+        y = vals.reduce((a, b) => a + b, 0) / vals.length;
+        break;
+      case "count":
+        y = vals.length;
+        break;
+      case "min":
+        y = Math.min(...vals);
+        break;
+      case "max":
+        y = Math.max(...vals);
+        break;
+      default:
+        y = vals[0] ?? 0;
     }
     return { x: key, y: Math.round(y * 100) / 100 };
   });
@@ -135,7 +168,10 @@ function ChartRenderer({
           <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
           <XAxis dataKey="x" stroke={theme.axis} tick={{ fontSize: 11 }} />
           <YAxis stroke={theme.axis} tick={{ fontSize: 11 }} />
-          <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: theme.tooltipLabel }} />
+          <Tooltip
+            contentStyle={tooltipStyle}
+            labelStyle={{ color: theme.tooltipLabel }}
+          />
           <Bar dataKey="y" fill="#6366f1" radius={[4, 4, 0, 0]} />
         </BarChart>
       ) : chartType === "line" ? (
@@ -144,11 +180,25 @@ function ChartRenderer({
           <XAxis dataKey="x" stroke={theme.axis} tick={{ fontSize: 11 }} />
           <YAxis stroke={theme.axis} tick={{ fontSize: 11 }} />
           <Tooltip contentStyle={tooltipStyle} />
-          <Line type="monotone" dataKey="y" stroke="#6366f1" strokeWidth={2} dot={{ fill: "#6366f1" }} />
+          <Line
+            type="monotone"
+            dataKey="y"
+            stroke="#6366f1"
+            strokeWidth={2}
+            dot={{ fill: "#6366f1" }}
+          />
         </LineChart>
       ) : chartType === "pie" ? (
         <PieChart>
-          <Pie data={data} dataKey="y" nameKey="x" cx="50%" cy="50%" outerRadius={80} label>
+          <Pie
+            data={data}
+            dataKey="y"
+            nameKey="x"
+            cx="50%"
+            cy="50%"
+            outerRadius={80}
+            label
+          >
             {data.map((_, i) => (
               <Cell key={i} fill={COLORS[i % COLORS.length]} />
             ))}
@@ -169,7 +219,13 @@ function ChartRenderer({
           <XAxis dataKey="x" stroke={theme.axis} tick={{ fontSize: 11 }} />
           <YAxis stroke={theme.axis} tick={{ fontSize: 11 }} />
           <Tooltip contentStyle={tooltipStyle} />
-          <Area type="monotone" dataKey="y" stroke="#6366f1" fill="#6366f1" fillOpacity={0.2} />
+          <Area
+            type="monotone"
+            dataKey="y"
+            stroke="#6366f1"
+            fill="#6366f1"
+            fillOpacity={0.2}
+          />
         </AreaChart>
       )}
     </ResponsiveContainer>
@@ -179,42 +235,50 @@ function ChartRenderer({
 /* ---------- Main component ---------- */
 
 export function DataCharts({ table }: DataChartsProps) {
+  const { chartStates, updateChartState } = useDataExplorer();
   const theme = useThemeColors();
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
+  // Local loading state (transient, not persisted)
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [isLoadingCustom, setIsLoadingCustom] = useState(false);
+
   const columnTypes = useMemo(
     () => inferColumnTypes(table.columns, table.rows),
-    [table]
+    [table],
   );
 
   const numericCols = table.columns.filter((c) => columnTypes[c] === "number");
-  const categoryCols = table.columns.filter((c) => columnTypes[c] !== "number");
+  const categoryCols = table.columns.filter(
+    (c) => columnTypes[c] !== "number",
+  );
 
-  // Manual chart state
-  const [chartType, setChartType] = useState<ChartType>("bar");
-  const [xCol, setXCol] = useState(categoryCols[0] ?? table.columns[0] ?? "");
-  const [yCol, setYCol] = useState(numericCols[0] ?? table.columns[1] ?? "");
-  const [aggregation, setAggregation] = useState<Aggregation>("sum");
+  // Read per-table chart state from context, falling back to sensible defaults
+  const cs = chartStates[table.name];
+  const chartType = cs?.chartType ?? "bar";
+  const xCol =
+    cs?.xCol && table.columns.includes(cs.xCol)
+      ? cs.xCol
+      : (categoryCols[0] ?? table.columns[0] ?? "");
+  const yCol =
+    cs?.yCol && table.columns.includes(cs.yCol)
+      ? cs.yCol
+      : (numericCols[0] ?? table.columns[1] ?? "");
+  const aggregation = cs?.aggregation ?? "sum";
+  const aiSuggestions = cs?.aiSuggestions ?? [];
+  const activeTab = cs?.activeTab ?? "manual";
+  const customPrompt = cs?.customPrompt ?? "";
 
-  // AI state
-  const [aiSuggestions, setAiSuggestions] = useState<ChartSuggestion[]>([]);
-  const [isLoadingAI, setIsLoadingAI] = useState(false);
-  const [customPrompt, setCustomPrompt] = useState("");
-  const [isLoadingCustom, setIsLoadingCustom] = useState(false);
-  const [activeTab, setActiveTab] = useState<"manual" | "ai">("manual");
-
-  // Reset column selections when table changes (keep chartType & aggregation)
-  const [prevTableName, setPrevTableName] = useState(table.name);
-  if (prevTableName !== table.name) {
-    setPrevTableName(table.name);
-    setXCol(categoryCols[0] ?? table.columns[0] ?? "");
-    setYCol(numericCols[0] ?? table.columns[1] ?? "");
-    setAiSuggestions([]);
-  }
+  // Convenience updaters
+  const update = useCallback(
+    (patch: Parameters<typeof updateChartState>[1]) =>
+      updateChartState(table.name, patch),
+    [table.name, updateChartState],
+  );
 
   const manualChartData = useMemo(
     () => processChartData(table, xCol, yCol, aggregation),
-    [table, xCol, yCol, aggregation]
+    [table, xCol, yCol, aggregation],
   );
 
   const handleExportPNG = useCallback(async () => {
@@ -237,7 +301,8 @@ export function DataCharts({ table }: DataChartsProps) {
     const settings = loadAISettings();
     if (!settings || (!settings.apiKey && !settings.customEndpoint)) {
       toast.error("No AI configured", {
-        description: "Go to Settings to configure an API key or a local endpoint.",
+        description:
+          "Go to Settings to configure an API key or a local endpoint.",
       });
       return;
     }
@@ -248,15 +313,17 @@ export function DataCharts({ table }: DataChartsProps) {
       if (suggestions.length === 0) {
         toast.warning("No chart suggestions generated for this dataset.");
       } else {
-        setAiSuggestions(suggestions);
+        update({ aiSuggestions: suggestions });
         toast.success(`${suggestions.length} chart suggestions generated`);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate suggestions");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to generate suggestions",
+      );
     } finally {
       setIsLoadingAI(false);
     }
-  }, [table, columnTypes]);
+  }, [table, columnTypes, update]);
 
   const handleCustomChart = useCallback(async () => {
     if (!customPrompt.trim()) return;
@@ -264,40 +331,62 @@ export function DataCharts({ table }: DataChartsProps) {
     const settings = loadAISettings();
     if (!settings || (!settings.apiKey && !settings.customEndpoint)) {
       toast.error("No AI configured", {
-        description: "Go to Settings to configure an API key or a local endpoint.",
+        description:
+          "Go to Settings to configure an API key or a local endpoint.",
       });
       return;
     }
 
     setIsLoadingCustom(true);
     try {
-      const chart = await generateCustomChart(settings, table, columnTypes, customPrompt.trim());
+      const chart = await generateCustomChart(
+        settings,
+        table,
+        columnTypes,
+        customPrompt.trim(),
+      );
       if (!chart) {
-        toast.warning("Could not generate a chart for that request. Try rephrasing.");
+        toast.warning(
+          "Could not generate a chart for that request. Try rephrasing.",
+        );
       } else {
-        setAiSuggestions((prev) => [...prev, chart]);
-        setCustomPrompt("");
+        update((prev) => ({
+          aiSuggestions: [...prev.aiSuggestions, chart],
+          customPrompt: "",
+        }));
         toast.success(`Chart "${chart.title}" created`);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate chart");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to generate chart",
+      );
     } finally {
       setIsLoadingCustom(false);
     }
-  }, [customPrompt, table, columnTypes]);
+  }, [customPrompt, table, columnTypes, update]);
 
-  const handleRemoveSuggestion = useCallback((index: number) => {
-    setAiSuggestions((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  const handleRemoveSuggestion = useCallback(
+    (index: number) => {
+      update((prev) => ({
+        aiSuggestions: prev.aiSuggestions.filter((_, i) => i !== index),
+      }));
+    },
+    [update],
+  );
 
-  const handleApplySuggestion = useCallback((s: ChartSuggestion) => {
-    setChartType(s.type);
-    setXCol(s.xColumn);
-    setYCol(s.yColumn);
-    setAggregation(s.aggregation);
-    setActiveTab("manual");
-    toast.success(`Applied: ${s.title}`);
-  }, []);
+  const handleApplySuggestion = useCallback(
+    (s: ChartSuggestion) => {
+      update({
+        chartType: s.type,
+        xCol: s.xColumn,
+        yCol: s.yColumn,
+        aggregation: s.aggregation,
+        activeTab: "manual",
+      });
+      toast.success(`Applied: ${s.title}`);
+    },
+    [update],
+  );
 
   return (
     <div className="space-y-4 p-4">
@@ -305,17 +394,21 @@ export function DataCharts({ table }: DataChartsProps) {
       <div className="flex items-center gap-2">
         <div className="flex rounded-lg border border-border">
           <button
-            onClick={() => setActiveTab("manual")}
+            onClick={() => update({ activeTab: "manual" })}
             className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-              activeTab === "manual" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+              activeTab === "manual"
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             Manual
           </button>
           <button
-            onClick={() => setActiveTab("ai")}
+            onClick={() => update({ activeTab: "ai" })}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${
-              activeTab === "ai" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+              activeTab === "ai"
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -329,10 +422,12 @@ export function DataCharts({ table }: DataChartsProps) {
           <>
             <button
               onClick={() => {
-                setChartType("bar");
-                setXCol(categoryCols[0] ?? table.columns[0] ?? "");
-                setYCol(numericCols[0] ?? table.columns[1] ?? "");
-                setAggregation("sum");
+                update({
+                  chartType: "bar",
+                  xCol: categoryCols[0] ?? table.columns[0] ?? "",
+                  yCol: numericCols[0] ?? table.columns[1] ?? "",
+                  aggregation: "sum",
+                });
               }}
               className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
               title="Reset chart settings"
@@ -358,10 +453,14 @@ export function DataCharts({ table }: DataChartsProps) {
           {/* Manual controls */}
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Chart Type</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Chart Type
+              </label>
               <select
                 value={chartType}
-                onChange={(e) => setChartType(e.target.value as ChartType)}
+                onChange={(e) =>
+                  update({ chartType: e.target.value as ChartType })
+                }
                 className="rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
               >
                 <option value="bar">Bar</option>
@@ -372,38 +471,56 @@ export function DataCharts({ table }: DataChartsProps) {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">X Axis</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                X Axis
+              </label>
               <select
                 value={xCol}
-                onChange={(e) => setXCol(e.target.value)}
+                onChange={(e) => update({ xCol: e.target.value })}
                 className="rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
               >
                 {table.columns.map((c) => (
                   <option key={c} value={c}>
-                    {c} {columnTypes[c] === "number" ? "(num)" : columnTypes[c] === "date" ? "(date)" : ""}
+                    {c}{" "}
+                    {columnTypes[c] === "number"
+                      ? "(num)"
+                      : columnTypes[c] === "date"
+                        ? "(date)"
+                        : ""}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Y Axis</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Y Axis
+              </label>
               <select
                 value={yCol}
-                onChange={(e) => setYCol(e.target.value)}
+                onChange={(e) => update({ yCol: e.target.value })}
                 className="rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
               >
                 {table.columns.map((c) => (
                   <option key={c} value={c}>
-                    {c} {columnTypes[c] === "number" ? "(num)" : columnTypes[c] === "date" ? "(date)" : ""}
+                    {c}{" "}
+                    {columnTypes[c] === "number"
+                      ? "(num)"
+                      : columnTypes[c] === "date"
+                        ? "(date)"
+                        : ""}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Aggregation</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Aggregation
+              </label>
               <select
                 value={aggregation}
-                onChange={(e) => setAggregation(e.target.value as Aggregation)}
+                onChange={(e) =>
+                  update({ aggregation: e.target.value as Aggregation })
+                }
                 className="rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
               >
                 <option value="sum">Sum</option>
@@ -418,7 +535,11 @@ export function DataCharts({ table }: DataChartsProps) {
 
           {/* Manual chart */}
           <div ref={chartContainerRef} className="h-80 w-full">
-            <ChartRenderer data={manualChartData} chartType={chartType} theme={theme} />
+            <ChartRenderer
+              data={manualChartData}
+              chartType={chartType}
+              theme={theme}
+            />
           </div>
         </>
       ) : (
@@ -442,7 +563,7 @@ export function DataCharts({ table }: DataChartsProps) {
 
               {aiSuggestions.length > 0 && (
                 <button
-                  onClick={() => setAiSuggestions([])}
+                  onClick={() => update({ aiSuggestions: [] })}
                   className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-accent"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
@@ -456,9 +577,11 @@ export function DataCharts({ table }: DataChartsProps) {
               <input
                 type="text"
                 value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !isLoadingCustom && handleCustomChart()}
-                placeholder="Describe a chart you want, e.g. &quot;Show revenue by category as a pie chart&quot;"
+                onChange={(e) => update({ customPrompt: e.target.value })}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && !isLoadingCustom && handleCustomChart()
+                }
+                placeholder='Describe a chart you want, e.g. &quot;Show revenue by category as a pie chart&quot;'
                 className="flex-1 rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
                 disabled={isLoadingCustom}
               />
@@ -482,10 +605,13 @@ export function DataCharts({ table }: DataChartsProps) {
             <div className="flex flex-col items-center gap-3 py-8 text-center">
               <Sparkles className="h-10 w-10 text-muted-foreground/40" />
               <div>
-                <p className="text-sm font-medium text-foreground">AI-Powered Chart Suggestions</p>
+                <p className="text-sm font-medium text-foreground">
+                  AI-Powered Chart Suggestions
+                </p>
                 <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                  Click &ldquo;Suggest Charts&rdquo; to let AI analyze your data and recommend the best
-                  visualizations, or describe a custom chart in natural language.
+                  Click &ldquo;Suggest Charts&rdquo; to let AI analyze your data
+                  and recommend the best visualizations, or describe a custom
+                  chart in natural language.
                 </p>
               </div>
             </div>
@@ -494,14 +620,22 @@ export function DataCharts({ table }: DataChartsProps) {
           {isLoadingAI && aiSuggestions.length === 0 && (
             <div className="flex flex-col items-center gap-3 py-8">
               <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
-              <p className="text-sm text-muted-foreground">Analyzing {table.rows.length} rows across {table.columns.length} columns...</p>
+              <p className="text-sm text-muted-foreground">
+                Analyzing {table.rows.length} rows across{" "}
+                {table.columns.length} columns...
+              </p>
             </div>
           )}
 
           {aiSuggestions.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
               {aiSuggestions.map((suggestion, i) => {
-                const data = processChartData(table, suggestion.xColumn, suggestion.yColumn, suggestion.aggregation);
+                const data = processChartData(
+                  table,
+                  suggestion.xColumn,
+                  suggestion.yColumn,
+                  suggestion.aggregation,
+                );
                 const Icon = CHART_TYPE_ICONS[suggestion.type];
                 return (
                   <div
@@ -514,8 +648,12 @@ export function DataCharts({ table }: DataChartsProps) {
                         <Icon className="h-3.5 w-3.5 text-indigo-400" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-foreground">{suggestion.title}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">{suggestion.description}</p>
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {suggestion.title}
+                        </p>
+                        <p className="truncate text-[11px] text-muted-foreground">
+                          {suggestion.description}
+                        </p>
                       </div>
                       <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                         <button
@@ -539,13 +677,19 @@ export function DataCharts({ table }: DataChartsProps) {
 
                     {/* Chart */}
                     <div className="h-48 px-2 py-2">
-                      <ChartRenderer data={data} chartType={suggestion.type} theme={theme} />
+                      <ChartRenderer
+                        data={data}
+                        chartType={suggestion.type}
+                        theme={theme}
+                      />
                     </div>
 
                     {/* Footer */}
                     <div className="border-t border-border/50 px-3 py-1.5">
                       <p className="text-[10px] text-muted-foreground">
-                        {suggestion.xColumn} vs {suggestion.yColumn} &middot; {suggestion.aggregation} &middot; {suggestion.reasoning}
+                        {suggestion.xColumn} vs {suggestion.yColumn} &middot;{" "}
+                        {suggestion.aggregation} &middot;{" "}
+                        {suggestion.reasoning}
                       </p>
                     </div>
                   </div>

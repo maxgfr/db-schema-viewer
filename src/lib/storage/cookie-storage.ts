@@ -16,7 +16,7 @@ const isLocalhost =
   typeof window !== "undefined" &&
   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 const COOKIE_OPTIONS: Cookies.CookieAttributes = {
-  expires: 365,
+  expires: 30,
   secure: !isLocalhost,
   sameSite: "strict",
 };

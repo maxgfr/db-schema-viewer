@@ -8,10 +8,8 @@ import { loadAISettings } from "@/lib/storage/cookie-storage";
 import { queryData } from "@/lib/ai/ai-service";
 import { MarkdownContent } from "../shared/MarkdownContent";
 
-export interface DataChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
+export type { DataChatMessage } from "./DataExplorerContext";
+import type { DataChatMessage } from "./DataExplorerContext";
 
 type MessageUpdater = DataChatMessage[] | ((prev: DataChatMessage[]) => DataChatMessage[]);
 

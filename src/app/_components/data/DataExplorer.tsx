@@ -28,15 +28,18 @@ import { generateFakeData } from "@/lib/dump/fake-data-generator";
 import { inferColumnTypes, type InferredType } from "@/lib/dump/data-types";
 import type { Diagram } from "@/lib/domain";
 import { DataCharts } from "./DataCharts";
-import { DataChat, type DataChatMessage  } from "./DataChat";
+import { DataChat } from "./DataChat";
+import {
+  DataExplorerProvider,
+  useDataExplorer,
+  DEFAULT_VIEW_STATE,
+} from "./DataExplorerContext";
 
 interface DataExplorerProps {
   onClose: () => void;
   diagram?: Diagram;
   visible?: boolean;
 }
-
-type DataSource = "none" | "upload" | "fake";
 
 const TYPE_ICON: Record<InferredType, typeof Hash> = {
   number: Hash,
@@ -54,60 +57,74 @@ const TYPE_COLOR: Record<InferredType, string> = {
   null: "text-muted-foreground/50",
 };
 
-export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerProps) {
-  const [tables, setTables] = useState<ParsedDumpTable[]>([]);
-  const [selectedTable, setSelectedTable] = useState<string | "__all__" | null>(null);
-  const [view, setView] = useState<"table" | "chart" | "chat">("table");
-  const [page, setPage] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null);
+export function DataExplorer(props: DataExplorerProps) {
+  return (
+    <DataExplorerProvider>
+      <DataExplorerContent {...props} />
+    </DataExplorerProvider>
+  );
+}
+
+function DataExplorerContent({ onClose, diagram, visible = true }: DataExplorerProps) {
+  const {
+    tables,
+    setTables,
+    selectedTable,
+    setSelectedTable,
+    view,
+    setView,
+    dataSource,
+    setDataSource,
+    setFakeSeed,
+    tableViewStates,
+    updateTableViewState,
+    chatHistory,
+    updateChatMessages,
+    clearAll,
+  } = useDataExplorer();
+
   const [isDragOver, setIsDragOver] = useState(false);
-  const [fakeSeed, setFakeSeed] = useState(42);
-  const [dataSource, setDataSource] = useState<DataSource>("none");
-  const [chatHistory, setChatHistory] = useState<Record<string, DataChatMessage[]>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const PAGE_SIZE = 50;
-
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-  const resetState = useCallback(() => {
-    setPage(0);
-    setSearchQuery("");
-    setSortColumn(null);
-    setSortDirection(null);
-  }, []);
+  // Per-table view state
+  const currentTableKey = selectedTable ?? "";
+  const viewState = tableViewStates[currentTableKey] ?? DEFAULT_VIEW_STATE;
+  const { page, searchQuery, sortColumn, sortDirection } = viewState;
 
-  const handleFile = useCallback((file: File) => {
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error("File too large", {
-        description: "Maximum file size is 5MB. Please use a smaller SQL dump.",
-      });
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const parsed = parseSQLDump(content);
-        if (parsed.length === 0) {
-          toast.error("No INSERT statements found in the file");
-          return;
-        }
-        setTables(parsed);
-        setSelectedTable(parsed[0]!.name);
-        setDataSource("upload");
-        resetState();
-        toast.success(`Loaded ${parsed.length} tables with data`);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to parse dump");
+  const handleFile = useCallback(
+    (file: File) => {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error("File too large", {
+          description: "Maximum file size is 5MB. Please use a smaller SQL dump.",
+        });
+        return;
       }
-    };
-    reader.onerror = () => {
-      toast.error("Failed to read file");
-    };
-    reader.readAsText(file);
-  }, [resetState]);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          const parsed = parseSQLDump(content);
+          if (parsed.length === 0) {
+            toast.error("No INSERT statements found in the file");
+            return;
+          }
+          setTables(parsed);
+          setSelectedTable(parsed[0]!.name);
+          setDataSource("upload");
+          toast.success(`Loaded ${parsed.length} tables with data`);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Failed to parse dump");
+        }
+      };
+      reader.onerror = () => {
+        toast.error("Failed to read file");
+      };
+      reader.readAsText(file);
+    },
+    [setTables, setSelectedTable, setDataSource],
+  );
 
   const handleGenerateFakeData = useCallback(() => {
     if (!diagram || diagram.tables.length === 0) {
@@ -115,29 +132,31 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
       return;
     }
     try {
-      const nextSeed = fakeSeed + 1;
-      const faked = generateFakeData(diagram.tables, diagram.relationships, { seed: nextSeed });
-      if (faked.length === 0) {
-        toast.error("Could not generate data for the current schema");
-        return;
-      }
-      setFakeSeed(nextSeed);
-      setTables(faked);
-      setSelectedTable(faked[0]!.name);
-      setDataSource("fake");
-      resetState();
-      toast.success(`Generated fake data for ${faked.length} tables (${faked[0]!.rows.length} rows each)`);
+      setFakeSeed((prev) => {
+        const nextSeed = prev + 1;
+        const faked = generateFakeData(diagram.tables, diagram.relationships, {
+          seed: nextSeed,
+        });
+        if (faked.length === 0) {
+          toast.error("Could not generate data for the current schema");
+          return prev;
+        }
+        setTables(faked);
+        setSelectedTable(faked[0]!.name);
+        setDataSource("fake");
+        toast.success(
+          `Generated fake data for ${faked.length} tables (${faked[0]!.rows.length} rows each)`,
+        );
+        return nextSeed;
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to generate fake data");
     }
-  }, [diagram, fakeSeed, resetState]);
+  }, [diagram, setFakeSeed, setTables, setSelectedTable, setDataSource]);
 
   const handleClearData = useCallback(() => {
-    setTables([]);
-    setSelectedTable(null);
-    setDataSource("none");
-    resetState();
-  }, [resetState]);
+    clearAll();
+  }, [clearAll]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -148,31 +167,35 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  }, [handleFile]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    },
+    [handleFile],
+  );
 
-  const handleColumnSort = useCallback((col: string) => {
-    setSortColumn((prev) => {
-      if (prev !== col) {
-        setSortDirection("asc");
-        return col;
-      }
-      if (sortDirection === "asc") {
-        setSortDirection("desc");
-        return col;
-      }
-      setSortDirection(null);
-      return null;
-    });
-    setPage(0);
-  }, [sortDirection]);
+  const handleColumnSort = useCallback(
+    (col: string) => {
+      updateTableViewState(currentTableKey, (prev) => {
+        if (prev.sortColumn !== col) {
+          return { sortColumn: col, sortDirection: "asc" as const, page: 0 };
+        }
+        if (prev.sortDirection === "asc") {
+          return { sortColumn: col, sortDirection: "desc" as const, page: 0 };
+        }
+        return { sortColumn: null, sortDirection: null, page: 0 };
+      });
+    },
+    [currentTableKey, updateTableViewState],
+  );
 
   const isAllTables = selectedTable === "__all__";
-  const currentTable = isAllTables ? null : tables.find((t) => t.name === selectedTable);
+  const currentTable = isAllTables
+    ? null
+    : tables.find((t) => t.name === selectedTable);
 
   const columnTypes = useMemo(() => {
     if (!currentTable) return {};
@@ -181,10 +204,18 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
 
   const stats = useMemo(() => {
     if (!currentTable) return null;
-    const numericCols = currentTable.columns.filter((c) => columnTypes[c] === "number");
-    const textCols = currentTable.columns.filter((c) => columnTypes[c] === "string");
-    const dateCols = currentTable.columns.filter((c) => columnTypes[c] === "date");
-    const boolCols = currentTable.columns.filter((c) => columnTypes[c] === "boolean");
+    const numericCols = currentTable.columns.filter(
+      (c) => columnTypes[c] === "number",
+    );
+    const textCols = currentTable.columns.filter(
+      (c) => columnTypes[c] === "string",
+    );
+    const dateCols = currentTable.columns.filter(
+      (c) => columnTypes[c] === "date",
+    );
+    const boolCols = currentTable.columns.filter(
+      (c) => columnTypes[c] === "boolean",
+    );
     const nullCount = currentTable.rows.reduce((acc, row) => {
       return acc + currentTable.columns.filter((c) => row[c] === null).length;
     }, 0);
@@ -209,7 +240,7 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
         currentTable.columns.some((col) => {
           const val = row[col];
           return val !== null && String(val).toLowerCase().includes(query);
-        })
+        }),
       );
     }
 
@@ -227,7 +258,9 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
         }
         const aStr = String(aVal);
         const bStr = String(bVal);
-        return dir === "asc" ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+        return dir === "asc"
+          ? aStr.localeCompare(bStr)
+          : bStr.localeCompare(aStr);
       });
     }
 
@@ -253,7 +286,7 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
           if (val === null) return "";
           return escapeCSV(String(val));
         })
-        .join(",")
+        .join(","),
     );
     const csv = [header, ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -287,27 +320,37 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
     };
   }, [tables]);
 
+  // Chat
   const chatKey = selectedTable ?? "__default__";
   const currentChatMessages = chatHistory[chatKey] ?? [];
   const handleChatMessagesChange = useCallback(
-    (update: DataChatMessage[] | ((prev: DataChatMessage[]) => DataChatMessage[])) => {
-      setChatHistory((prev) => {
-        const current = prev[chatKey] ?? [];
-        const newMsgs = typeof update === "function" ? update(current) : update;
-        return { ...prev, [chatKey]: newMsgs };
-      });
+    (
+      update:
+        | import("./DataExplorerContext").DataChatMessage[]
+        | ((
+            prev: import("./DataExplorerContext").DataChatMessage[],
+          ) => import("./DataExplorerContext").DataChatMessage[]),
+    ) => {
+      updateChatMessages(chatKey, update);
     },
-    [chatKey]
+    [chatKey, updateChatMessages],
   );
 
   const chartTable = isAllTables ? overviewTable : currentTable;
-  const chatTables = isAllTables ? tables : currentTable ? [currentTable] : [];
+  const chatTables = isAllTables
+    ? tables
+    : currentTable
+      ? [currentTable]
+      : [];
 
   const hasDiagram = diagram && diagram.tables.length > 0;
 
   const modalContent = (
     <>
-      <div className="fixed inset-0 z-50 bg-gray-950/90 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-50 bg-gray-950/90 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           className="animate-scale-in pointer-events-auto flex max-h-[85vh] w-full max-w-6xl flex-col rounded-2xl border border-border bg-card shadow-2xl"
@@ -316,22 +359,33 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-bold text-foreground">Data Explorer</h2>
+              <h2 className="text-lg font-bold text-foreground">
+                Data Explorer
+              </h2>
               {dataSource !== "none" && (
-                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  dataSource === "fake"
-                    ? "bg-purple-500/15 text-purple-400"
-                    : "bg-blue-500/15 text-blue-400"
-                }`}>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    dataSource === "fake"
+                      ? "bg-purple-500/15 text-purple-400"
+                      : "bg-blue-500/15 text-blue-400"
+                  }`}
+                >
                   {dataSource === "fake" ? (
-                    <><FlaskConical className="h-3 w-3" /> Generated data</>
+                    <>
+                      <FlaskConical className="h-3 w-3" /> Generated data
+                    </>
                   ) : (
-                    <><Database className="h-3 w-3" /> SQL dump</>
+                    <>
+                      <Database className="h-3 w-3" /> SQL dump
+                    </>
                   )}
                 </span>
               )}
             </div>
-            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent">
+            <button
+              onClick={onClose}
+              className="rounded-lg p-2 hover:bg-accent"
+            >
               <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
@@ -339,7 +393,9 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
           {tables.length === 0 ? (
             /* ── Empty state ── */
             <div className="flex flex-col items-center p-12">
-              <h3 className="mb-2 text-xl font-bold text-foreground">Explore Your Data</h3>
+              <h3 className="mb-2 text-xl font-bold text-foreground">
+                Explore Your Data
+              </h3>
               <p className="mb-8 max-w-md text-center text-sm text-muted-foreground">
                 Browse data in tables, sort, filter, and generate charts.
               </p>
@@ -348,7 +404,9 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                 {/* Upload card */}
                 <div
                   className={`flex flex-1 flex-col items-center rounded-xl border-2 border-dashed p-6 transition-colors ${
-                    isDragOver ? "border-indigo-500 bg-indigo-500/10" : "border-border hover:border-border/80"
+                    isDragOver
+                      ? "border-indigo-500 bg-indigo-500/10"
+                      : "border-border hover:border-border/80"
                   }`}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -377,16 +435,21 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                       if (file) handleFile(file);
                     }}
                   />
-                  <p className="mt-3 text-xs text-muted-foreground/60">Max 5MB</p>
+                  <p className="mt-3 text-xs text-muted-foreground/60">
+                    Max 5MB
+                  </p>
                 </div>
 
                 {/* Generate card */}
                 {hasDiagram && (
                   <div className="flex flex-1 flex-col items-center rounded-xl border border-border bg-accent/30 p-6">
                     <FlaskConical className="mb-3 h-8 w-8 text-purple-400" />
-                    <p className="mb-1 text-sm font-semibold text-foreground">Generate Test Data</p>
+                    <p className="mb-1 text-sm font-semibold text-foreground">
+                      Generate Test Data
+                    </p>
                     <p className="mb-4 text-center text-xs text-muted-foreground">
-                      Create realistic fake data from your {diagram!.tables.length} tables using field names and types
+                      Create realistic fake data from your{" "}
+                      {diagram!.tables.length} tables using field names and types
                     </p>
                     <button
                       onClick={handleGenerateFakeData}
@@ -394,7 +457,9 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                     >
                       Generate Data
                     </button>
-                    <p className="mt-3 text-xs text-muted-foreground/60">30 rows per table</p>
+                    <p className="mt-3 text-xs text-muted-foreground/60">
+                      30 rows per table
+                    </p>
                   </div>
                 )}
               </div>
@@ -411,14 +476,16 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                 <select
                   value={selectedTable ?? ""}
                   onChange={(e) => {
-                    setSelectedTable(e.target.value as string | "__all__");
-                    resetState();
+                    setSelectedTable(
+                      e.target.value as string | "__all__",
+                    );
                   }}
                   className="max-w-[220px] rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
                 >
                   {tables.length > 1 && (
                     <option value="__all__">
-                      All tables ({tables.reduce((s, t) => s + t.rows.length, 0)})
+                      All tables (
+                      {tables.reduce((s, t) => s + t.rows.length, 0)})
                     </option>
                   )}
                   {tables.map((t) => (
@@ -471,7 +538,9 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                   <button
                     onClick={() => setView("table")}
                     className={`flex items-center gap-1 rounded-l-lg px-3 py-1.5 text-sm transition-colors ${
-                      view === "table" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+                      view === "table"
+                        ? "bg-accent text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <Table className="h-3.5 w-3.5" /> Table
@@ -479,7 +548,9 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                   <button
                     onClick={() => setView("chart")}
                     className={`flex items-center gap-1 px-3 py-1.5 text-sm transition-colors ${
-                      view === "chart" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+                      view === "chart"
+                        ? "bg-accent text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <BarChart3 className="h-3.5 w-3.5" /> Charts
@@ -487,7 +558,9 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                   <button
                     onClick={() => setView("chat")}
                     className={`flex items-center gap-1 rounded-r-lg px-3 py-1.5 text-sm transition-colors ${
-                      view === "chat" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+                      view === "chat"
+                        ? "bg-accent text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     <MessageSquare className="h-3.5 w-3.5" /> Chat
@@ -498,41 +571,51 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
               {/* ── Stats bar ── */}
               {view === "table" && !isAllTables && stats && (
                 <div className="flex items-center gap-3 border-b border-border px-4 py-1.5 text-xs">
-                  <span className="text-muted-foreground">{stats.rows} rows</span>
+                  <span className="text-muted-foreground">
+                    {stats.rows} rows
+                  </span>
                   <span className="text-border">|</span>
                   <span className="flex items-center gap-1 text-muted-foreground">
                     {stats.columns} cols
                     {stats.numericCount > 0 && (
                       <span className="ml-1 inline-flex items-center gap-0.5 text-blue-400">
-                        <Hash className="h-2.5 w-2.5" />{stats.numericCount}
+                        <Hash className="h-2.5 w-2.5" />
+                        {stats.numericCount}
                       </span>
                     )}
                     {stats.textCount > 0 && (
                       <span className="inline-flex items-center gap-0.5 text-emerald-400">
-                        <Type className="h-2.5 w-2.5" />{stats.textCount}
+                        <Type className="h-2.5 w-2.5" />
+                        {stats.textCount}
                       </span>
                     )}
                     {stats.dateCount > 0 && (
                       <span className="inline-flex items-center gap-0.5 text-amber-400">
-                        <Calendar className="h-2.5 w-2.5" />{stats.dateCount}
+                        <Calendar className="h-2.5 w-2.5" />
+                        {stats.dateCount}
                       </span>
                     )}
                     {stats.boolCount > 0 && (
                       <span className="inline-flex items-center gap-0.5 text-purple-400">
-                        <ToggleLeft className="h-2.5 w-2.5" />{stats.boolCount}
+                        <ToggleLeft className="h-2.5 w-2.5" />
+                        {stats.boolCount}
                       </span>
                     )}
                   </span>
                   {stats.nullCount > 0 && (
                     <>
                       <span className="text-border">|</span>
-                      <span className="text-muted-foreground/50">{stats.nullCount} nulls</span>
+                      <span className="text-muted-foreground/50">
+                        {stats.nullCount} nulls
+                      </span>
                     </>
                   )}
                   {searchQuery.trim() && (
                     <>
                       <span className="text-border">|</span>
-                      <span className="text-indigo-400">{filteredRows.length} matching</span>
+                      <span className="text-indigo-400">
+                        {filteredRows.length} matching
+                      </span>
                     </>
                   )}
                 </div>
@@ -540,11 +623,17 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
 
               {view === "table" && isAllTables && allTablesStats && (
                 <div className="flex items-center gap-3 border-b border-border px-4 py-1.5 text-xs">
-                  <span className="text-muted-foreground">{allTablesStats.tableCount} tables</span>
+                  <span className="text-muted-foreground">
+                    {allTablesStats.tableCount} tables
+                  </span>
                   <span className="text-border">|</span>
-                  <span className="text-muted-foreground">{allTablesStats.totalRows} total rows</span>
+                  <span className="text-muted-foreground">
+                    {allTablesStats.totalRows} total rows
+                  </span>
                   <span className="text-border">|</span>
-                  <span className="text-muted-foreground">{allTablesStats.totalCols} total columns</span>
+                  <span className="text-muted-foreground">
+                    {allTablesStats.totalCols} total columns
+                  </span>
                 </div>
               )}
 
@@ -557,8 +646,10 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                       type="text"
                       value={searchQuery}
                       onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setPage(0);
+                        updateTableViewState(currentTableKey, {
+                          searchQuery: e.target.value,
+                          page: 0,
+                        });
                       }}
                       placeholder="Search across all columns..."
                       className="w-full rounded-lg border border-border bg-accent py-1.5 pl-8 pr-3 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
@@ -570,16 +661,28 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
               {/* ── Content ── */}
               <div className="flex-1 overflow-auto">
                 {/* Table view */}
-                <div style={{ display: view === "table" ? undefined : "none" }}>
+                <div
+                  style={{
+                    display: view === "table" ? undefined : "none",
+                  }}
+                >
                   {isAllTables ? (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="sticky top-0 z-10">
                           <tr className="border-b border-border bg-accent/80 backdrop-blur-sm">
-                            <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">Table</th>
-                            <th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">Rows</th>
-                            <th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">Columns</th>
-                            <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">Column Names</th>
+                            <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">
+                              Table
+                            </th>
+                            <th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">
+                              Rows
+                            </th>
+                            <th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">
+                              Columns
+                            </th>
+                            <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">
+                              Column Names
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -589,10 +692,21 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                               onClick={() => setSelectedTable(t.name)}
                               className="cursor-pointer border-b border-border/30 transition-colors hover:bg-accent/30"
                             >
-                              <td className="whitespace-nowrap px-4 py-2 font-medium text-foreground">{t.name}</td>
-                              <td className="whitespace-nowrap px-4 py-2 text-right font-mono text-blue-400/80">{t.rows.length}</td>
-                              <td className="whitespace-nowrap px-4 py-2 text-right font-mono text-muted-foreground">{t.columns.length}</td>
-                              <td className="max-w-[400px] truncate px-4 py-2 text-xs text-muted-foreground" title={t.columns.join(", ")}>{t.columns.join(", ")}</td>
+                              <td className="whitespace-nowrap px-4 py-2 font-medium text-foreground">
+                                {t.name}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-2 text-right font-mono text-blue-400/80">
+                                {t.rows.length}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-2 text-right font-mono text-muted-foreground">
+                                {t.columns.length}
+                              </td>
+                              <td
+                                className="max-w-[400px] truncate px-4 py-2 text-xs text-muted-foreground"
+                                title={t.columns.join(", ")}
+                              >
+                                {t.columns.join(", ")}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -604,23 +718,30 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                         <thead className="sticky top-0 z-10">
                           <tr className="border-b border-border bg-accent/80 backdrop-blur-sm">
                             {currentTable.columns.map((col) => {
-                              const colType = columnTypes[col] ?? "string";
+                              const colType =
+                                columnTypes[col] ?? "string";
                               const Icon = TYPE_ICON[colType];
                               return (
                                 <th
                                   key={col}
-                                  onClick={() => handleColumnSort(col)}
+                                  onClick={() =>
+                                    handleColumnSort(col)
+                                  }
                                   className="cursor-pointer select-none whitespace-nowrap px-4 py-2 text-left font-medium text-foreground hover:bg-accent"
                                 >
                                   <span className="inline-flex items-center gap-1.5">
-                                    <Icon className={`h-3 w-3 ${TYPE_COLOR[colType]}`} />
+                                    <Icon
+                                      className={`h-3 w-3 ${TYPE_COLOR[colType]}`}
+                                    />
                                     {col}
-                                    {sortColumn === col && sortDirection === "asc" && (
-                                      <ChevronUp className="h-3 w-3 text-indigo-400" />
-                                    )}
-                                    {sortColumn === col && sortDirection === "desc" && (
-                                      <ChevronDown className="h-3 w-3 text-indigo-400" />
-                                    )}
+                                    {sortColumn === col &&
+                                      sortDirection === "asc" && (
+                                        <ChevronUp className="h-3 w-3 text-indigo-400" />
+                                      )}
+                                    {sortColumn === col &&
+                                      sortDirection === "desc" && (
+                                        <ChevronDown className="h-3 w-3 text-indigo-400" />
+                                      )}
                                   </span>
                                 </th>
                               );
@@ -635,7 +756,8 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                             >
                               {currentTable.columns.map((col) => {
                                 const val = row[col];
-                                const colType = columnTypes[col] ?? "string";
+                                const colType =
+                                  columnTypes[col] ?? "string";
                                 return (
                                   <td
                                     key={col}
@@ -650,9 +772,19 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                                               ? "font-mono text-amber-400/70"
                                               : "text-muted-foreground"
                                     }`}
-                                    title={val !== null ? String(val) : "NULL"}
+                                    title={
+                                      val !== null
+                                        ? String(val)
+                                        : "NULL"
+                                    }
                                   >
-                                    {val === null ? "NULL" : typeof val === "boolean" ? (val ? "true" : "false") : String(val)}
+                                    {val === null
+                                      ? "NULL"
+                                      : typeof val === "boolean"
+                                        ? val
+                                          ? "true"
+                                          : "false"
+                                        : String(val)}
                                   </td>
                                 );
                               })}
@@ -677,12 +809,21 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                 </div>
 
                 {/* Chart view - always rendered to persist config */}
-                <div style={{ display: view === "chart" ? undefined : "none" }}>
+                <div
+                  style={{
+                    display: view === "chart" ? undefined : "none",
+                  }}
+                >
                   {chartTable && <DataCharts table={chartTable} />}
                 </div>
 
                 {/* Chat view - always rendered, per-table history */}
-                <div style={{ display: view === "chat" ? undefined : "none" }} className="h-full">
+                <div
+                  style={{
+                    display: view === "chat" ? undefined : "none",
+                  }}
+                  className="h-full"
+                >
                   {chatTables.length > 0 && (
                     <DataChat
                       tables={chatTables}
@@ -697,7 +838,11 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
               {view === "table" && !isAllTables && totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-border px-4 py-2">
                   <button
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    onClick={() =>
+                      updateTableViewState(currentTableKey, (prev) => ({
+                        page: Math.max(0, prev.page - 1),
+                      }))
+                    }
                     disabled={page === 0}
                     className="rounded px-3 py-1 text-sm text-muted-foreground hover:bg-accent disabled:opacity-50"
                   >
@@ -707,7 +852,11 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                     Page {page + 1} of {totalPages}
                   </span>
                   <button
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    onClick={() =>
+                      updateTableViewState(currentTableKey, (prev) => ({
+                        page: Math.min(totalPages - 1, prev.page + 1),
+                      }))
+                    }
                     disabled={page >= totalPages - 1}
                     className="rounded px-3 py-1 text-sm text-muted-foreground hover:bg-accent disabled:opacity-50"
                   >
