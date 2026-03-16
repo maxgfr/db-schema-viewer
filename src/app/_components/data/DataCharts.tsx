@@ -326,15 +326,30 @@ export function DataCharts({ table }: DataChartsProps) {
         <div className="flex-1" />
 
         {activeTab === "manual" && (
-          <button
-            onClick={handleExportPNG}
-            className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
-            title="Export chart as PNG"
-            aria-label="Export chart as PNG"
-          >
-            <Download className="h-3.5 w-3.5" />
-            PNG
-          </button>
+          <>
+            <button
+              onClick={() => {
+                setChartType("bar");
+                setXCol(categoryCols[0] ?? table.columns[0] ?? "");
+                setYCol(numericCols[0] ?? table.columns[1] ?? "");
+                setAggregation("sum");
+              }}
+              className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+              title="Reset chart settings"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </button>
+            <button
+              onClick={handleExportPNG}
+              className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+              title="Export chart as PNG"
+              aria-label="Export chart as PNG"
+            >
+              <Download className="h-3.5 w-3.5" />
+              PNG
+            </button>
+          </>
         )}
       </div>
 

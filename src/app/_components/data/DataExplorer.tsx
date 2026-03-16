@@ -28,7 +28,7 @@ import { generateFakeData } from "@/lib/dump/fake-data-generator";
 import { inferColumnTypes, type InferredType } from "@/lib/dump/data-types";
 import type { Diagram } from "@/lib/domain";
 import { DataCharts } from "./DataCharts";
-import { DataChat, type DataChatMessage } from "./DataChat";
+import { DataChat, type DataChatMessage  } from "./DataChat";
 
 interface DataExplorerProps {
   onClose: () => void;
@@ -289,9 +289,16 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
 
   const chatKey = selectedTable ?? "__default__";
   const currentChatMessages = chatHistory[chatKey] ?? [];
-  const handleChatMessagesChange = useCallback((msgs: DataChatMessage[]) => {
-    setChatHistory((prev) => ({ ...prev, [chatKey]: msgs }));
-  }, [chatKey]);
+  const handleChatMessagesChange = useCallback(
+    (update: DataChatMessage[] | ((prev: DataChatMessage[]) => DataChatMessage[])) => {
+      setChatHistory((prev) => {
+        const current = prev[chatKey] ?? [];
+        const newMsgs = typeof update === "function" ? update(current) : update;
+        return { ...prev, [chatKey]: newMsgs };
+      });
+    },
+    [chatKey]
+  );
 
   const chartTable = isAllTables ? overviewTable : currentTable;
   const chatTables = isAllTables ? tables : currentTable ? [currentTable] : [];

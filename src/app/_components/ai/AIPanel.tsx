@@ -25,6 +25,7 @@ import {
   type SchemaIssue,
   type ChallengeResponse,
 } from "@/lib/ai/ai-service";
+import { MarkdownContent } from "../shared/MarkdownContent";
 
 interface AIPanelProps {
   diagram: Diagram;
@@ -323,7 +324,11 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                         : "mr-8 bg-accent text-foreground"
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                    {msg.role === "assistant" ? (
+                      <MarkdownContent content={msg.content} />
+                    ) : (
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                    )}
                     {msg.role === "assistant" && (
                       <button
                         onClick={() => handleCopyMessage(msg.content)}
@@ -338,7 +343,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                 ))}
                 {streamingText && (
                   <div className="mr-8 rounded-lg bg-accent px-3 py-2 text-sm text-foreground">
-                    <div className="whitespace-pre-wrap">{streamingText}</div>
+                    <MarkdownContent content={streamingText} />
                   </div>
                 )}
                 <div ref={messagesEndRef} />
@@ -503,12 +508,22 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                     )}
                   </div>
 
-                  <button
-                    onClick={handleChallenge}
-                    className="w-full rounded-xl border border-border py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
-                  >
-                    Run Again
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleChallenge}
+                      className="flex-1 rounded-xl border border-border py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
+                    >
+                      Run Again
+                    </button>
+                    <button
+                      onClick={() => { setChallengeResult(null); setSeverityFilter("all"); setCategoryFilter("all"); }}
+                      className="flex items-center gap-1 rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+                      title="Clear challenge results"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Reset
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

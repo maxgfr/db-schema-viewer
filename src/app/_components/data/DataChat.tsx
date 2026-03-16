@@ -6,16 +6,19 @@ import { Send, Square, MessageSquare, Copy, RotateCcw } from "lucide-react";
 import type { ParsedDumpTable } from "@/lib/dump/dump-parser";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
 import { queryData } from "@/lib/ai/ai-service";
+import { MarkdownContent } from "../shared/MarkdownContent";
 
 export interface DataChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
+type MessageUpdater = DataChatMessage[] | ((prev: DataChatMessage[]) => DataChatMessage[]);
+
 interface DataChatProps {
   tables: ParsedDumpTable[];
   messages: DataChatMessage[];
-  onMessagesChange: (messages: DataChatMessage[]) => void;
+  onMessagesChange: (update: MessageUpdater) => void;
 }
 
 const SINGLE_TABLE_ACTIONS = [
@@ -33,16 +36,6 @@ const MULTI_TABLE_ACTIONS = [
 ];
 
 export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) {
-  const setMessages = useCallback(
-    (update: DataChatMessage[] | ((prev: DataChatMessage[]) => DataChatMessage[])) => {
-      if (typeof update === "function") {
-        onMessagesChange(update(messages));
-      } else {
-        onMessagesChange(update);
-      }
-    },
-    [messages, onMessagesChange]
-  );
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState("");
@@ -96,7 +89,7 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
 
     const userMsg = text.trim();
     if (!overrideInput) setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+    onMessagesChange((prev) => [...prev, { role: "user", content: userMsg }]);
     setIsLoading(true);
     setStreamingText("");
     streamingTextRef.current = "";
@@ -126,13 +119,13 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
           if (controller.signal.aborted) {
             const partial = streamingTextRef.current;
             if (partial.trim()) {
-              setMessages((prev) => [
+              onMessagesChange((prev) => [
                 ...prev,
                 { role: "assistant", content: partial + "\n\n_(stopped)_" },
               ]);
             }
           } else {
-            setMessages((prev) => [
+            onMessagesChange((prev) => [
               ...prev,
               { role: "assistant", content: fullText },
             ]);
@@ -147,7 +140,7 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
       if ((err as Error)?.name === "AbortError") {
         const partial = streamingTextRef.current;
         if (partial.trim()) {
-          setMessages((prev) => [...prev, { role: "assistant", content: partial + "\n\n_(stopped)_" }]);
+          onMessagesChange((prev) => [...prev, { role: "assistant", content: partial + "\n\n_(stopped)_" }]);
         }
         setStreamingText("");
         streamingTextRef.current = "";
@@ -158,7 +151,7 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, tables]);
+  }, [input, isLoading, messages, tables, onMessagesChange]);
 
   const placeholder = isMultiTable
     ? `Ask about all ${tables.length} tables...`
@@ -166,15 +159,12 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
 
   return (
     <div className="flex h-full flex-col">
-      {/* Messages */}
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {messages.length === 0 && !streamingText && (
           <div className="flex flex-col items-center gap-4 py-10 text-center">
             <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
             <div>
-              <p className="text-sm font-medium text-foreground">
-                {isMultiTable ? "Ask anything about your data" : "Ask anything about your data"}
-              </p>
+              <p className="text-sm font-medium text-foreground">Ask anything about your data</p>
               <p className="mt-1 text-xs text-muted-foreground">{contextLabel}</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
@@ -199,7 +189,11 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
                 : "mr-8 bg-accent text-foreground"
             }`}
           >
-            <div className="whitespace-pre-wrap">{msg.content}</div>
+            {msg.role === "assistant" ? (
+              <MarkdownContent content={msg.content} />
+            ) : (
+              <div className="whitespace-pre-wrap">{msg.content}</div>
+            )}
             {msg.role === "assistant" && (
               <button
                 onClick={() => handleCopy(msg.content)}
@@ -214,18 +208,17 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
         ))}
         {streamingText && (
           <div className="mr-8 rounded-lg bg-accent px-3 py-2 text-sm text-foreground">
-            <div className="whitespace-pre-wrap">{streamingText}</div>
+            <MarkdownContent content={streamingText} />
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div className="border-t border-border p-3">
         <div className="flex gap-2">
           {messages.length > 0 && (
             <button
-              onClick={() => setMessages([])}
+              onClick={() => onMessagesChange([])}
               className="rounded-lg border border-border px-2 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
               title="Clear chat history"
               aria-label="Clear chat history"
