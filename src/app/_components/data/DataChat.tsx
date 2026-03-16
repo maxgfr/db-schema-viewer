@@ -1,37 +1,65 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { Send, Square, MessageSquare, Copy } from "lucide-react";
 import type { ParsedDumpTable } from "@/lib/dump/dump-parser";
-import { inferColumnTypes } from "@/lib/dump/data-types";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
 import { queryData } from "@/lib/ai/ai-service";
 
-interface DataChatProps {
-  table: ParsedDumpTable;
-}
-
-interface ChatMessage {
+export interface DataChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
-const QUICK_ACTIONS = [
+interface DataChatProps {
+  tables: ParsedDumpTable[];
+  messages: DataChatMessage[];
+  onMessagesChange: (messages: DataChatMessage[]) => void;
+}
+
+const SINGLE_TABLE_ACTIONS = [
   { label: "Summarize data", prompt: "Give me a concise summary of this dataset: key statistics, notable patterns, and any anomalies." },
   { label: "Find patterns", prompt: "What patterns or trends can you identify in this data?" },
   { label: "Data quality", prompt: "Analyze the data quality: are there missing values, outliers, or inconsistencies?" },
   { label: "Key insights", prompt: "What are the top 3 most interesting insights from this data?" },
 ];
 
-export function DataChat({ table }: DataChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+const MULTI_TABLE_ACTIONS = [
+  { label: "Overview", prompt: "Give me an overview of all tables: key statistics, sizes, and what each table seems to contain." },
+  { label: "Cross-table patterns", prompt: "Identify relationships and patterns across the different tables. Are there foreign key links or shared columns?" },
+  { label: "Data quality", prompt: "Analyze the data quality across all tables: missing values, inconsistencies, and potential issues." },
+  { label: "Key insights", prompt: "What are the top 5 most interesting insights from this entire dataset?" },
+];
+
+export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) {
+  const setMessages = useCallback(
+    (update: DataChatMessage[] | ((prev: DataChatMessage[]) => DataChatMessage[])) => {
+      if (typeof update === "function") {
+        onMessagesChange(update(messages));
+      } else {
+        onMessagesChange(update);
+      }
+    },
+    [messages, onMessagesChange]
+  );
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamingTextRef = useRef("");
+
+  const isMultiTable = tables.length > 1;
+  const quickActions = isMultiTable ? MULTI_TABLE_ACTIONS : SINGLE_TABLE_ACTIONS;
+
+  const contextLabel = useMemo(() => {
+    if (tables.length === 1) {
+      return `${tables[0]!.name}: ${tables[0]!.rows.length} rows, ${tables[0]!.columns.length} columns`;
+    }
+    const totalRows = tables.reduce((sum, t) => sum + t.rows.length, 0);
+    return `${tables.length} tables, ${totalRows} total rows`;
+  }, [tables]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -76,8 +104,6 @@ export function DataChat({ table }: DataChatProps) {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    const columnTypes = inferColumnTypes(table.columns, table.rows);
-
     try {
       const history = messages
         .reduce<Array<{ prompt: string; response: string }>>((acc, msg, i) => {
@@ -89,8 +115,7 @@ export function DataChat({ table }: DataChatProps) {
 
       await queryData(
         settings,
-        table,
-        columnTypes,
+        tables,
         userMsg,
         (chunk) => {
           if (controller.signal.aborted) return;
@@ -133,7 +158,11 @@ export function DataChat({ table }: DataChatProps) {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, table]);
+  }, [input, isLoading, messages, tables]);
+
+  const placeholder = isMultiTable
+    ? `Ask about all ${tables.length} tables...`
+    : `Ask about ${tables[0]?.name ?? "data"}...`;
 
   return (
     <div className="flex h-full flex-col">
@@ -143,13 +172,13 @@ export function DataChat({ table }: DataChatProps) {
           <div className="flex flex-col items-center gap-4 py-10 text-center">
             <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
             <div>
-              <p className="text-sm font-medium text-foreground">Ask anything about your data</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {table.name}: {table.rows.length} rows, {table.columns.length} columns
+              <p className="text-sm font-medium text-foreground">
+                {isMultiTable ? "Ask anything about your data" : "Ask anything about your data"}
               </p>
+              <p className="mt-1 text-xs text-muted-foreground">{contextLabel}</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
-              {QUICK_ACTIONS.map((action) => (
+              {quickActions.map((action) => (
                 <button
                   key={action.label}
                   onClick={() => handleSend(action.prompt)}
@@ -199,7 +228,7 @@ export function DataChat({ table }: DataChatProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !isLoading && handleSend()}
-            placeholder={`Ask about ${table.name}...`}
+            placeholder={placeholder}
             className="flex-1 rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
             disabled={isLoading}
           />

@@ -28,7 +28,7 @@ import { generateFakeData } from "@/lib/dump/fake-data-generator";
 import { inferColumnTypes, type InferredType } from "@/lib/dump/data-types";
 import type { Diagram } from "@/lib/domain";
 import { DataCharts } from "./DataCharts";
-import { DataChat } from "./DataChat";
+import { DataChat, type DataChatMessage } from "./DataChat";
 
 interface DataExplorerProps {
   onClose: () => void;
@@ -56,7 +56,7 @@ const TYPE_COLOR: Record<InferredType, string> = {
 
 export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerProps) {
   const [tables, setTables] = useState<ParsedDumpTable[]>([]);
-  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [selectedTable, setSelectedTable] = useState<string | "__all__" | null>(null);
   const [view, setView] = useState<"table" | "chart" | "chat">("table");
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -65,6 +65,7 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
   const [isDragOver, setIsDragOver] = useState(false);
   const [fakeSeed, setFakeSeed] = useState(42);
   const [dataSource, setDataSource] = useState<DataSource>("none");
+  const [dataChatMessages, setDataChatMessages] = useState<DataChatMessage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const PAGE_SIZE = 50;
 
@@ -170,7 +171,8 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
     setPage(0);
   }, [sortDirection]);
 
-  const currentTable = tables.find((t) => t.name === selectedTable);
+  const isAllTables = selectedTable === "__all__";
+  const currentTable = isAllTables ? null : tables.find((t) => t.name === selectedTable);
 
   const columnTypes = useMemo(() => {
     if (!currentTable) return {};
@@ -263,6 +265,27 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
     URL.revokeObjectURL(url);
     toast.success("CSV exported");
   }, [currentTable, filteredRows]);
+
+  const allTablesStats = useMemo(() => {
+    if (tables.length === 0) return null;
+    const totalRows = tables.reduce((sum, t) => sum + t.rows.length, 0);
+    const totalCols = tables.reduce((sum, t) => sum + t.columns.length, 0);
+    return { totalRows, totalCols, tableCount: tables.length };
+  }, [tables]);
+
+  // Synthetic table for "All tables" chart view
+  const overviewTable = useMemo((): ParsedDumpTable | null => {
+    if (tables.length === 0) return null;
+    return {
+      name: "All Tables Overview",
+      columns: ["table_name", "row_count", "column_count"],
+      rows: tables.map((t) => ({
+        table_name: t.name,
+        row_count: t.rows.length,
+        column_count: t.columns.length,
+      })),
+    };
+  }, [tables]);
 
   const hasDiagram = diagram && diagram.tables.length > 0;
 
@@ -372,11 +395,16 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                 <select
                   value={selectedTable ?? ""}
                   onChange={(e) => {
-                    setSelectedTable(e.target.value);
+                    setSelectedTable(e.target.value as string | "__all__");
                     resetState();
                   }}
                   className="max-w-[220px] rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
                 >
+                  {tables.length > 1 && (
+                    <option value="__all__">
+                      All tables ({tables.reduce((s, t) => s + t.rows.length, 0)})
+                    </option>
+                  )}
                   {tables.map((t) => (
                     <option key={t.name} value={t.name}>
                       {t.name} ({t.rows.length})
@@ -452,7 +480,7 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
               </div>
 
               {/* ── Stats bar ── */}
-              {stats && view === "table" && (
+              {view === "table" && !isAllTables && stats && (
                 <div className="flex items-center gap-3 border-b border-border px-4 py-1.5 text-xs">
                   <span className="text-muted-foreground">{stats.rows} rows</span>
                   <span className="text-border">|</span>
@@ -494,8 +522,18 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                 </div>
               )}
 
+              {view === "table" && isAllTables && allTablesStats && (
+                <div className="flex items-center gap-3 border-b border-border px-4 py-1.5 text-xs">
+                  <span className="text-muted-foreground">{allTablesStats.tableCount} tables</span>
+                  <span className="text-border">|</span>
+                  <span className="text-muted-foreground">{allTablesStats.totalRows} total rows</span>
+                  <span className="text-border">|</span>
+                  <span className="text-muted-foreground">{allTablesStats.totalCols} total columns</span>
+                </div>
+              )}
+
               {/* ── Search bar ── */}
-              {view === "table" && currentTable && (
+              {view === "table" && currentTable && !isAllTables && (
                 <div className="border-b border-border px-4 py-2">
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -515,7 +553,36 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
 
               {/* ── Content ── */}
               <div className="flex-1 overflow-auto">
-                {view === "table" && currentTable && (
+                {view === "table" && isAllTables && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="border-b border-border bg-accent/80 backdrop-blur-sm">
+                          <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">Table</th>
+                          <th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">Rows</th>
+                          <th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">Columns</th>
+                          <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">Column Names</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tables.map((t) => (
+                          <tr
+                            key={t.name}
+                            onClick={() => setSelectedTable(t.name)}
+                            className="cursor-pointer border-b border-border/30 transition-colors hover:bg-accent/30"
+                          >
+                            <td className="whitespace-nowrap px-4 py-2 font-medium text-foreground">{t.name}</td>
+                            <td className="whitespace-nowrap px-4 py-2 text-right font-mono text-blue-400/80">{t.rows.length}</td>
+                            <td className="whitespace-nowrap px-4 py-2 text-right font-mono text-muted-foreground">{t.columns.length}</td>
+                            <td className="max-w-[400px] truncate px-4 py-2 text-xs text-muted-foreground" title={t.columns.join(", ")}>{t.columns.join(", ")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {view === "table" && !isAllTables && currentTable && (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 z-10">
@@ -592,17 +659,25 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
                   </div>
                 )}
 
-                {view === "chart" && currentTable && (
+                {view === "chart" && !isAllTables && currentTable && (
                   <DataCharts table={currentTable} />
                 )}
 
-                {view === "chat" && currentTable && (
-                  <DataChat table={currentTable} />
+                {view === "chart" && isAllTables && overviewTable && (
+                  <DataCharts table={overviewTable} />
+                )}
+
+                {view === "chat" && (
+                  <DataChat
+                    tables={isAllTables ? tables : currentTable ? [currentTable] : []}
+                    messages={dataChatMessages}
+                    onMessagesChange={setDataChatMessages}
+                  />
                 )}
               </div>
 
               {/* ── Pagination ── */}
-              {view === "table" && totalPages > 1 && (
+              {view === "table" && !isAllTables && totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-border px-4 py-2">
                   <button
                     onClick={() => setPage((p) => Math.max(0, p - 1))}

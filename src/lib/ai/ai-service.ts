@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { AISettings } from "@/lib/storage/cookie-storage";
 import type { Diagram } from "@/lib/domain";
 import type { ParsedDumpTable } from "@/lib/dump/dump-parser";
+import { inferColumnTypes } from "@/lib/dump/data-types";
 import { schemaToPromptContext } from "./ai-prompts";
 
 export const SchemaIssue = z.object({
@@ -235,8 +236,7 @@ export async function generateCustomChart(
 
 export async function queryData(
   settings: AISettings,
-  table: ParsedDumpTable,
-  columnTypes: Record<string, string>,
+  tables: ParsedDumpTable[],
   question: string,
   onChunk: (chunk: string) => void,
   onComplete: (fullText: string) => void,
@@ -244,21 +244,32 @@ export async function queryData(
   abortSignal?: AbortSignal
 ): Promise<void> {
   const model = getModel(settings);
-  const summary = summarizeTable(table, columnTypes);
 
-  const dataRows = table.rows.slice(0, 30).map((row) =>
-    table.columns.map((c) => `${c}=${row[c] ?? "NULL"}`).join(", ")
-  );
+  const tableSummaries = tables.map((table) => {
+    const columnTypes = inferColumnTypes(table.columns, table.rows);
+    const summary = summarizeTable(table, columnTypes);
+    const rowsToShow = Math.max(5, Math.floor(30 / tables.length));
+    const dataRows = table.rows.slice(0, rowsToShow).map((row) =>
+      table.columns.map((c) => `${c}=${row[c] ?? "NULL"}`).join(", ")
+    );
+    return `${summary}\n\nData rows (first ${Math.min(rowsToShow, table.rows.length)} of ${table.rows.length}):\n${dataRows.map((r, i) => `  ${i + 1}. { ${r} }`).join("\n")}`;
+  });
 
-  const dataContext = `${summary}\n\nData rows (first ${Math.min(30, table.rows.length)} of ${table.rows.length}):\n${dataRows.map((r, i) => `  ${i + 1}. { ${r} }`).join("\n")}`;
+  const dataContext = tables.length === 1
+    ? tableSummaries[0]!
+    : `${tables.length} TABLES IN DATASET:\n\n${tableSummaries.join("\n\n---\n\n")}`;
 
   const historyText = history
     .map((h) => `User: ${h.prompt}\nAssistant: ${h.response}`)
     .join("\n\n");
 
+  const systemPrompt = tables.length === 1
+    ? `You are a data analyst expert. Analyze the following dataset and answer questions about it. Provide insights, patterns, anomalies, and recommendations based on the data. Be concise and specific, referencing actual values from the data.`
+    : `You are a data analyst expert. Analyze the following multi-table dataset and answer questions about it. You can identify cross-table patterns, relationships, and provide insights that span multiple tables. Be concise and specific, referencing actual values from the data.`;
+
   const result = streamText({
     model,
-    system: `You are a data analyst expert. Analyze the following dataset and answer questions about it. Provide insights, patterns, anomalies, and recommendations based on the data. Be concise and specific, referencing actual values from the data.
+    system: `${systemPrompt}
 
 DATASET:
 ${dataContext}`,
