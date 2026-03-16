@@ -65,7 +65,7 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
   const [isDragOver, setIsDragOver] = useState(false);
   const [fakeSeed, setFakeSeed] = useState(42);
   const [dataSource, setDataSource] = useState<DataSource>("none");
-  const [dataChatMessages, setDataChatMessages] = useState<DataChatMessage[]>([]);
+  const [chatHistory, setChatHistory] = useState<Record<string, DataChatMessage[]>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const PAGE_SIZE = 50;
 
@@ -286,6 +286,15 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
       })),
     };
   }, [tables]);
+
+  const chatKey = selectedTable ?? "__default__";
+  const currentChatMessages = chatHistory[chatKey] ?? [];
+  const handleChatMessagesChange = useCallback((msgs: DataChatMessage[]) => {
+    setChatHistory((prev) => ({ ...prev, [chatKey]: msgs }));
+  }, [chatKey]);
+
+  const chartTable = isAllTables ? overviewTable : currentTable;
+  const chatTables = isAllTables ? tables : currentTable ? [currentTable] : [];
 
   const hasDiagram = diagram && diagram.tables.length > 0;
 
@@ -553,127 +562,128 @@ export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerP
 
               {/* ── Content ── */}
               <div className="flex-1 overflow-auto">
-                {view === "table" && isAllTables && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 z-10">
-                        <tr className="border-b border-border bg-accent/80 backdrop-blur-sm">
-                          <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">Table</th>
-                          <th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">Rows</th>
-                          <th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">Columns</th>
-                          <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">Column Names</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tables.map((t) => (
-                          <tr
-                            key={t.name}
-                            onClick={() => setSelectedTable(t.name)}
-                            className="cursor-pointer border-b border-border/30 transition-colors hover:bg-accent/30"
-                          >
-                            <td className="whitespace-nowrap px-4 py-2 font-medium text-foreground">{t.name}</td>
-                            <td className="whitespace-nowrap px-4 py-2 text-right font-mono text-blue-400/80">{t.rows.length}</td>
-                            <td className="whitespace-nowrap px-4 py-2 text-right font-mono text-muted-foreground">{t.columns.length}</td>
-                            <td className="max-w-[400px] truncate px-4 py-2 text-xs text-muted-foreground" title={t.columns.join(", ")}>{t.columns.join(", ")}</td>
+                {/* Table view */}
+                <div style={{ display: view === "table" ? undefined : "none" }}>
+                  {isAllTables ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 z-10">
+                          <tr className="border-b border-border bg-accent/80 backdrop-blur-sm">
+                            <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">Table</th>
+                            <th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">Rows</th>
+                            <th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">Columns</th>
+                            <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">Column Names</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {view === "table" && !isAllTables && currentTable && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 z-10">
-                        <tr className="border-b border-border bg-accent/80 backdrop-blur-sm">
-                          {currentTable.columns.map((col) => {
-                            const colType = columnTypes[col] ?? "string";
-                            const Icon = TYPE_ICON[colType];
-                            return (
-                              <th
-                                key={col}
-                                onClick={() => handleColumnSort(col)}
-                                className="cursor-pointer select-none whitespace-nowrap px-4 py-2 text-left font-medium text-foreground hover:bg-accent"
-                              >
-                                <span className="inline-flex items-center gap-1.5">
-                                  <Icon className={`h-3 w-3 ${TYPE_COLOR[colType]}`} />
-                                  {col}
-                                  {sortColumn === col && sortDirection === "asc" && (
-                                    <ChevronUp className="h-3 w-3 text-indigo-400" />
-                                  )}
-                                  {sortColumn === col && sortDirection === "desc" && (
-                                    <ChevronDown className="h-3 w-3 text-indigo-400" />
-                                  )}
-                                </span>
-                              </th>
-                            );
-                          })}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pageRows.map((row, i) => (
-                          <tr
-                            key={i}
-                            className="border-b border-border/30 transition-colors hover:bg-accent/30"
-                          >
+                        </thead>
+                        <tbody>
+                          {tables.map((t) => (
+                            <tr
+                              key={t.name}
+                              onClick={() => setSelectedTable(t.name)}
+                              className="cursor-pointer border-b border-border/30 transition-colors hover:bg-accent/30"
+                            >
+                              <td className="whitespace-nowrap px-4 py-2 font-medium text-foreground">{t.name}</td>
+                              <td className="whitespace-nowrap px-4 py-2 text-right font-mono text-blue-400/80">{t.rows.length}</td>
+                              <td className="whitespace-nowrap px-4 py-2 text-right font-mono text-muted-foreground">{t.columns.length}</td>
+                              <td className="max-w-[400px] truncate px-4 py-2 text-xs text-muted-foreground" title={t.columns.join(", ")}>{t.columns.join(", ")}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : currentTable ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 z-10">
+                          <tr className="border-b border-border bg-accent/80 backdrop-blur-sm">
                             {currentTable.columns.map((col) => {
-                              const val = row[col];
                               const colType = columnTypes[col] ?? "string";
+                              const Icon = TYPE_ICON[colType];
                               return (
-                                <td
+                                <th
                                   key={col}
-                                  className={`max-w-[240px] truncate whitespace-nowrap px-4 py-1.5 ${
-                                    val === null
-                                      ? "text-muted-foreground/30 italic"
-                                      : colType === "number"
-                                        ? "font-mono text-blue-400/80"
-                                        : colType === "boolean"
-                                          ? "text-purple-400/80"
-                                          : colType === "date"
-                                            ? "font-mono text-amber-400/70"
-                                            : "text-muted-foreground"
-                                  }`}
-                                  title={val !== null ? String(val) : "NULL"}
+                                  onClick={() => handleColumnSort(col)}
+                                  className="cursor-pointer select-none whitespace-nowrap px-4 py-2 text-left font-medium text-foreground hover:bg-accent"
                                 >
-                                  {val === null ? "NULL" : typeof val === "boolean" ? (val ? "true" : "false") : String(val)}
-                                </td>
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <Icon className={`h-3 w-3 ${TYPE_COLOR[colType]}`} />
+                                    {col}
+                                    {sortColumn === col && sortDirection === "asc" && (
+                                      <ChevronUp className="h-3 w-3 text-indigo-400" />
+                                    )}
+                                    {sortColumn === col && sortDirection === "desc" && (
+                                      <ChevronDown className="h-3 w-3 text-indigo-400" />
+                                    )}
+                                  </span>
+                                </th>
                               );
                             })}
                           </tr>
-                        ))}
-                        {pageRows.length === 0 && (
-                          <tr>
-                            <td
-                              colSpan={currentTable.columns.length}
-                              className="px-4 py-8 text-center text-sm text-muted-foreground"
+                        </thead>
+                        <tbody>
+                          {pageRows.map((row, i) => (
+                            <tr
+                              key={i}
+                              className="border-b border-border/30 transition-colors hover:bg-accent/30"
                             >
-                              {searchQuery.trim()
-                                ? "No rows match your search."
-                                : "No data available."}
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                              {currentTable.columns.map((col) => {
+                                const val = row[col];
+                                const colType = columnTypes[col] ?? "string";
+                                return (
+                                  <td
+                                    key={col}
+                                    className={`max-w-[240px] truncate whitespace-nowrap px-4 py-1.5 ${
+                                      val === null
+                                        ? "text-muted-foreground/30 italic"
+                                        : colType === "number"
+                                          ? "font-mono text-blue-400/80"
+                                          : colType === "boolean"
+                                            ? "text-purple-400/80"
+                                            : colType === "date"
+                                              ? "font-mono text-amber-400/70"
+                                              : "text-muted-foreground"
+                                    }`}
+                                    title={val !== null ? String(val) : "NULL"}
+                                  >
+                                    {val === null ? "NULL" : typeof val === "boolean" ? (val ? "true" : "false") : String(val)}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                          {pageRows.length === 0 && (
+                            <tr>
+                              <td
+                                colSpan={currentTable.columns.length}
+                                className="px-4 py-8 text-center text-sm text-muted-foreground"
+                              >
+                                {searchQuery.trim()
+                                  ? "No rows match your search."
+                                  : "No data available."}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </div>
 
-                {view === "chart" && !isAllTables && currentTable && (
-                  <DataCharts table={currentTable} />
-                )}
+                {/* Chart view - always rendered to persist config */}
+                <div style={{ display: view === "chart" ? undefined : "none" }}>
+                  {chartTable && <DataCharts table={chartTable} />}
+                </div>
 
-                {view === "chart" && isAllTables && overviewTable && (
-                  <DataCharts table={overviewTable} />
-                )}
-
-                {view === "chat" && (
-                  <DataChat
-                    tables={isAllTables ? tables : currentTable ? [currentTable] : []}
-                    messages={dataChatMessages}
-                    onMessagesChange={setDataChatMessages}
-                  />
-                )}
+                {/* Chat view - always rendered, per-table history */}
+                <div style={{ display: view === "chat" ? undefined : "none" }} className="h-full">
+                  {chatTables.length > 0 && (
+                    <DataChat
+                      tables={chatTables}
+                      messages={currentChatMessages}
+                      onMessagesChange={handleChatMessagesChange}
+                    />
+                  )}
+                </div>
               </div>
 
               {/* ── Pagination ── */}

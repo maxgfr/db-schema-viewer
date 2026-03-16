@@ -15,6 +15,7 @@ import {
   Copy,
   Download,
   Filter,
+  RotateCcw,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
@@ -244,9 +245,21 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <h2 className="text-lg font-bold text-foreground">AI Assistant</h2>
-            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent" aria-label="Close AI panel">
-              <X className="h-5 w-5 text-muted-foreground" />
-            </button>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <button
+                  onClick={() => { setMessages([]); setStreamingText(""); }}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+                  title="Clear chat history"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </button>
+              )}
+              <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent" aria-label="Close AI panel">
+                <X className="h-5 w-5 text-muted-foreground" />
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}

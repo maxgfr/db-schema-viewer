@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { Send, Square, MessageSquare, Copy } from "lucide-react";
+import { Send, Square, MessageSquare, Copy, RotateCcw } from "lucide-react";
 import type { ParsedDumpTable } from "@/lib/dump/dump-parser";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
 import { queryData } from "@/lib/ai/ai-service";
@@ -223,6 +223,16 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
       {/* Input */}
       <div className="border-t border-border p-3">
         <div className="flex gap-2">
+          {messages.length > 0 && (
+            <button
+              onClick={() => setMessages([])}
+              className="rounded-lg border border-border px-2 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+              title="Clear chat history"
+              aria-label="Clear chat history"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </button>
+          )}
           <input
             type="text"
             value={input}

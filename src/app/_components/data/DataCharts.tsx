@@ -203,6 +203,15 @@ export function DataCharts({ table }: DataChartsProps) {
   const [isLoadingCustom, setIsLoadingCustom] = useState(false);
   const [activeTab, setActiveTab] = useState<"manual" | "ai">("manual");
 
+  // Reset column selections when table changes (keep chartType & aggregation)
+  const [prevTableName, setPrevTableName] = useState(table.name);
+  if (prevTableName !== table.name) {
+    setPrevTableName(table.name);
+    setXCol(categoryCols[0] ?? table.columns[0] ?? "");
+    setYCol(numericCols[0] ?? table.columns[1] ?? "");
+    setAiSuggestions([]);
+  }
+
   const manualChartData = useMemo(
     () => processChartData(table, xCol, yCol, aggregation),
     [table, xCol, yCol, aggregation]
