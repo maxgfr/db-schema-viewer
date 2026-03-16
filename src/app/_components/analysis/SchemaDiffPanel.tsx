@@ -203,7 +203,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
             ) : (
               <>
                 <div className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-3">
-                  <p className="text-sm font-medium text-indigo-300">{diff.summary}</p>
+                  <p className="text-sm font-medium text-indigo-600 dark:text-indigo-300">{diff.summary}</p>
                 </div>
 
                 {noChanges && (

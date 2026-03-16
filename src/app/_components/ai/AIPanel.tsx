@@ -28,6 +28,7 @@ import {
 interface AIPanelProps {
   diagram: Diagram;
   onClose: () => void;
+  visible?: boolean;
 }
 
 interface ChatMessage {
@@ -53,7 +54,7 @@ const QUICK_ACTIONS = [
   { label: "Find issues", prompt: "Find potential issues or anti-patterns in my schema" },
 ];
 
-export function AIPanel({ diagram, onClose }: AIPanelProps) {
+export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
   const [tab, setTab] = useState<"chat" | "challenge">("chat");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -305,7 +306,7 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
                     key={i}
                     className={`group relative rounded-lg px-3 py-2 text-sm ${
                       msg.role === "user"
-                        ? "ml-8 bg-indigo-500/20 text-indigo-100"
+                        ? "ml-8 bg-indigo-500/20 text-foreground"
                         : "mr-8 bg-accent text-foreground"
                     }`}
                   >
@@ -477,7 +478,7 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
                         <p className="mb-1 text-sm text-foreground">
                           {issue.description}
                         </p>
-                        <p className="text-xs text-indigo-300">
+                        <p className="text-xs text-indigo-600 dark:text-indigo-300">
                           {issue.suggestion}
                         </p>
                       </div>
@@ -503,6 +504,8 @@ export function AIPanel({ diagram, onClose }: AIPanelProps) {
       </div>
     </>
   );
+
+  if (!visible) return null;
 
   return createPortal(modalContent, document.body);
 }

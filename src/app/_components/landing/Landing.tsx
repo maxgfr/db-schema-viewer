@@ -164,7 +164,7 @@ export function Landing({ onDiagramCreated, theme, themeMode, onToggleTheme }: L
           <div className="flex flex-col items-center text-center">
             <div className="mb-8 flex items-center gap-3 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-5 py-2.5">
               <Database className="h-6 w-6 text-indigo-400" />
-              <span className="text-sm font-semibold text-indigo-300">Open Source &middot; Free &middot; No Sign-up</span>
+              <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">Open Source &middot; Free &middot; No Sign-up</span>
             </div>
 
             <h1 className="mb-6 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl lg:text-6xl">

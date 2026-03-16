@@ -107,7 +107,7 @@ export function SchemaSidebar({
                 }}
                 className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                   isSelected
-                    ? "bg-indigo-500/20 text-indigo-300"
+                    ? "bg-indigo-500/20 text-indigo-600 dark:text-indigo-300"
                     : "text-foreground/80 hover:bg-accent"
                 }`}
               >

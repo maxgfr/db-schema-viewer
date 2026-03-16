@@ -149,7 +149,7 @@ export function EditorLayout({
 
         <div className="flex items-center gap-2">
           <h1 className="text-sm font-semibold text-foreground">{diagram.name}</h1>
-          <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-xs font-medium text-indigo-300">
+          <span className="rounded bg-indigo-500/20 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:text-indigo-300">
             {DATABASE_TYPE_LABELS[diagram.databaseType]}
           </span>
         </div>
@@ -285,15 +285,16 @@ export function EditorLayout({
           onClose={() => setShowExport(false)}
         />
       )}
-      {showAI && (
-        <AIPanel
-          diagram={diagram}
-          onClose={() => setShowAI(false)}
-        />
-      )}
-      {showData && (
-        <DataExplorer onClose={() => setShowData(false)} diagram={diagram} />
-      )}
+      <AIPanel
+        diagram={diagram}
+        onClose={() => setShowAI(false)}
+        visible={showAI}
+      />
+      <DataExplorer
+        onClose={() => setShowData(false)}
+        diagram={diagram}
+        visible={showData}
+      />
       {showSettings && (
         <APIKeySettings onClose={() => setShowSettings(false)} />
       )}

@@ -210,7 +210,7 @@ export function ChallengeTab({ diagram }: ChallengeTabProps) {
                 <p className="mb-1 text-sm text-foreground">
                   {issue.description}
                 </p>
-                <p className="text-xs text-indigo-300">
+                <p className="text-xs text-indigo-600 dark:text-indigo-300">
                   {issue.suggestion}
                 </p>
               </div>

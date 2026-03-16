@@ -31,6 +31,7 @@ import { DataCharts } from "./DataCharts";
 interface DataExplorerProps {
   onClose: () => void;
   diagram?: Diagram;
+  visible?: boolean;
 }
 
 type DataSource = "none" | "upload" | "fake";
@@ -51,7 +52,7 @@ const TYPE_COLOR: Record<InferredType, string> = {
   null: "text-muted-foreground/50",
 };
 
-export function DataExplorer({ onClose, diagram }: DataExplorerProps) {
+export function DataExplorer({ onClose, diagram, visible = true }: DataExplorerProps) {
   const [tables, setTables] = useState<ParsedDumpTable[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [view, setView] = useState<"table" | "chart">("table");
@@ -614,6 +615,8 @@ export function DataExplorer({ onClose, diagram }: DataExplorerProps) {
       </div>
     </>
   );
+
+  if (!visible) return null;
 
   return createPortal(modalContent, document.body);
 }
