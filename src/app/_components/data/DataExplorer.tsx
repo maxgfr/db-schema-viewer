@@ -3,16 +3,19 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { X, Upload, Table, BarChart3, Download, Search, ChevronUp, ChevronDown } from "lucide-react";
+import { X, Upload, Table, BarChart3, Download, Search, ChevronUp, ChevronDown, FlaskConical, RefreshCw } from "lucide-react";
 import { parseSQLDump, type ParsedDumpTable } from "@/lib/dump/dump-parser";
+import { generateFakeData } from "@/lib/dump/fake-data-generator";
 import { inferColumnTypes } from "@/lib/dump/data-types";
+import type { Diagram } from "@/lib/domain";
 import { DataCharts } from "./DataCharts";
 
 interface DataExplorerProps {
   onClose: () => void;
+  diagram?: Diagram;
 }
 
-export function DataExplorer({ onClose }: DataExplorerProps) {
+export function DataExplorer({ onClose, diagram }: DataExplorerProps) {
   const [tables, setTables] = useState<ParsedDumpTable[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [view, setView] = useState<"table" | "chart">("table");
@@ -21,6 +24,7 @@ export function DataExplorer({ onClose }: DataExplorerProps) {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc" | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [fakeSeed, setFakeSeed] = useState(42);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const PAGE_SIZE = 50;
 
@@ -44,6 +48,7 @@ export function DataExplorer({ onClose }: DataExplorerProps) {
         }
         setTables(parsed);
         setSelectedTable(parsed[0]!.name);
+        setPage(0);
         setSearchQuery("");
         setSortColumn(null);
         setSortDirection(null);
@@ -57,6 +62,31 @@ export function DataExplorer({ onClose }: DataExplorerProps) {
     };
     reader.readAsText(file);
   }, []);
+
+  const handleGenerateFakeData = useCallback(() => {
+    if (!diagram || diagram.tables.length === 0) {
+      toast.error("No schema loaded to generate data from");
+      return;
+    }
+    try {
+      const nextSeed = fakeSeed + 1;
+      const faked = generateFakeData(diagram.tables, diagram.relationships, { seed: nextSeed });
+      if (faked.length === 0) {
+        toast.error("Could not generate data for the current schema");
+        return;
+      }
+      setFakeSeed(nextSeed);
+      setTables(faked);
+      setSelectedTable(faked[0]!.name);
+      setPage(0);
+      setSearchQuery("");
+      setSortColumn(null);
+      setSortDirection(null);
+      toast.success(`Generated fake data for ${faked.length} tables (${faked[0]!.rows.length} rows each)`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate fake data");
+    }
+  }, [diagram, fakeSeed]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -232,6 +262,25 @@ export function DataExplorer({ onClose }: DataExplorerProps) {
                   }}
                 />
               </div>
+              {diagram && diagram.tables.length > 0 && (
+                <div className="mt-6 flex flex-col items-center">
+                  <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="h-px w-12 bg-border" />
+                    <span>or</span>
+                    <div className="h-px w-12 bg-border" />
+                  </div>
+                  <button
+                    onClick={handleGenerateFakeData}
+                    className="flex items-center gap-2 rounded-xl border border-border bg-accent px-6 py-3 font-semibold text-foreground transition-colors hover:bg-accent/80"
+                  >
+                    <FlaskConical className="h-4 w-4" />
+                    Generate Fake Data
+                  </button>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Generate realistic test data based on your {diagram.tables.length} loaded tables
+                  </p>
+                </div>
+              )}
               <p className="mt-4 max-w-md text-center text-xs text-muted-foreground">
                 This feature parses INSERT INTO statements from .sql files to let you explore the actual data in your schema.
               </p>
@@ -259,6 +308,17 @@ export function DataExplorer({ onClose }: DataExplorerProps) {
                 </select>
 
                 <div className="flex-1" />
+
+                {diagram && diagram.tables.length > 0 && (
+                  <button
+                    onClick={handleGenerateFakeData}
+                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                    title="Regenerate fake data from schema"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Regenerate
+                  </button>
+                )}
 
                 <button
                   onClick={handleExportCSV}

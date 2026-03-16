@@ -292,7 +292,7 @@ export function EditorLayout({
         />
       )}
       {showData && (
-        <DataExplorer onClose={() => setShowData(false)} />
+        <DataExplorer onClose={() => setShowData(false)} diagram={diagram} />
       )}
       {showSettings && (
         <APIKeySettings onClose={() => setShowSettings(false)} />

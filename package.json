@@ -20,6 +20,7 @@
     "@ai-sdk/google": "^2.0.44",
     "@ai-sdk/mistral": "^2.0.25",
     "@ai-sdk/openai": "^2.0.79",
+    "@faker-js/faker": "^10.3.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
