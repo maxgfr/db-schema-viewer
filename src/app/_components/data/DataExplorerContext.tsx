@@ -36,7 +36,10 @@ export interface PerTableChartState {
   customPrompt: string;
 }
 
+export type ViewTab = "table" | "chart" | "chat";
+
 export interface PerTableViewState {
+  view: ViewTab;
   page: number;
   searchQuery: string;
   sortColumn: string | null;
@@ -46,6 +49,7 @@ export interface PerTableViewState {
 /* ---------- Defaults ---------- */
 
 export const DEFAULT_VIEW_STATE: PerTableViewState = {
+  view: "table",
   page: 0,
   searchQuery: "",
   sortColumn: null,
@@ -72,8 +76,6 @@ interface DataExplorerContextValue {
   setTables: Dispatch<SetStateAction<ParsedDumpTable[]>>;
   selectedTable: string | "__all__" | null;
   setSelectedTable: Dispatch<SetStateAction<string | "__all__" | null>>;
-  view: "table" | "chart" | "chat";
-  setView: Dispatch<SetStateAction<"table" | "chart" | "chat">>;
   dataSource: DataSource;
   setDataSource: Dispatch<SetStateAction<DataSource>>;
   fakeSeed: number;
@@ -113,7 +115,6 @@ export function useDataExplorer() {
 export function DataExplorerProvider({ children }: { children: ReactNode }) {
   const [tables, setTables] = useState<ParsedDumpTable[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | "__all__" | null>(null);
-  const [view, setView] = useState<"table" | "chart" | "chat">("table");
   const [dataSource, setDataSource] = useState<DataSource>("none");
   const [fakeSeed, setFakeSeed] = useState(42);
 
@@ -172,8 +173,6 @@ export function DataExplorerProvider({ children }: { children: ReactNode }) {
       setTables,
       selectedTable,
       setSelectedTable,
-      view,
-      setView,
       dataSource,
       setDataSource,
       fakeSeed,
@@ -189,7 +188,6 @@ export function DataExplorerProvider({ children }: { children: ReactNode }) {
     [
       tables,
       selectedTable,
-      view,
       dataSource,
       fakeSeed,
       chartStates,

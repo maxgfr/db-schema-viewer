@@ -17,6 +17,7 @@ interface DataChatProps {
   tables: ParsedDumpTable[];
   messages: DataChatMessage[];
   onMessagesChange: (update: MessageUpdater) => void;
+  chatKey: string;
 }
 
 const SINGLE_TABLE_ACTIONS = [
@@ -33,13 +34,17 @@ const MULTI_TABLE_ACTIONS = [
   { label: "Key insights", prompt: "What are the top 5 most interesting insights from this entire dataset?" },
 ];
 
-export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) {
+export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataChatProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamingTextRef = useRef("");
+  const streamChatKeyRef = useRef<string | null>(null);
+
+  // Only show streaming UI for the conversation that started it
+  const isActiveStream = streamChatKeyRef.current === chatKey;
 
   const isMultiTable = tables.length > 1;
   const quickActions = isMultiTable ? MULTI_TABLE_ACTIONS : SINGLE_TABLE_ACTIONS;
@@ -91,6 +96,7 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
     setIsLoading(true);
     setStreamingText("");
     streamingTextRef.current = "";
+    streamChatKeyRef.current = chatKey;
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -149,7 +155,7 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, tables, onMessagesChange]);
+  }, [input, isLoading, messages, tables, onMessagesChange, chatKey]);
 
   const placeholder = isMultiTable
     ? `Ask about all ${tables.length} tables...`
@@ -158,7 +164,7 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-3 overflow-y-auto p-4">
-        {messages.length === 0 && !streamingText && (
+        {messages.length === 0 && !(isActiveStream && streamingText) && (
           <div className="flex flex-col items-center gap-4 py-10 text-center">
             <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
             <div>
@@ -204,7 +210,7 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
             )}
           </div>
         ))}
-        {streamingText && (
+        {isActiveStream && streamingText && (
           <div className="mr-8 rounded-lg bg-accent px-3 py-2 text-sm text-foreground">
             <MarkdownContent content={streamingText} />
           </div>
@@ -231,9 +237,9 @@ export function DataChat({ tables, messages, onMessagesChange }: DataChatProps) 
             onKeyDown={(e) => e.key === "Enter" && !isLoading && handleSend()}
             placeholder={placeholder}
             className="flex-1 rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
-            disabled={isLoading}
+            disabled={isActiveStream && isLoading}
           />
-          {isLoading ? (
+          {isActiveStream && isLoading ? (
             <button
               onClick={handleStop}
               className="rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-500"
