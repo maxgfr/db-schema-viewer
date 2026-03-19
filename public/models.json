@@ -17575,6 +17575,36 @@
           "output": 131072
         }
       },
+      "MiniMax-M2.7-highspeed": {
+        "id": "MiniMax-M2.7-highspeed",
+        "name": "MiniMax-M2.7-highspeed",
+        "family": "minimax",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_write": 0
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        }
+      },
       "MiniMax-M2": {
         "id": "MiniMax-M2",
         "name": "MiniMax-M2",
@@ -17655,6 +17685,36 @@
         "cost": {
           "input": 0,
           "output": 0
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        }
+      },
+      "MiniMax-M2.7": {
+        "id": "MiniMax-M2.7",
+        "name": "MiniMax-M2.7",
+        "family": "minimax",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_write": 0
         },
         "limit": {
           "context": 204800,
@@ -20676,7 +20736,8 @@
         "limit": {
           "context": 262144,
           "output": 65536
-        }
+        },
+        "status": "deprecated"
       },
       "gemini-3-flash": {
         "id": "gemini-3-flash",
@@ -20991,6 +21052,42 @@
           "npm": "@ai-sdk/openai"
         }
       },
+      "mimo-v2-omni-free": {
+        "id": "mimo-v2-omni-free",
+        "name": "MiMo V2 Omni Free",
+        "family": "mimo-omni-free",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "interleaved": {
+          "field": "reasoning_content"
+        },
+        "temperature": true,
+        "knowledge": "2024-12",
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text",
+            "image",
+            "audio",
+            "pdf"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0
+        },
+        "limit": {
+          "context": 262144,
+          "output": 64000
+        }
+      },
       "kimi-k2.5": {
         "id": "kimi-k2.5",
         "name": "Kimi K2.5",
@@ -21058,6 +21155,39 @@
         "status": "deprecated",
         "provider": {
           "npm": "@ai-sdk/anthropic"
+        }
+      },
+      "mimo-v2-pro-free": {
+        "id": "mimo-v2-pro-free",
+        "name": "MiMo V2 Pro Free",
+        "family": "mimo-pro-free",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "interleaved": {
+          "field": "reasoning_content"
+        },
+        "temperature": true,
+        "knowledge": "2024-12",
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0
+        },
+        "limit": {
+          "context": 1048576,
+          "output": 64000
         }
       },
       "gpt-5": {
@@ -21643,6 +21773,43 @@
           "npm": "@ai-sdk/anthropic"
         }
       },
+      "gpt-5.4-nano": {
+        "id": "gpt-5.4-nano",
+        "name": "GPT-5.4 Nano",
+        "family": "gpt-nano",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "structured_output": true,
+        "temperature": false,
+        "knowledge": "2025-08-31",
+        "release_date": "2026-03-17",
+        "last_updated": "2026-03-17",
+        "modalities": {
+          "input": [
+            "text",
+            "image",
+            "pdf"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": false,
+        "cost": {
+          "input": 0.2,
+          "output": 1.25,
+          "cache_read": 0.02
+        },
+        "limit": {
+          "context": 400000,
+          "input": 272000,
+          "output": 128000
+        },
+        "provider": {
+          "npm": "@ai-sdk/openai"
+        }
+      },
       "gpt-5-nano": {
         "id": "gpt-5-nano",
         "name": "GPT-5 Nano",
@@ -21669,6 +21836,43 @@
           "input": 0,
           "output": 0,
           "cache_read": 0
+        },
+        "limit": {
+          "context": 400000,
+          "input": 272000,
+          "output": 128000
+        },
+        "provider": {
+          "npm": "@ai-sdk/openai"
+        }
+      },
+      "gpt-5.4-mini": {
+        "id": "gpt-5.4-mini",
+        "name": "GPT-5.4 Mini",
+        "family": "gpt-mini",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "structured_output": true,
+        "temperature": false,
+        "knowledge": "2025-08-31",
+        "release_date": "2026-03-17",
+        "last_updated": "2026-03-17",
+        "modalities": {
+          "input": [
+            "text",
+            "image",
+            "pdf"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": false,
+        "cost": {
+          "input": 0.75,
+          "output": 4.5,
+          "cache_read": 0.075
         },
         "limit": {
           "context": 400000,
@@ -25129,7 +25333,7 @@
         "temperature": true,
         "knowledge": "2025-08",
         "release_date": "2026-02-17",
-        "last_updated": "2026-02-17",
+        "last_updated": "2026-03-18",
         "modalities": {
           "input": [
             "text",
@@ -25145,16 +25349,10 @@
           "input": 3,
           "output": 15,
           "cache_read": 0.3,
-          "cache_write": 3.75,
-          "context_over_200k": {
-            "input": 6,
-            "output": 22.5,
-            "cache_read": 0.6,
-            "cache_write": 7.5
-          }
+          "cache_write": 3.75
         },
         "limit": {
-          "context": 200000,
+          "context": 1000000,
           "output": 64000
         }
       },
@@ -25353,7 +25551,7 @@
         "temperature": true,
         "knowledge": "2025-08",
         "release_date": "2026-02-17",
-        "last_updated": "2026-02-17",
+        "last_updated": "2026-03-18",
         "modalities": {
           "input": [
             "text",
@@ -25369,16 +25567,10 @@
           "input": 3,
           "output": 15,
           "cache_read": 0.3,
-          "cache_write": 3.75,
-          "context_over_200k": {
-            "input": 6,
-            "output": 22.5,
-            "cache_read": 0.6,
-            "cache_write": 7.5
-          }
+          "cache_write": 3.75
         },
         "limit": {
-          "context": 200000,
+          "context": 1000000,
           "output": 64000
         }
       },
@@ -25965,7 +26157,7 @@
         "temperature": true,
         "knowledge": "2025-05",
         "release_date": "2026-02-05",
-        "last_updated": "2026-02-05",
+        "last_updated": "2026-03-18",
         "modalities": {
           "input": [
             "text",
@@ -25981,16 +26173,10 @@
           "input": 5,
           "output": 25,
           "cache_read": 0.5,
-          "cache_write": 6.25,
-          "context_over_200k": {
-            "input": 10,
-            "output": 37.5,
-            "cache_read": 1,
-            "cache_write": 12.5
-          }
+          "cache_write": 6.25
         },
         "limit": {
-          "context": 200000,
+          "context": 1000000,
           "output": 128000
         }
       },
@@ -26127,7 +26313,7 @@
         "temperature": true,
         "knowledge": "2025-05",
         "release_date": "2026-02-05",
-        "last_updated": "2026-02-05",
+        "last_updated": "2026-03-18",
         "modalities": {
           "input": [
             "text",
@@ -26143,16 +26329,10 @@
           "input": 5,
           "output": 25,
           "cache_read": 0.5,
-          "cache_write": 6.25,
-          "context_over_200k": {
-            "input": 10,
-            "output": 37.5,
-            "cache_read": 1,
-            "cache_write": 12.5
-          }
+          "cache_write": 6.25
         },
         "limit": {
-          "context": 200000,
+          "context": 1000000,
           "output": 128000
         }
       },
@@ -26195,7 +26375,7 @@
         "temperature": true,
         "knowledge": "2025-05",
         "release_date": "2026-02-05",
-        "last_updated": "2026-02-05",
+        "last_updated": "2026-03-18",
         "modalities": {
           "input": [
             "text",
@@ -26211,16 +26391,10 @@
           "input": 5,
           "output": 25,
           "cache_read": 0.5,
-          "cache_write": 6.25,
-          "context_over_200k": {
-            "input": 10,
-            "output": 37.5,
-            "cache_read": 1,
-            "cache_write": 12.5
-          }
+          "cache_write": 6.25
         },
         "limit": {
-          "context": 200000,
+          "context": 1000000,
           "output": 128000
         }
       },
@@ -26296,7 +26470,7 @@
         "temperature": true,
         "knowledge": "2025-08",
         "release_date": "2026-02-17",
-        "last_updated": "2026-02-17",
+        "last_updated": "2026-03-18",
         "modalities": {
           "input": [
             "text",
@@ -26312,16 +26486,10 @@
           "input": 3,
           "output": 15,
           "cache_read": 0.3,
-          "cache_write": 3.75,
-          "context_over_200k": {
-            "input": 6,
-            "output": 22.5,
-            "cache_read": 0.6,
-            "cache_write": 7.5
-          }
+          "cache_write": 3.75
         },
         "limit": {
-          "context": 200000,
+          "context": 1000000,
           "output": 64000
         }
       },
@@ -26785,7 +26953,7 @@
         "temperature": true,
         "knowledge": "2025-08",
         "release_date": "2026-02-17",
-        "last_updated": "2026-02-17",
+        "last_updated": "2026-03-18",
         "modalities": {
           "input": [
             "text",
@@ -26801,16 +26969,10 @@
           "input": 3,
           "output": 15,
           "cache_read": 0.3,
-          "cache_write": 3.75,
-          "context_over_200k": {
-            "input": 6,
-            "output": 22.5,
-            "cache_read": 0.6,
-            "cache_write": 7.5
-          }
+          "cache_write": 3.75
         },
         "limit": {
-          "context": 200000,
+          "context": 1000000,
           "output": 64000
         }
       },
@@ -27416,7 +27578,7 @@
         "temperature": true,
         "knowledge": "2025-05",
         "release_date": "2026-02-05",
-        "last_updated": "2026-02-05",
+        "last_updated": "2026-03-18",
         "modalities": {
           "input": [
             "text",
@@ -27432,16 +27594,10 @@
           "input": 5,
           "output": 25,
           "cache_read": 0.5,
-          "cache_write": 6.25,
-          "context_over_200k": {
-            "input": 10,
-            "output": 37.5,
-            "cache_read": 1,
-            "cache_write": 12.5
-          }
+          "cache_write": 6.25
         },
         "limit": {
-          "context": 200000,
+          "context": 1000000,
           "output": 128000
         }
       },
@@ -27970,6 +28126,36 @@
           "output": 131072
         }
       },
+      "MiniMax-M2.7-highspeed": {
+        "id": "MiniMax-M2.7-highspeed",
+        "name": "MiniMax-M2.7-highspeed",
+        "family": "minimax",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.6,
+          "output": 2.4,
+          "cache_read": 0.06,
+          "cache_write": 0.375
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        }
+      },
       "MiniMax-M2": {
         "id": "MiniMax-M2",
         "name": "MiniMax-M2",
@@ -28050,6 +28236,36 @@
         "cost": {
           "input": 0.3,
           "output": 1.2
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        }
+      },
+      "MiniMax-M2.7": {
+        "id": "MiniMax-M2.7",
+        "name": "MiniMax-M2.7",
+        "family": "minimax",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.3,
+          "output": 1.2,
+          "cache_read": 0.06,
+          "cache_write": 0.375
         },
         "limit": {
           "context": 204800,
@@ -28330,6 +28546,74 @@
         "provider": {
           "npm": "@ai-sdk/anthropic",
           "api": "https://${AZURE_COGNITIVE_SERVICES_RESOURCE_NAME}.services.ai.azure.com/anthropic/v1"
+        }
+      },
+      "gpt-5.4-nano": {
+        "id": "gpt-5.4-nano",
+        "name": "GPT-5.4 Nano",
+        "family": "gpt-nano",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "structured_output": true,
+        "temperature": false,
+        "knowledge": "2025-08-31",
+        "release_date": "2026-03-17",
+        "last_updated": "2026-03-17",
+        "modalities": {
+          "input": [
+            "text",
+            "image",
+            "pdf"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": false,
+        "cost": {
+          "input": 0.2,
+          "output": 1.25,
+          "cache_read": 0.02
+        },
+        "limit": {
+          "context": 400000,
+          "input": 272000,
+          "output": 128000
+        }
+      },
+      "gpt-5.4-mini": {
+        "id": "gpt-5.4-mini",
+        "name": "GPT-5.4 Mini",
+        "family": "gpt-mini",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "structured_output": true,
+        "temperature": false,
+        "knowledge": "2025-08-31",
+        "release_date": "2026-03-17",
+        "last_updated": "2026-03-17",
+        "modalities": {
+          "input": [
+            "text",
+            "image",
+            "pdf"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": false,
+        "cost": {
+          "input": 0.75,
+          "output": 4.5,
+          "cache_read": 0.075
+        },
+        "limit": {
+          "context": 400000,
+          "input": 272000,
+          "output": 128000
         }
       },
       "phi-3-small-8k-instruct": {
@@ -36096,6 +36380,36 @@
           "output": 131072
         }
       },
+      "MiniMax-M2.7-highspeed": {
+        "id": "MiniMax-M2.7-highspeed",
+        "name": "MiniMax-M2.7-highspeed",
+        "family": "minimax",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_write": 0
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        }
+      },
       "MiniMax-M2": {
         "id": "MiniMax-M2",
         "name": "MiniMax-M2",
@@ -36176,6 +36490,36 @@
         "cost": {
           "input": 0,
           "output": 0
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        }
+      },
+      "MiniMax-M2.7": {
+        "id": "MiniMax-M2.7",
+        "name": "MiniMax-M2.7",
+        "family": "minimax",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0,
+          "cache_read": 0,
+          "cache_write": 0
         },
         "limit": {
           "context": 204800,
@@ -49037,6 +49381,36 @@
           "output": 131072
         }
       },
+      "minimax/minimax-m2.7": {
+        "id": "minimax/minimax-m2.7",
+        "name": "MiniMax M2.7",
+        "family": "minimax",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.3,
+          "output": 1.2,
+          "cache_read": 0.06,
+          "cache_write": 0.375
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        }
+      },
       "minimax/minimax-m2": {
         "id": "minimax/minimax-m2",
         "name": "MiniMax M2",
@@ -59890,6 +60264,39 @@
           "output": 131072
         }
       },
+      "minimax-m2.7": {
+        "id": "minimax-m2.7",
+        "name": "MiniMax M2.7",
+        "family": "minimax-m2.7",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "knowledge": "2025-01",
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.3,
+          "output": 1.2,
+          "cache_read": 0.06
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        },
+        "provider": {
+          "npm": "@ai-sdk/anthropic"
+        }
+      },
       "kimi-k2.5": {
         "id": "kimi-k2.5",
         "name": "Kimi K2.5",
@@ -59928,7 +60335,7 @@
       "minimax-m2.5": {
         "id": "minimax-m2.5",
         "name": "MiniMax M2.5",
-        "family": "minimax",
+        "family": "minimax-m2.5",
         "attachment": false,
         "reasoning": true,
         "tool_call": true,
@@ -60070,9 +60477,9 @@
       "FIRMWARE_API_KEY"
     ],
     "npm": "@ai-sdk/openai-compatible",
-    "api": "https://app.firmware.ai/api/v1",
+    "api": "https://app.frogbot.ai/api/v1",
     "name": "Firmware",
-    "doc": "https://docs.firmware.ai",
+    "doc": "https://docs.frogbot.ai",
     "models": {
       "gpt-5-4": {
         "id": "gpt-5-4",
@@ -73663,6 +74070,69 @@
           "output": 131072
         }
       },
+      "minimax/minimax-m2.7": {
+        "id": "minimax/minimax-m2.7",
+        "name": "Minimax M2.7",
+        "family": "minimax",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text",
+            "image",
+            "pdf"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.3,
+          "output": 1.2,
+          "cache_read": 0.06,
+          "cache_write": 0.375
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131000
+        }
+      },
+      "minimax/minimax-m2.7-highspeed": {
+        "id": "minimax/minimax-m2.7-highspeed",
+        "name": "MiniMax M2.7 High Speed",
+        "family": "minimax",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.6,
+          "output": 2.4,
+          "cache_read": 0.06,
+          "cache_write": 0.375
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131100
+        }
+      },
       "minimax/minimax-m2": {
         "id": "minimax/minimax-m2",
         "name": "MiniMax M2",
@@ -76970,6 +77440,36 @@
           "output": 131072
         }
       },
+      "MiniMax-M2.7-highspeed": {
+        "id": "MiniMax-M2.7-highspeed",
+        "name": "MiniMax-M2.7-highspeed",
+        "family": "minimax",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.6,
+          "output": 2.4,
+          "cache_read": 0.06,
+          "cache_write": 0.375
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        }
+      },
       "MiniMax-M2": {
         "id": "MiniMax-M2",
         "name": "MiniMax-M2",
@@ -77050,6 +77550,36 @@
         "cost": {
           "input": 0.3,
           "output": 1.2
+        },
+        "limit": {
+          "context": 204800,
+          "output": 131072
+        }
+      },
+      "MiniMax-M2.7": {
+        "id": "MiniMax-M2.7",
+        "name": "MiniMax-M2.7",
+        "family": "minimax",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-03-18",
+        "last_updated": "2026-03-18",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.3,
+          "output": 1.2,
+          "cache_read": 0.06,
+          "cache_write": 0.375
         },
         "limit": {
           "context": 204800,
@@ -109865,6 +110395,40 @@
           "output": 4096
         }
       },
+      "gpt-5.4-nano": {
+        "id": "gpt-5.4-nano",
+        "name": "GPT-5.4 Nano",
+        "family": "gpt-nano",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "structured_output": true,
+        "temperature": false,
+        "knowledge": "2025-08-31",
+        "release_date": "2026-03-17",
+        "last_updated": "2026-03-17",
+        "modalities": {
+          "input": [
+            "text",
+            "image",
+            "pdf"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": false,
+        "cost": {
+          "input": 0.2,
+          "output": 1.25,
+          "cache_read": 0.02
+        },
+        "limit": {
+          "context": 400000,
+          "input": 272000,
+          "output": 128000
+        }
+      },
       "phi-4-reasoning": {
         "id": "phi-4-reasoning",
         "name": "Phi-4-reasoning",
@@ -110159,6 +110723,40 @@
         "limit": {
           "context": 8192,
           "output": 2048
+        }
+      },
+      "gpt-5.4-mini": {
+        "id": "gpt-5.4-mini",
+        "name": "GPT-5.4 Mini",
+        "family": "gpt-mini",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "structured_output": true,
+        "temperature": false,
+        "knowledge": "2025-08-31",
+        "release_date": "2026-03-17",
+        "last_updated": "2026-03-17",
+        "modalities": {
+          "input": [
+            "text",
+            "image",
+            "pdf"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": false,
+        "cost": {
+          "input": 0.75,
+          "output": 4.5,
+          "cache_read": 0.075
+        },
+        "limit": {
+          "context": 400000,
+          "input": 272000,
+          "output": 128000
         }
       }
     }
@@ -111284,7 +111882,7 @@
         "family": "grok",
         "attachment": true,
         "reasoning": true,
-        "tool_call": true,
+        "tool_call": false,
         "temperature": true,
         "release_date": "2026-03-09",
         "last_updated": "2026-03-09",
