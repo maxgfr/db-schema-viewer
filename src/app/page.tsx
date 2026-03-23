@@ -20,7 +20,7 @@ export default function Home() {
     setMounted(true);
 
     // Priority: URL param > last opened diagram
-    const hasUrlParam = typeof window !== "undefined" && /[?&]d=/.test(window.location.search);
+    const hasUrlParam = typeof window !== "undefined" && /^#d=/.test(window.location.hash);
     if (hasUrlParam) {
       const fromUrl = getStateFromUrl();
       if (fromUrl) {
@@ -41,7 +41,7 @@ export default function Home() {
     urlSyncTimer.current = setTimeout(() => {
       const url = generateShareUrl(diagram);
       const parsed = new URL(url);
-      window.history.replaceState({}, "", parsed.pathname + parsed.search);
+      window.history.replaceState({}, "", parsed.pathname + parsed.hash);
     }, 500);
     return () => { if (urlSyncTimer.current) clearTimeout(urlSyncTimer.current); };
   }, [diagram]);
@@ -71,11 +71,9 @@ export default function Home() {
 
   const handleBack = useCallback(() => {
     setDiagram(null);
-    // Clear URL param
+    // Clear URL hash
     if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("d");
-      window.history.replaceState({}, "", url.toString());
+      window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
 

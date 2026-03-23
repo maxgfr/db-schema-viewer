@@ -74,9 +74,9 @@ export function EditorLayout({
 
   const handleShare = useCallback(() => {
     const size = estimateUrlSize(diagram);
-    if (size > 8000) {
-      toast.warning("Schema is large", {
-        description: `URL is ~${Math.round(size / 1024)}KB. Very large URLs may not work in all browsers.`,
+    if (size > 100_000) {
+      toast.warning("Schema is very large", {
+        description: `URL is ~${Math.round(size / 1024)}KB. Extremely large URLs may not work in all browsers.`,
       });
     }
     const url = generateShareUrl(diagram);

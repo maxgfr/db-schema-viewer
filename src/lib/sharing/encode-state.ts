@@ -59,28 +59,26 @@ export function decodeState(encoded: string): Diagram | null {
 }
 
 /**
- * Build a shareable URL with the diagram compressed in the `?d=` param.
- * Uses encodeURIComponent (not URLSearchParams) to avoid `+` → space issues.
+ * Build a shareable URL with the diagram compressed in the `#d=` hash fragment.
+ * Uses hash instead of query param so the data is never sent to the server,
+ * avoiding HTTP 414 "URI Too Long" errors on large schemas.
  */
 export function generateShareUrl(diagram: Diagram): string {
   const compressed = encodeState(diagram);
   const base = typeof window !== "undefined"
     ? window.location.origin + window.location.pathname
     : "";
-  return `${base}?d=${encodeURIComponent(compressed)}`;
+  return `${base}#d=${compressed}`;
 }
 
 /**
- * Read diagram from the `?d=` query param.
- * Uses regex + decodeURIComponent (not URLSearchParams) because
- * URLSearchParams decodes `+` as space, corrupting lz-string data.
+ * Read diagram from the `#d=` hash fragment in the URL.
  */
 export function getStateFromUrl(): Diagram | null {
   if (typeof window === "undefined") return null;
-  const match = window.location.search.match(/[?&]d=([^&]*)/);
+  const match = window.location.hash.match(/^#d=(.+)/);
   if (!match?.[1]) return null;
-  const encoded = decodeURIComponent(match[1]);
-  return decodeState(encoded);
+  return decodeState(decodeURIComponent(match[1]));
 }
 
 export function estimateUrlSize(diagram: Diagram): number {

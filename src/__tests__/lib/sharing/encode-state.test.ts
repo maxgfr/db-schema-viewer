@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { encodeState, decodeState, estimateUrlSize } from "@/lib/sharing/encode-state";
+import { describe, it, expect, beforeEach } from "vitest";
+import { encodeState, decodeState, estimateUrlSize, generateShareUrl, getStateFromUrl } from "@/lib/sharing/encode-state";
 import type { Diagram } from "@/lib/domain";
 
 const sampleDiagram: Diagram = {
@@ -55,5 +55,50 @@ describe("estimateUrlSize", () => {
   it("returns a positive number", () => {
     const size = estimateUrlSize(sampleDiagram);
     expect(size).toBeGreaterThan(0);
+  });
+});
+
+describe("generateShareUrl", () => {
+  it("uses hash fragment instead of query param", () => {
+    const url = generateShareUrl(sampleDiagram);
+    expect(url).toContain("#d=");
+    expect(url).not.toContain("?d=");
+  });
+
+  it("produces a URL that round-trips via decode", () => {
+    const url = generateShareUrl(sampleDiagram);
+    const hash = url.substring(url.indexOf("#"));
+    const match = hash.match(/^#d=(.+)/);
+    expect(match).not.toBeNull();
+    const decoded = decodeState(decodeURIComponent(match![1]!));
+    expect(decoded).not.toBeNull();
+    expect(decoded!.id).toBe(sampleDiagram.id);
+    expect(decoded!.tables).toHaveLength(1);
+  });
+});
+
+describe("getStateFromUrl", () => {
+  beforeEach(() => {
+    // Reset hash between tests
+    window.location.hash = "";
+  });
+
+  it("reads diagram from hash fragment", () => {
+    const compressed = encodeState(sampleDiagram);
+    window.location.hash = `#d=${compressed}`;
+    const result = getStateFromUrl();
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe(sampleDiagram.id);
+    expect(result!.name).toBe(sampleDiagram.name);
+  });
+
+  it("returns null when no hash is present", () => {
+    window.location.hash = "";
+    expect(getStateFromUrl()).toBeNull();
+  });
+
+  it("returns null for corrupted hash data", () => {
+    window.location.hash = "#d=garbage-data";
+    expect(getStateFromUrl()).toBeNull();
   });
 });
