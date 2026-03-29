@@ -27936,6 +27936,36 @@
           "output": 128000
         }
       },
+      "zai-glm-5": {
+        "id": "zai-glm-5",
+        "name": "GLM-5",
+        "family": "glm",
+        "attachment": true,
+        "reasoning": false,
+        "tool_call": true,
+        "temperature": true,
+        "knowledge": "2024-10",
+        "release_date": "2025-01-20",
+        "last_updated": "2025-02-22",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": false,
+        "cost": {
+          "input": 1,
+          "output": 3.2,
+          "cache_read": 0.2
+        },
+        "limit": {
+          "context": 198000,
+          "output": 8192
+        }
+      },
       "gpt-5-mini": {
         "id": "gpt-5-mini",
         "name": "GPT-5 Mini",
@@ -28354,36 +28384,6 @@
           "output": 128000
         }
       },
-      "glm-5": {
-        "id": "glm-5",
-        "name": "GLM-5",
-        "family": "glm",
-        "attachment": true,
-        "reasoning": false,
-        "tool_call": true,
-        "temperature": true,
-        "knowledge": "2024-10",
-        "release_date": "2025-01-20",
-        "last_updated": "2025-02-22",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": false,
-        "cost": {
-          "input": 1,
-          "output": 3.2,
-          "cache_read": 0.2
-        },
-        "limit": {
-          "context": 198000,
-          "output": 8192
-        }
-      },
       "gpt-5-nano": {
         "id": "gpt-5-nano",
         "name": "GPT-5 Nano",
@@ -28698,6 +28698,35 @@
           "output": 65536
         }
       },
+      "gemma-3n-e2b-it": {
+        "id": "gemma-3n-e2b-it",
+        "name": "Gemma 3n 2B",
+        "family": "gemma",
+        "attachment": true,
+        "reasoning": false,
+        "tool_call": false,
+        "temperature": true,
+        "knowledge": "2024-10",
+        "release_date": "2025-07-09",
+        "last_updated": "2025-07-09",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0
+        },
+        "limit": {
+          "context": 8192,
+          "output": 2000
+        }
+      },
       "gemini-2.5-flash-preview-05-20": {
         "id": "gemini-2.5-flash-preview-05-20",
         "name": "Gemini 2.5 Flash Preview 05-20",
@@ -28771,6 +28800,96 @@
         "limit": {
           "context": 1000000,
           "output": 64000
+        }
+      },
+      "gemma-3-27b-it": {
+        "id": "gemma-3-27b-it",
+        "name": "Gemma 3 27B",
+        "family": "gemma",
+        "attachment": true,
+        "reasoning": false,
+        "tool_call": true,
+        "structured_output": true,
+        "temperature": true,
+        "knowledge": "2024-10",
+        "release_date": "2025-03-12",
+        "last_updated": "2025-03-12",
+        "modalities": {
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0
+        },
+        "limit": {
+          "context": 131072,
+          "output": 8192
+        }
+      },
+      "gemma-3-4b-it": {
+        "id": "gemma-3-4b-it",
+        "name": "Gemma 3 4B",
+        "family": "gemma",
+        "attachment": true,
+        "reasoning": false,
+        "tool_call": false,
+        "temperature": true,
+        "knowledge": "2024-10",
+        "release_date": "2025-03-13",
+        "last_updated": "2025-03-13",
+        "modalities": {
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0
+        },
+        "limit": {
+          "context": 32768,
+          "output": 8192
+        }
+      },
+      "gemma-3n-e4b-it": {
+        "id": "gemma-3n-e4b-it",
+        "name": "Gemma 3n 4B",
+        "family": "gemma",
+        "attachment": true,
+        "reasoning": false,
+        "tool_call": false,
+        "temperature": true,
+        "knowledge": "2024-10",
+        "release_date": "2025-05-20",
+        "last_updated": "2025-05-20",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0
+        },
+        "limit": {
+          "context": 8192,
+          "output": 2000
         }
       },
       "gemini-2.5-pro-preview-06-05": {
@@ -29460,6 +29579,37 @@
         "limit": {
           "context": 1048576,
           "output": 65536
+        }
+      },
+      "gemma-3-12b-it": {
+        "id": "gemma-3-12b-it",
+        "name": "Gemma 3 12B",
+        "family": "gemma",
+        "attachment": true,
+        "reasoning": false,
+        "tool_call": false,
+        "structured_output": true,
+        "temperature": true,
+        "knowledge": "2024-10",
+        "release_date": "2025-03-13",
+        "last_updated": "2025-03-13",
+        "modalities": {
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0
+        },
+        "limit": {
+          "context": 32768,
+          "output": 8192
         }
       },
       "gemini-live-2.5-flash-preview-native-audio": {
