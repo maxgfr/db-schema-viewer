@@ -40,6 +40,9 @@ export interface ParsedRelationship {
   targetColumn: string;
   /** If set, overrides the default uniqueness-based inference. */
   cardinality?: Cardinality;
+  /** When true, this is an ORM-level relation (e.g. Drizzle `relations()`),
+   *  not a DB-level FK constraint. The source field should NOT be marked as FK. */
+  isOrmOnly?: boolean;
 }
 
 /** The result of any parser's first pass (before building the Diagram). */

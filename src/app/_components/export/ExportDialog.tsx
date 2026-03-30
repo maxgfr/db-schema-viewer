@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { X, Image, FileText, Code, Download, Copy, Braces, Database, Layers, Loader2 } from "lucide-react";
 import type { Diagram, DatabaseType } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
-import { exportToPng, exportToSvg, downloadDataUrl } from "@/lib/export/image-export";
+import { exportFullDiagramToPng, exportToSvg, downloadDataUrl } from "@/lib/export/image-export";
 import { exportToPdf } from "@/lib/export/pdf-export";
 import { exportDiagramToSQL } from "@/lib/sql-export";
 import { exportDiagramToMarkdown } from "@/lib/export/markdown-export";
@@ -31,18 +31,17 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   const [mermaidOutput, setMermaidOutput] = useState("");
 
   const handleImageExport = useCallback(async () => {
-    const viewport = document.querySelector(".react-flow__viewport") as HTMLElement;
-    if (!viewport) {
-      toast.error("Canvas not found");
-      return;
-    }
-
     setIsExporting(true);
     try {
       if (imageFormat === "png") {
-        const dataUrl = await exportToPng(viewport, { scale: imageScale, transparent });
+        const { dataUrl } = await exportFullDiagramToPng({ scale: imageScale, transparent });
         downloadDataUrl(dataUrl, `${diagram.name}.png`);
       } else {
+        const viewport = document.querySelector(".react-flow__viewport") as HTMLElement;
+        if (!viewport) {
+          toast.error("Canvas not found");
+          return;
+        }
         const dataUrl = await exportToSvg(viewport, { transparent });
         downloadDataUrl(dataUrl, `${diagram.name}.svg`);
       }
@@ -57,15 +56,9 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   }, [diagram.name, imageFormat, imageScale, transparent]);
 
   const handlePdfExport = useCallback(async () => {
-    const viewport = document.querySelector(".react-flow__viewport") as HTMLElement;
-    if (!viewport) {
-      toast.error("Canvas not found");
-      return;
-    }
-
     setIsExporting(true);
     try {
-      await exportToPdf(viewport, diagram);
+      await exportToPdf(diagram);
       toast.success("Exported as PDF");
     } catch (err) {
       toast.error("Export failed", {

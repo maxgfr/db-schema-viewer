@@ -1,5 +1,5 @@
 import type { jsPDF as JsPDFType } from "jspdf";
-import { exportToPng } from "./image-export";
+import { exportFullDiagramToPng } from "./image-export";
 import type { Diagram, DBTable, DBField } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
 
@@ -190,7 +190,16 @@ function renderTableOfContents(
 
 // ── Diagram Image Page ──────────────────────────────────────────────────
 
-function renderDiagramPage(pdf: JsPDFType, pngDataUrl: string, imgWidth: number, imgHeight: number) {
+function renderDiagramPage(
+  pdf: JsPDFType,
+  pngDataUrl: string,
+  imgWidth: number,
+  imgHeight: number,
+  landscape: boolean
+) {
+  // Add the diagram page with orientation matching the diagram's aspect ratio
+  pdf.addPage("a4", landscape ? "landscape" : "portrait");
+
   pdf.setFontSize(SUBHEADING_SIZE);
   pdf.setFont("helvetica", "bold");
   setTextColor(pdf, COLOR_PRIMARY);
@@ -200,13 +209,19 @@ function renderDiagramPage(pdf: JsPDFType, pngDataUrl: string, imgWidth: number,
   const availableHeight = getUsableHeight(pdf) - MARGIN - 30;
   const ratio = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
 
+  const renderedWidth = imgWidth * ratio;
+  const renderedHeight = imgHeight * ratio;
+
+  // Center the image horizontally
+  const offsetX = MARGIN + (availableWidth - renderedWidth) / 2;
+
   pdf.addImage(
     pngDataUrl,
     "PNG",
-    MARGIN,
+    offsetX,
     MARGIN + 35,
-    imgWidth * ratio,
-    imgHeight * ratio
+    renderedWidth,
+    renderedHeight
   );
 }
 
@@ -422,17 +437,13 @@ function renderTableDetail(
 // ── Main Export ─────────────────────────────────────────────────────────
 
 export async function exportToPdf(
-  element: HTMLElement,
   diagram: Diagram
 ): Promise<void> {
-  const pngDataUrl = await exportToPng(element, { scale: 2 });
+  const { dataUrl: pngDataUrl, width: imgWidth, height: imgHeight } =
+    await exportFullDiagramToPng({ scale: 2 });
 
-  const img = new Image();
-  img.src = pngDataUrl;
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = (err) => reject(new Error(`Failed to load diagram image: ${err}`));
-  });
+  // Use landscape for the diagram page if the image is wider than tall
+  const diagramIsLandscape = imgWidth > imgHeight;
 
   const pdf = await createPDF({
     orientation: "portrait",
@@ -493,12 +504,11 @@ export async function exportToPdf(
   addPageWithFooterPlaceholder(pdf);
   renderTableOfContents(pdf, diagram, tablePageMap);
 
-  // ── Page 3: Diagram Image ──
-  addPageWithFooterPlaceholder(pdf);
-  renderDiagramPage(pdf, pngDataUrl, img.width, img.height);
+  // ── Page 3: Diagram Image (landscape if diagram is wide) ──
+  renderDiagramPage(pdf, pngDataUrl, imgWidth, imgHeight, diagramIsLandscape);
 
-  // ── Page 4+: Table Details ──
-  addPageWithFooterPlaceholder(pdf);
+  // ── Page 4+: Table Details (back to portrait) ──
+  pdf.addPage("a4", "portrait");
   let currentY = MARGIN + 20;
 
   // Section title on first detail page

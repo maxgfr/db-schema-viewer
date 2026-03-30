@@ -127,8 +127,8 @@ function resolveRelationships(
     );
     if (!sourceField || !targetField) continue;
 
-    // Mark field as FK when coming from explicit relationships
-    if (!sourceField.isForeignKey) {
+    // Mark field as FK when coming from DB-level constraints (not ORM-only relations)
+    if (!sourceField.isForeignKey && !rel.isOrmOnly) {
       sourceField.isForeignKey = true;
       sourceField.references = {
         table: targetTable.name,

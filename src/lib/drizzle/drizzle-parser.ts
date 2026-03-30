@@ -8,6 +8,7 @@ interface DrizzleTable {
   tableName: string;
   dialect: "pg" | "mysql" | "sqlite" | "unknown";
   columns: ParsedColumn[];
+  indexes: { name: string; columns: string[]; unique: boolean }[];
 }
 
 interface CallbackRef {
@@ -68,7 +69,7 @@ export function parseDrizzleSchema(content: string, name?: string): Diagram {
     name: dt.tableName,
     schema: undefined,
     columns: dt.columns,
-    indexes: [] as { name: string; columns: string[]; unique: boolean }[],
+    indexes: dt.indexes,
     isView: false,
   }));
 
@@ -78,8 +79,8 @@ export function parseDrizzleSchema(content: string, name?: string): Diagram {
 // ── Import stripping ──────────────────────────────────────────────
 
 /**
- * Remove TypeScript import statements and $type<...>() annotations
- * that can interfere with regex-based parsing.
+ * Remove TypeScript import statements, $type<...>() annotations,
+ * and comments that can interfere with regex-based parsing.
  */
 function stripTypeScriptImports(content: string): string {
   // Remove single-line and multi-line import statements
@@ -91,6 +92,10 @@ function stripTypeScriptImports(content: string): string {
   content = content.replace(/^\s*import\s+["'][^"']*["']\s*;?\s*$/gm, "");
   // Remove .$type<...>() annotations (reference imported types)
   content = content.replace(/\.\$type\s*<[^>]*>\s*\(\s*\)/g, "");
+  // Remove single-line comments (careful: keep string literals intact)
+  content = content.replace(/\/\/.*$/gm, "");
+  // Remove multi-line comments
+  content = content.replace(/\/\*[\s\S]*?\*\//g, "");
   return content;
 }
 
@@ -180,10 +185,104 @@ function extractDrizzleTables(
       columns = parseDrizzleColumns(body);
     }
 
-    tables.push({ variableName, tableName, dialect, columns });
+    // Extract constraints from the 3rd argument: (t) => [ primaryKey(...), unique(...), index(...) ]
+    const bodyEndIdx = startIdx + 1 + body.length; // position of closing }
+    const constraintResult = extractTableConstraints(content, bodyEndIdx, columns);
+
+    tables.push({
+      variableName,
+      tableName,
+      dialect,
+      columns,
+      indexes: constraintResult.indexes,
+    });
   }
 
   return callbackRefs;
+}
+
+// ── Constraint extraction (3rd argument) ─────────────────────────
+
+/**
+ * Extract constraints from the 3rd argument of createTable/pgTable.
+ * After the column body `}`, look for `, (t) => [ ... ]` containing
+ * primaryKey(), unique().on(), index().on().
+ */
+function extractTableConstraints(
+  content: string,
+  bodyEndIdx: number,
+  columns: ParsedColumn[],
+): { indexes: { name: string; columns: string[]; unique: boolean }[] } {
+  const indexes: { name: string; columns: string[]; unique: boolean }[] = [];
+
+  // After column body `}`, there may be `)` then `, (paramName) => [`
+  // bodyEndIdx points at the `}` itself, skip past it
+  const afterBody = content.substring(bodyEndIdx + 1);
+  const constraintStart = afterBody.match(
+    /^\s*\)?\s*,\s*\(\s*\w+\s*\)\s*=>\s*\[/,
+  );
+  if (!constraintStart) return { indexes };
+
+  // Find the bracket block [...] containing constraints
+  const bracketPos = bodyEndIdx + constraintStart.index! + constraintStart[0].length - 1;
+  let depth = 0;
+  let blockEnd = -1;
+  for (let i = bracketPos; i < content.length; i++) {
+    if (content[i] === "[") depth++;
+    else if (content[i] === "]") {
+      depth--;
+      if (depth === 0) {
+        blockEnd = i;
+        break;
+      }
+    }
+  }
+  if (blockEnd === -1) return { indexes };
+
+  const constraintBlock = content.substring(bracketPos + 1, blockEnd);
+
+  // Parse primaryKey({ columns: [t.col1, t.col2] })
+  const pkMatch = /primaryKey\s*\(\s*\{[^}]*columns\s*:\s*\[([^\]]*)\]/.exec(
+    constraintBlock,
+  );
+  if (pkMatch) {
+    const colRefs = [...pkMatch[1]!.matchAll(/\.(\w+)/g)].map((m) => m[1]!);
+    for (const colName of colRefs) {
+      const col = columns.find((c) => c.name === colName);
+      if (col) col.primaryKey = true;
+    }
+  }
+
+  // Parse unique("name").on(t.col1, t.col2)
+  const uniqueRegex =
+    /unique\s*\(\s*["'`]([^"'`]*)["'`]\s*\)\s*\.on\s*\(([^)]*)\)/g;
+  let uniqueMatch;
+  while ((uniqueMatch = uniqueRegex.exec(constraintBlock)) !== null) {
+    const idxName = uniqueMatch[1]!;
+    const colRefs = [...uniqueMatch[2]!.matchAll(/\.(\w+)/g)].map(
+      (m) => m[1]!,
+    );
+    if (colRefs.length === 1) {
+      // Single-column unique: mark the column directly
+      const col = columns.find((c) => c.name === colRefs[0]);
+      if (col) col.unique = true;
+    }
+    indexes.push({ name: idxName, columns: colRefs, unique: true });
+  }
+
+  // Parse index("name").on(t.col1, t.col2)
+  const indexRegex =
+    /index\s*\(\s*["'`]([^"'`]*)["'`]\s*\)\s*\.on\s*\(([^)]*)\)/g;
+  let indexMatch;
+  while ((indexMatch = indexRegex.exec(constraintBlock)) !== null) {
+    const idxName = indexMatch[1]!;
+    const colRefs = [...indexMatch[2]!.matchAll(/\.(\w+)/g)].map(
+      (m) => m[1]!,
+    );
+    indexes.push({ name: idxName, columns: colRefs, unique: false });
+  }
+
+  return { indexes };
 }
 
 // ── Column parsing (object syntax) ────────────────────────────────
@@ -208,12 +307,22 @@ function parseDrizzleColumns(body: string): ParsedColumn[] {
     const isNotNull = /\.notNull\s*\(/.test(modifiers);
     const isUnique = /\.unique\s*\(/.test(modifiers);
 
+    let defaultValue: string | undefined;
+    const defaultStringMatch = /\.default\s*\(\s*["'`]([^"'`]*)["'`]\s*\)/.exec(modifiers);
+    const defaultNumberMatch = /\.default\s*\(\s*(-?\d+(?:\.\d+)?)\s*\)/.exec(modifiers);
+    if (defaultStringMatch) {
+      defaultValue = defaultStringMatch[1];
+    } else if (defaultNumberMatch) {
+      defaultValue = defaultNumberMatch[1];
+    }
+
     columns.push({
       name: fieldName,
       type: mapDrizzleType(typeFn),
       primaryKey: isPK,
       unique: isUnique,
       nullable: !isNotNull && !isPK,
+      default: defaultValue,
     });
   }
 
@@ -299,12 +408,23 @@ function parseDrizzleCallbackColumns(
     const isNotNull = /\.notNull\s*\(/.test(trimmed);
     const isUnique = /\.unique\s*\(/.test(trimmed);
 
+    // Extract .default(...) value
+    let defaultValue: string | undefined;
+    const defaultStringMatch = /\.default\s*\(\s*["'`]([^"'`]*)["'`]\s*\)/.exec(trimmed);
+    const defaultNumberMatch = /\.default\s*\(\s*(-?\d+(?:\.\d+)?)\s*\)/.exec(trimmed);
+    if (defaultStringMatch) {
+      defaultValue = defaultStringMatch[1];
+    } else if (defaultNumberMatch) {
+      defaultValue = defaultNumberMatch[1];
+    }
+
     const col: ParsedColumn = {
       name: fieldName,
       type: mapDrizzleType(typeFn),
       primaryKey: isPK,
       unique: isUnique,
       nullable: !isNotNull && !isPK,
+      default: defaultValue,
     };
 
     // Check for .references(() => varName.col)
@@ -413,6 +533,7 @@ function extractExplicitRelations(
           sourceColumn: fieldsCol,
           targetTable: refsTableName,
           targetColumn: refsCol,
+          isOrmOnly: true,
         });
       }
     }

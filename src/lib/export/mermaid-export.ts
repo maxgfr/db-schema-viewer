@@ -22,13 +22,15 @@ export function exportDiagramToMermaid(diagram: Diagram): string {
   }
 
   for (const rel of diagram.relationships) {
+    // source = child table (has FK), target = parent table (referenced)
     const srcTable = diagram.tables.find((t) => t.id === rel.sourceTableId);
     const tgtTable = diagram.tables.find((t) => t.id === rel.targetTableId);
     if (!srcTable || !tgtTable) continue;
 
-    const srcName = srcTable.name.replace(/[^a-zA-Z0-9_]/g, "_");
-    const tgtName = tgtTable.name.replace(/[^a-zA-Z0-9_]/g, "_");
+    const childName = srcTable.name.replace(/[^a-zA-Z0-9_]/g, "_");
+    const parentName = tgtTable.name.replace(/[^a-zA-Z0-9_]/g, "_");
 
+    // Mermaid convention: parent (referenced) on left, child (FK) on right
     let relSymbol: string;
     switch (rel.cardinality) {
       case "one-to-one":
@@ -50,7 +52,7 @@ export function exportDiagramToMermaid(diagram: Diagram): string {
       ? `${srcField.name} to ${tgtField.name}`
       : "relates";
 
-    lines.push(`    ${srcName} ${relSymbol} ${tgtName} : "${label}"`);
+    lines.push(`    ${parentName} ${relSymbol} ${childName} : "${label}"`);
   }
 
   return lines.join("\n");

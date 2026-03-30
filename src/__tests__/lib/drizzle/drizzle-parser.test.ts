@@ -221,6 +221,148 @@ export const posts = createTable("post", (d) => ({
     expect(fields.find((f) => f.name === "createdAt")?.type).toBe("TIMESTAMP");
   });
 
+  it("parses .default() values in callback syntax", () => {
+    const content = `
+import { pgTableCreator } from "drizzle-orm/pg-core";
+export const createTable = pgTableCreator((name) => \`app_\${name}\`);
+
+export const config = createTable("config", (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+    retries: d.integer().default(3),
+    mode: d.varchar({ length: 20 }).default("auto"),
+    ratio: d.numeric().default(1.5),
+    label: d.text(),
+}));
+    `;
+    const diagram = parseDrizzleSchema(content);
+    const fields = diagram.tables[0]!.fields;
+    expect(fields.find((f) => f.name === "retries")?.default).toBe("3");
+    expect(fields.find((f) => f.name === "mode")?.default).toBe("auto");
+    expect(fields.find((f) => f.name === "ratio")?.default).toBe("1.5");
+    expect(fields.find((f) => f.name === "label")?.default).toBeUndefined();
+  });
+
+  it("parses .default() values in object syntax", () => {
+    const content = `
+import { pgTable, serial, varchar, integer } from 'drizzle-orm/pg-core';
+export const items = pgTable('items', {
+  id: serial('id').primaryKey(),
+  status: varchar('status', { length: 20 }).default('active'),
+  priority: integer('priority').default(0),
+});
+    `;
+    const diagram = parseDrizzleSchema(content);
+    const fields = diagram.tables[0]!.fields;
+    expect(fields.find((f) => f.name === "status")?.default).toBe("active");
+    expect(fields.find((f) => f.name === "priority")?.default).toBe("0");
+  });
+
+  it("strips single-line comments before parsing fields", () => {
+    const content = `
+import { pgTableCreator } from "drizzle-orm/pg-core";
+export const createTable = pgTableCreator((name) => \`app_\${name}\`);
+
+export const data = createTable("data", (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+    // This is a comment
+    afterComment: d.text(),
+    normalField: d.integer(),
+    // Another comment
+    anotherAfterComment: d.boolean(),
+}));
+    `;
+    const diagram = parseDrizzleSchema(content);
+    const fields = diagram.tables[0]!.fields;
+    expect(fields).toHaveLength(4);
+    expect(fields.find((f) => f.name === "afterComment")).toBeDefined();
+    expect(fields.find((f) => f.name === "anotherAfterComment")).toBeDefined();
+  });
+
+  it("parses composite primaryKey from 3rd argument", () => {
+    const content = `
+import { pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
+export const createTable = pgTableCreator((name) => \`app_\${name}\`);
+
+export const userRoles = createTable(
+    "user_role",
+    (d) => ({
+        userId: d.varchar({ length: 255 }).notNull(),
+        roleId: d.varchar({ length: 255 }).notNull(),
+    }),
+    (t) => [primaryKey({ columns: [t.userId, t.roleId] })],
+);
+    `;
+    const diagram = parseDrizzleSchema(content);
+    const table = diagram.tables[0]!;
+    expect(table.fields.find((f) => f.name === "userId")!.primaryKey).toBe(true);
+    expect(table.fields.find((f) => f.name === "roleId")!.primaryKey).toBe(true);
+  });
+
+  it("parses unique() and index() from 3rd argument", () => {
+    const content = `
+import { pgTableCreator, unique, index } from "drizzle-orm/pg-core";
+export const createTable = pgTableCreator((name) => \`app_\${name}\`);
+
+export const orders = createTable(
+    "order",
+    (d) => ({
+        id: d.varchar({ length: 255 }).notNull().primaryKey(),
+        customerId: d.varchar({ length: 255 }).notNull(),
+        orderNumber: d.integer().notNull(),
+        year: d.integer().notNull(),
+    }),
+    (t) => [
+        unique("order_number_year_idx").on(t.orderNumber, t.year),
+        index("order_customer_idx").on(t.customerId),
+    ],
+);
+    `;
+    const diagram = parseDrizzleSchema(content);
+    const table = diagram.tables[0]!;
+
+    const uniqueIdx = table.indexes.find((i) => i.name === "order_number_year_idx");
+    expect(uniqueIdx).toBeDefined();
+    expect(uniqueIdx!.unique).toBe(true);
+    expect(uniqueIdx!.columns).toEqual(["orderNumber", "year"]);
+
+    const regularIdx = table.indexes.find((i) => i.name === "order_customer_idx");
+    expect(regularIdx).toBeDefined();
+    expect(regularIdx!.unique).toBe(false);
+    expect(regularIdx!.columns).toEqual(["customerId"]);
+  });
+
+  it("does not mark ORM-only relations as FK", () => {
+    const content = `
+import { relations } from "drizzle-orm";
+import { pgTableCreator } from "drizzle-orm/pg-core";
+export const createTable = pgTableCreator((name) => \`app_\${name}\`);
+
+export const posts = createTable("post", (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+    authorId: d.varchar({ length: 255 }).notNull(),
+    title: d.text().notNull(),
+}));
+
+export const authors = createTable("author", (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+    name: d.text().notNull(),
+}));
+
+export const postsRelations = relations(posts, ({ one }) => ({
+    author: one(authors, { fields: [posts.authorId], references: [authors.id] }),
+}));
+    `;
+    const diagram = parseDrizzleSchema(content);
+    const post = diagram.tables.find((t) => t.name === "post")!;
+    const authorIdField = post.fields.find((f) => f.name === "authorId")!;
+
+    // authorId has no .references() — only a relations() declaration
+    expect(authorIdField.isForeignKey).toBe(false);
+
+    // But the relationship line should still exist
+    expect(diagram.relationships.length).toBe(1);
+  });
+
   it("maps Drizzle types to SQL types", () => {
     const content = `
 import { pgTable, serial, text, boolean, jsonb, uuid, timestamp } from 'drizzle-orm/pg-core';
