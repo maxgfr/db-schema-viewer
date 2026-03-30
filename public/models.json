@@ -2127,6 +2127,38 @@
           "output": 100000
         }
       },
+      "gpt-5.3-chat-latest": {
+        "id": "gpt-5.3-chat-latest",
+        "name": "GPT-5.3 Chat (latest)",
+        "family": "gpt",
+        "attachment": true,
+        "reasoning": false,
+        "tool_call": true,
+        "structured_output": true,
+        "temperature": true,
+        "knowledge": "2025-08-31",
+        "release_date": "2026-03-03",
+        "last_updated": "2026-03-03",
+        "modalities": {
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": false,
+        "cost": {
+          "input": 1.75,
+          "output": 14,
+          "cache_read": 0.175
+        },
+        "limit": {
+          "context": 128000,
+          "output": 16384
+        }
+      },
       "gpt-5.4-nano": {
         "id": "gpt-5.4-nano",
         "name": "GPT-5.4 nano",
@@ -56779,35 +56811,6 @@
           "output": 262144
         }
       },
-      "nvidia/nemotron-3-super-120b-a12b-free": {
-        "id": "nvidia/nemotron-3-super-120b-a12b-free",
-        "name": "Nemotron 3 Super (free)",
-        "family": "nemotron",
-        "attachment": false,
-        "reasoning": true,
-        "tool_call": true,
-        "temperature": true,
-        "knowledge": "2024-04",
-        "release_date": "2026-03-11",
-        "last_updated": "2026-03-11",
-        "modalities": {
-          "input": [
-            "text"
-          ],
-          "output": [
-            "text"
-          ]
-        },
-        "open_weights": true,
-        "cost": {
-          "input": 0,
-          "output": 0
-        },
-        "limit": {
-          "context": 262144,
-          "output": 262144
-        }
-      },
       "nvidia/nemotron-nano-12b-v2-vl:free": {
         "id": "nvidia/nemotron-nano-12b-v2-vl:free",
         "name": "Nemotron Nano 12B 2 VL (free)",
@@ -56865,6 +56868,35 @@
         "limit": {
           "context": 131072,
           "output": 131072
+        }
+      },
+      "nvidia/nemotron-3-super-120b-a12b:free": {
+        "id": "nvidia/nemotron-3-super-120b-a12b:free",
+        "name": "Nemotron 3 Super (free)",
+        "family": "nemotron",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "knowledge": "2024-04",
+        "release_date": "2026-03-11",
+        "last_updated": "2026-03-11",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0,
+          "output": 0
+        },
+        "limit": {
+          "context": 262144,
+          "output": 262144
         }
       },
       "nvidia/nemotron-3-nano-30b-a3b:free": {
@@ -79030,13 +79062,13 @@
         "id": "mistral/mistral-small",
         "name": "Mistral Small (latest)",
         "family": "mistral-small",
-        "attachment": false,
-        "reasoning": false,
+        "attachment": true,
+        "reasoning": true,
         "tool_call": true,
         "temperature": true,
-        "knowledge": "2025-03",
-        "release_date": "2024-09-01",
-        "last_updated": "2024-09-04",
+        "knowledge": "2025-06",
+        "release_date": "2026-03-16",
+        "last_updated": "2026-03-16",
         "modalities": {
           "input": [
             "text",
@@ -79048,12 +79080,12 @@
         },
         "open_weights": true,
         "cost": {
-          "input": 0.1,
-          "output": 0.3
+          "input": 0.15,
+          "output": 0.6
         },
         "limit": {
-          "context": 128000,
-          "output": 16384
+          "context": 256000,
+          "output": 256000
         }
       },
       "mistral/ministral-3b": {
@@ -95358,6 +95390,36 @@
           "output": 128000
         }
       },
+      "mistral-small-2603": {
+        "id": "mistral-small-2603",
+        "name": "Mistral Small 4",
+        "family": "mistral-small",
+        "attachment": true,
+        "reasoning": true,
+        "tool_call": true,
+        "temperature": true,
+        "knowledge": "2025-06",
+        "release_date": "2026-03-16",
+        "last_updated": "2026-03-16",
+        "modalities": {
+          "input": [
+            "text",
+            "image"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.15,
+          "output": 0.6
+        },
+        "limit": {
+          "context": 256000,
+          "output": 256000
+        }
+      },
       "ministral-3b-latest": {
         "id": "ministral-3b-latest",
         "name": "Ministral 3B (latest)",
@@ -95918,13 +95980,13 @@
         "id": "mistral-small-latest",
         "name": "Mistral Small (latest)",
         "family": "mistral-small",
-        "attachment": false,
-        "reasoning": false,
+        "attachment": true,
+        "reasoning": true,
         "tool_call": true,
         "temperature": true,
-        "knowledge": "2025-03",
-        "release_date": "2024-09-01",
-        "last_updated": "2024-09-04",
+        "knowledge": "2025-06",
+        "release_date": "2026-03-16",
+        "last_updated": "2026-03-16",
         "modalities": {
           "input": [
             "text",
@@ -95936,12 +95998,12 @@
         },
         "open_weights": true,
         "cost": {
-          "input": 0.1,
-          "output": 0.3
+          "input": 0.15,
+          "output": 0.6
         },
         "limit": {
-          "context": 128000,
-          "output": 16384
+          "context": 256000,
+          "output": 256000
         }
       },
       "open-mistral-7b": {
@@ -111175,6 +111237,35 @@
           "output": 128000
         }
       },
+      "zai-org/glm-5.1:thinking": {
+        "id": "zai-org/glm-5.1:thinking",
+        "name": "GLM 5.1 Thinking",
+        "family": "glm",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "structured_output": true,
+        "release_date": "2026-03-27",
+        "last_updated": "2026-03-27",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.3,
+          "output": 2.55
+        },
+        "limit": {
+          "context": 200000,
+          "input": 200000,
+          "output": 131072
+        }
+      },
       "zai-org/glm-5:thinking": {
         "id": "zai-org/glm-5:thinking",
         "name": "GLM 5 Thinking",
@@ -111231,6 +111322,35 @@
           "context": 200000,
           "input": 200000,
           "output": 128000
+        }
+      },
+      "zai-org/glm-5.1": {
+        "id": "zai-org/glm-5.1",
+        "name": "GLM 5.1",
+        "family": "glm",
+        "attachment": false,
+        "reasoning": true,
+        "tool_call": true,
+        "structured_output": true,
+        "release_date": "2026-03-27",
+        "last_updated": "2026-03-27",
+        "modalities": {
+          "input": [
+            "text"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "cost": {
+          "input": 0.3,
+          "output": 2.55
+        },
+        "limit": {
+          "context": 200000,
+          "input": 200000,
+          "output": 131072
         }
       },
       "zai-org/glm-4.7": {
