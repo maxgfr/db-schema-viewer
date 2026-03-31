@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import type { Diagram } from "@/lib/domain";
 import { getStateFromUrl, generateShareUrl } from "@/lib/sharing/encode-state";
+import type { Annotation } from "./_components/canvas/SchemaCanvas";
 import { saveDiagram } from "@/lib/storage/local-storage";
 import { useTheme } from "@/hooks/use-theme";
 import { useTranslation } from "@/lib/i18n/context";
@@ -12,6 +13,7 @@ import { EditorLayout } from "./_components/canvas/EditorLayout";
 
 export default function Home() {
   const [diagram, setDiagram] = useState<Diagram | null>(null);
+  const [sharedAnnotations, setSharedAnnotations] = useState<Annotation[]>([]);
   const [mounted, setMounted] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { theme, mode, toggleTheme } = useTheme();
@@ -26,7 +28,8 @@ export default function Home() {
     if (hasUrlParam) {
       const fromUrl = getStateFromUrl();
       if (fromUrl) {
-        setDiagram(fromUrl);
+        setDiagram(fromUrl.diagram);
+        if (fromUrl.annotations.length > 0) setSharedAnnotations(fromUrl.annotations);
       } else {
         toast.error(t("page.failedToLoadSharedSchema"), {
           description: t("page.failedToLoadSharedSchemaDesc"),
@@ -90,6 +93,7 @@ export default function Home() {
         theme={theme}
         themeMode={mode}
         onToggleTheme={toggleTheme}
+        initialAnnotations={sharedAnnotations}
       />
     );
   }

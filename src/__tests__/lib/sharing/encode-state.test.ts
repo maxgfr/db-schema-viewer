@@ -88,8 +88,9 @@ describe("getStateFromUrl", () => {
     window.location.hash = `#d=${compressed}`;
     const result = getStateFromUrl();
     expect(result).not.toBeNull();
-    expect(result!.id).toBe(sampleDiagram.id);
-    expect(result!.name).toBe(sampleDiagram.name);
+    expect(result!.diagram.id).toBe(sampleDiagram.id);
+    expect(result!.diagram.name).toBe(sampleDiagram.name);
+    expect(result!.annotations).toEqual([]);
   });
 
   it("returns null when no hash is present", () => {

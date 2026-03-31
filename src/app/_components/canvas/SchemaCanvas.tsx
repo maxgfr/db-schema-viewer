@@ -79,6 +79,11 @@ function SchemaCanvasInner({
     [onAnnotationDelete],
   );
 
+  const handleNoteColorChange = useCallback(
+    (id: string, color: string) => onAnnotationUpdate?.(id, { color }),
+    [onAnnotationUpdate],
+  );
+
   const initialNodes: Node[] = useMemo(
     () => [
       ...diagram.tables.map((table) => ({
@@ -103,10 +108,11 @@ function SchemaCanvasInner({
           color: note.color,
           onTextChange: handleNoteTextChange,
           onDelete: handleNoteDelete,
+          onColorChange: handleNoteColorChange,
         },
       })),
     ],
-    [diagram.tables, diagram.relationships, selectedTableId, annotations, handleNoteTextChange, handleNoteDelete]
+    [diagram.tables, diagram.relationships, selectedTableId, annotations, handleNoteTextChange, handleNoteDelete, handleNoteColorChange]
   );
 
   const initialEdges: Edge[] = useMemo(
@@ -139,11 +145,12 @@ function SchemaCanvasInner({
           color: note.color,
           onTextChange: handleNoteTextChange,
           onDelete: handleNoteDelete,
+          onColorChange: handleNoteColorChange,
         },
       }));
       return [...tableNodes, ...noteNodes];
     });
-  }, [annotations, setNodes, handleNoteTextChange, handleNoteDelete]);
+  }, [annotations, setNodes, handleNoteTextChange, handleNoteDelete, handleNoteColorChange]);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {

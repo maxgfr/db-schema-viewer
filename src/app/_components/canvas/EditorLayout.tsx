@@ -44,6 +44,7 @@ interface EditorLayoutProps {
   theme: Theme;
   themeMode: ThemeMode;
   onToggleTheme: () => void;
+  initialAnnotations?: Annotation[];
 }
 
 export function EditorLayout({
@@ -53,6 +54,7 @@ export function EditorLayout({
   theme,
   themeMode,
   onToggleTheme,
+  initialAnnotations = [],
 }: EditorLayoutProps) {
   const { t } = useTranslation();
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
@@ -65,7 +67,7 @@ export function EditorLayout({
   const [showSource, setShowSource] = useState(false);
   const [erdNotation, setErdNotation] = useState<ERDNotation>("crowsfoot");
   const [zoomTarget, setZoomTarget] = useState<{ id: string; key: number } | null>(null);
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations);
   const zoomCounter = useRef(0);
   const annotationCounter = useRef(0);
   const canvasRef = { current: null as HTMLDivElement | null };
@@ -109,7 +111,7 @@ export function EditorLayout({
         description: t("editor.urlLargeDesc", { size: Math.round(size / 1024) }),
       });
     }
-    const url = generateShareUrl(diagram);
+    const url = generateShareUrl(diagram, annotations);
     navigator.clipboard.writeText(url).then(() => {
       toast.success(t("editor.shareUrlCopied"));
     });

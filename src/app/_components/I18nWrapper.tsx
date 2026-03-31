@@ -16,19 +16,30 @@ function HtmlLangUpdater() {
   return null;
 }
 
+const LANGUAGES: { value: Locale; label: string; flag: string }[] = [
+  { value: "en", label: "English", flag: "EN" },
+  { value: "fr", label: "Français", flag: "FR" },
+];
+
 function LanguageToggle() {
   const { locale, setLocale } = useTranslation();
-  const next: Locale = locale === "en" ? "fr" : "en";
+
   return (
-    <button
-      type="button"
-      onClick={() => setLocale(next)}
-      className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      title={locale === "en" ? "Passer en fran\u00e7ais" : "Switch to English"}
-      aria-label={locale === "en" ? "Switch to French" : "Passer en anglais"}
-    >
-      <Globe className="h-4 w-4" />
-    </button>
+    <div className="flex items-center gap-1 rounded-lg p-1 text-muted-foreground">
+      <Globe className="h-3.5 w-3.5" />
+      <select
+        value={locale}
+        onChange={(e) => setLocale(e.target.value as Locale)}
+        className="cursor-pointer appearance-none bg-transparent pr-1 text-xs font-medium text-muted-foreground hover:text-foreground focus:outline-none"
+        aria-label="Language"
+      >
+        {LANGUAGES.map((lang) => (
+          <option key={lang.value} value={lang.value}>
+            {lang.flag}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 

@@ -72,14 +72,12 @@ export function useTranslation() {
   return ctx;
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("en");
+// Detect locale once at module level to avoid flash of wrong language
+const initialLocale: Locale = typeof window !== "undefined" ? detectLocale() : "en";
+globalLocale = initialLocale;
 
-  useEffect(() => {
-    const detected = detectLocale();
-    setLocaleState(detected);
-    setGlobalLocale(detected);
-  }, []);
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
   useEffect(() => {
     document.documentElement.lang = locale;

@@ -1,6 +1,14 @@
 import lzString from "lz-string";
 import { Diagram } from "@/lib/domain";
 
+export interface SharedAnnotation {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+}
+
 export function encodeState(diagram: Diagram): string {
   // Strip sourceContent and default/falsy values to minimize URL size (~33% smaller)
   const { sourceContent: _, ...shareable } = diagram;
@@ -63,22 +71,41 @@ export function decodeState(encoded: string): Diagram | null {
  * Uses hash instead of query param so the data is never sent to the server,
  * avoiding HTTP 414 "URI Too Long" errors on large schemas.
  */
-export function generateShareUrl(diagram: Diagram): string {
+export function generateShareUrl(diagram: Diagram, annotations?: SharedAnnotation[]): string {
   const compressed = encodeState(diagram);
   const base = typeof window !== "undefined"
     ? window.location.origin + window.location.pathname
     : "";
-  return `${base}#d=${compressed}`;
+  let url = `${base}#d=${compressed}`;
+  if (annotations && annotations.length > 0) {
+    const notesJson = JSON.stringify(annotations);
+    const notesCompressed = lzString.compressToEncodedURIComponent(notesJson);
+    url += `&n=${notesCompressed}`;
+  }
+  return url;
 }
 
 /**
  * Read diagram from the `#d=` hash fragment in the URL.
  */
-export function getStateFromUrl(): Diagram | null {
+export function getStateFromUrl(): { diagram: Diagram; annotations: SharedAnnotation[] } | null {
   if (typeof window === "undefined") return null;
-  const match = window.location.hash.match(/^#d=(.+)/);
-  if (!match?.[1]) return null;
-  return decodeState(decodeURIComponent(match[1]));
+  const hash = window.location.hash;
+  const dMatch = hash.match(/#d=([^&]+)/);
+  if (!dMatch?.[1]) return null;
+  const diagram = decodeState(decodeURIComponent(dMatch[1]));
+  if (!diagram) return null;
+
+  let annotations: SharedAnnotation[] = [];
+  const nMatch = hash.match(/&n=([^&]+)/);
+  if (nMatch?.[1]) {
+    try {
+      const json = lzString.decompressFromEncodedURIComponent(decodeURIComponent(nMatch[1]));
+      if (json) annotations = JSON.parse(json);
+    } catch {}
+  }
+
+  return { diagram, annotations };
 }
 
 export function estimateUrlSize(diagram: Diagram): number {
