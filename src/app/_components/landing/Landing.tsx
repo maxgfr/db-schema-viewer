@@ -141,13 +141,12 @@ export function Landing({ onDiagramCreated, theme, themeMode, onToggleTheme }: L
   return (
     <div className="min-h-screen">
       {/* Theme + Language toggle */}
-      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
-        <div className="rounded-lg border border-border bg-card">
-          <LanguageToggle />
-        </div>
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-1.5 rounded-lg border border-border bg-card px-1.5 py-1">
+        <LanguageToggle />
+        <div className="h-5 w-px bg-border" />
         <button
           onClick={onToggleTheme}
-          className="rounded-lg border border-border bg-card p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
           title={t("common.themeMode", { mode: themeMode })}
           aria-label={t("common.themeMode", { mode: themeMode })}
         >

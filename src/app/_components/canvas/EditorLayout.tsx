@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -45,6 +45,7 @@ interface EditorLayoutProps {
   themeMode: ThemeMode;
   onToggleTheme: () => void;
   initialAnnotations?: Annotation[];
+  onAnnotationsChange?: (annotations: Annotation[]) => void;
 }
 
 export function EditorLayout({
@@ -55,6 +56,7 @@ export function EditorLayout({
   themeMode,
   onToggleTheme,
   initialAnnotations = [],
+  onAnnotationsChange,
 }: EditorLayoutProps) {
   const { t } = useTranslation();
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
@@ -93,6 +95,11 @@ export function EditorLayout({
   const handleAnnotationDelete = useCallback((id: string) => {
     setAnnotations((prev) => prev.filter((a) => a.id !== id));
   }, []);
+
+  // Notify parent when annotations change so URL sync includes them
+  useEffect(() => {
+    onAnnotationsChange?.(annotations);
+  }, [annotations, onAnnotationsChange]);
 
   const closeAll = useCallback(() => {
     setShowUpload(false);

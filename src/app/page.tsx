@@ -14,6 +14,7 @@ import { EditorLayout } from "./_components/canvas/EditorLayout";
 export default function Home() {
   const [diagram, setDiagram] = useState<Diagram | null>(null);
   const [sharedAnnotations, setSharedAnnotations] = useState<Annotation[]>([]);
+  const [currentAnnotations, setCurrentAnnotations] = useState<Annotation[]>([]);
   const [mounted, setMounted] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { theme, mode, toggleTheme } = useTheme();
@@ -39,17 +40,17 @@ export default function Home() {
     }
   }, [t]);
 
-  // Keep URL in sync with current diagram (debounced to avoid lag on drag)
+  // Keep URL in sync with current diagram + annotations (debounced to avoid lag on drag)
   useEffect(() => {
     if (!diagram) return;
     if (urlSyncTimer.current) clearTimeout(urlSyncTimer.current);
     urlSyncTimer.current = setTimeout(() => {
-      const url = generateShareUrl(diagram);
+      const url = generateShareUrl(diagram, currentAnnotations.length > 0 ? currentAnnotations : undefined);
       const parsed = new URL(url);
       window.history.replaceState({}, "", parsed.pathname + parsed.hash);
     }, 500);
     return () => { if (urlSyncTimer.current) clearTimeout(urlSyncTimer.current); };
-  }, [diagram]);
+  }, [diagram, currentAnnotations]);
 
   // Warn before reload/close only when there are unsaved changes
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function Home() {
         themeMode={mode}
         onToggleTheme={toggleTheme}
         initialAnnotations={sharedAnnotations}
+        onAnnotationsChange={setCurrentAnnotations}
       />
     );
   }
