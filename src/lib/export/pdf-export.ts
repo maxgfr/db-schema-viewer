@@ -2,6 +2,7 @@ import type { jsPDF as JsPDFType } from "jspdf";
 import { exportFullDiagramToPng } from "./image-export";
 import type { Diagram, DBTable, DBField } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
+import { t } from "@/lib/i18n/context";
 
 async function createPDF(options: { orientation: string; unit: string; format: string }): Promise<JsPDFType> {
   const { default: jsPDF } = await import("jspdf");
@@ -61,7 +62,7 @@ function addFooter(pdf: JsPDFType, pageNumber: number, totalPages: number, diagr
   pdf.setFontSize(SMALL_SIZE);
   setTextColor(pdf, COLOR_SECONDARY);
   pdf.text(diagramName, MARGIN, y);
-  pdf.text(`Page ${pageNumber} of ${totalPages}`, pageWidth - MARGIN, y, { align: "right" });
+  pdf.text(t("exportFile.pageOf", { current: pageNumber, total: totalPages }), pageWidth - MARGIN, y, { align: "right" });
 }
 
 function addPageWithFooterPlaceholder(pdf: JsPDFType) {
@@ -106,9 +107,9 @@ function renderTitlePage(
   setTextColor(pdf, COLOR_PRIMARY);
 
   const stats = [
-    `Tables: ${diagram.tables.length}`,
-    `Relationships: ${diagram.relationships.length}`,
-    `Generated: ${new Date().toLocaleDateString()}`,
+    `${t("exportFile.tables")} ${diagram.tables.length}`,
+    `${t("exportFile.relationships")} ${diagram.relationships.length}`,
+    `${t("exportFile.generated")} ${new Date().toLocaleDateString()}`,
   ];
 
   stats.forEach((stat, i) => {
@@ -126,7 +127,7 @@ function renderTableOfContents(
   pdf.setFontSize(HEADING_SIZE);
   pdf.setFont("helvetica", "bold");
   setTextColor(pdf, COLOR_PRIMARY);
-  pdf.text("Table of Contents", MARGIN, MARGIN + 20);
+  pdf.text(t("exportFile.tableOfContents"), MARGIN, MARGIN + 20);
 
   const pageWidth = getPageWidth(pdf);
   let y = MARGIN + 50;
@@ -135,13 +136,13 @@ function renderTableOfContents(
   pdf.setFontSize(11);
   pdf.setFont("helvetica", "normal");
   setTextColor(pdf, COLOR_PRIMARY);
-  pdf.text("Schema Diagram", MARGIN + 10, y);
+  pdf.text(t("exportFile.schemaDiagram"), MARGIN + 10, y);
   pdf.text("3", pageWidth - MARGIN, y, { align: "right" });
 
   // Dotted line
   setDrawColor(pdf, COLOR_BORDER);
   pdf.setLineDashPattern([1, 2], 0);
-  const textWidth = pdf.getTextWidth("Schema Diagram");
+  const textWidth = pdf.getTextWidth(t("exportFile.schemaDiagram"));
   pdf.line(MARGIN + 14 + textWidth, y - 2, pageWidth - MARGIN - 15, y - 2);
   pdf.setLineDashPattern([], 0);
 
@@ -151,7 +152,7 @@ function renderTableOfContents(
   pdf.setFontSize(12);
   pdf.setFont("helvetica", "bold");
   setTextColor(pdf, COLOR_SECONDARY);
-  pdf.text("Tables", MARGIN + 10, y);
+  pdf.text(t("exportFile.tablesSection"), MARGIN + 10, y);
   y += LINE_HEIGHT + 2;
 
   // Table entries
@@ -169,7 +170,7 @@ function renderTableOfContents(
     pdf.setFont("helvetica", "normal");
     setTextColor(pdf, COLOR_PRIMARY);
 
-    const label = table.isView ? `${table.name} (view)` : table.name;
+    const label = table.isView ? `${table.name}${t("exportFile.viewLabel")}` : table.name;
     pdf.text(label, MARGIN + 20, y);
 
     const pageNum = tablePageMap.get(table.id);
@@ -197,13 +198,12 @@ function renderDiagramPage(
   imgHeight: number,
   landscape: boolean
 ) {
-  // Add the diagram page with orientation matching the diagram's aspect ratio
   pdf.addPage("a4", landscape ? "landscape" : "portrait");
 
   pdf.setFontSize(SUBHEADING_SIZE);
   pdf.setFont("helvetica", "bold");
   setTextColor(pdf, COLOR_PRIMARY);
-  pdf.text("Schema Diagram", MARGIN, MARGIN + 20);
+  pdf.text(t("exportFile.schemaDiagram"), MARGIN, MARGIN + 20);
 
   const availableWidth = getPageWidth(pdf) - MARGIN * 2;
   const availableHeight = getUsableHeight(pdf) - MARGIN - 30;
@@ -238,14 +238,14 @@ function renderFieldsTable(
 
   // Column definitions
   const cols = [
-    { label: "Field", width: tableWidth * 0.22, align: "left" as const },
-    { label: "Type", width: tableWidth * 0.20, align: "left" as const },
-    { label: "PK", width: tableWidth * 0.06, align: "center" as const },
-    { label: "FK", width: tableWidth * 0.06, align: "center" as const },
-    { label: "Nullable", width: tableWidth * 0.08, align: "center" as const },
-    { label: "Unique", width: tableWidth * 0.08, align: "center" as const },
-    { label: "Default", width: tableWidth * 0.15, align: "left" as const },
-    { label: "References", width: tableWidth * 0.15, align: "left" as const },
+    { label: t("exportFile.column"), width: tableWidth * 0.22, align: "left" as const },
+    { label: t("exportFile.type"), width: tableWidth * 0.20, align: "left" as const },
+    { label: t("exportFile.pk"), width: tableWidth * 0.06, align: "center" as const },
+    { label: t("exportFile.fk"), width: tableWidth * 0.06, align: "center" as const },
+    { label: t("exportFile.nullable"), width: tableWidth * 0.08, align: "center" as const },
+    { label: t("exportFile.unique"), width: tableWidth * 0.08, align: "center" as const },
+    { label: t("exportFile.default"), width: tableWidth * 0.15, align: "left" as const },
+    { label: t("exportFile.references"), width: tableWidth * 0.15, align: "left" as const },
   ];
 
   const rowHeight = 14;
@@ -383,7 +383,7 @@ function renderTableDetail(
   pdf.setFont("helvetica", "bold");
   setTextColor(pdf, COLOR_PRIMARY);
 
-  const tableLabel = table.isView ? `${table.name} (view)` : table.name;
+  const tableLabel = table.isView ? `${table.name}${t("exportFile.viewLabel")}` : table.name;
   pdf.text(tableLabel, MARGIN, y);
 
   if (table.comment) {
@@ -411,7 +411,7 @@ function renderTableDetail(
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "bold");
     setTextColor(pdf, COLOR_PRIMARY);
-    pdf.text("Indexes", MARGIN, y);
+    pdf.text(t("exportFile.indexes"), MARGIN, y);
     y += LINE_HEIGHT;
 
     for (const index of table.indexes) {
@@ -424,7 +424,7 @@ function renderTableDetail(
       pdf.setFont("helvetica", "normal");
       setTextColor(pdf, COLOR_SECONDARY);
 
-      const uniqueLabel = index.unique ? " (unique)" : "";
+      const uniqueLabel = index.unique ? t("exportFile.uniqueLabel") : "";
       const indexText = `${index.name}: (${index.columns.join(", ")})${uniqueLabel}`;
       pdf.text(indexText, MARGIN + 10, y);
       y += LINE_HEIGHT;
@@ -515,7 +515,7 @@ export async function exportToPdf(
   pdf.setFontSize(HEADING_SIZE);
   pdf.setFont("helvetica", "bold");
   setTextColor(pdf, COLOR_PRIMARY);
-  pdf.text("Table Details", MARGIN, currentY);
+  pdf.text(t("exportFile.tableDetails"), MARGIN, currentY);
   currentY += 30;
 
   for (const table of sortedTables) {

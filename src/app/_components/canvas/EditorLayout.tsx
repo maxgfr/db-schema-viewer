@@ -34,6 +34,8 @@ import { APIKeySettings } from "../settings/APIKeySettings";
 import { SchemaDiffPanel } from "../analysis/SchemaDiffPanel";
 import { SourceViewer } from "../source/SourceViewer";
 import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
+import { useTranslation } from "@/lib/i18n/context";
+import { LanguageToggle } from "../I18nWrapper";
 
 interface EditorLayoutProps {
   diagram: Diagram;
@@ -52,6 +54,7 @@ export function EditorLayout({
   themeMode,
   onToggleTheme,
 }: EditorLayoutProps) {
+  const { t } = useTranslation();
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showExport, setShowExport] = useState(false);
@@ -102,15 +105,15 @@ export function EditorLayout({
   const handleShare = useCallback(() => {
     const size = estimateUrlSize(diagram);
     if (size > 100_000) {
-      toast.warning("Schema is very large", {
-        description: `URL is ~${Math.round(size / 1024)}KB. Extremely large URLs may not work in all browsers.`,
+      toast.warning(t("editor.schemaVeryLarge"), {
+        description: t("editor.urlLargeDesc", { size: Math.round(size / 1024) }),
       });
     }
     const url = generateShareUrl(diagram);
     navigator.clipboard.writeText(url).then(() => {
-      toast.success("Share URL copied to clipboard!");
+      toast.success(t("editor.shareUrlCopied"));
     });
-  }, [diagram]);
+  }, [diagram, t]);
 
   const shortcutHandlers = useMemo(
     () => ({
@@ -144,15 +147,15 @@ export function EditorLayout({
         const newDiagram = parseSchemaFile(sql, fileName);
         onDiagramUpdate({ ...newDiagram, sourceContent: sql });
         toast.success(
-          `Loaded ${newDiagram.tables.length} tables, ${newDiagram.relationships.length} relationships`
+          t("common.loadedTables", { tables: newDiagram.tables.length, rels: newDiagram.relationships.length })
         );
       } catch (err) {
-        toast.error("Failed to parse schema", {
-          description: err instanceof Error ? err.message : "Unknown error",
+        toast.error(t("common.failedToParseSchema"), {
+          description: err instanceof Error ? err.message : t("common.unknownError"),
         });
       }
     },
-    [onDiagramUpdate]
+    [onDiagramUpdate, t]
   );
 
   return (
@@ -161,13 +164,13 @@ export function EditorLayout({
       <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-2">
         <button
           onClick={() => {
-            if (window.confirm("Go back to home? Any unsaved layout changes will be lost.")) {
+            if (window.confirm(t("editor.confirmBackHome"))) {
               onBack();
             }
           }}
           className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          title="Back to home"
-          aria-label="Back to home"
+          title={t("editor.backToHome")}
+          aria-label={t("editor.backToHome")}
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -189,16 +192,16 @@ export function EditorLayout({
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Upload className="h-4 w-4" />
-            Import
+            {t("editor.import")}
           </button>
           {diagram.sourceContent && (
             <button
               onClick={() => setShowSource(true)}
               className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              title="View original schema source code"
+              title={t("editor.viewSourceCode")}
             >
               <FileCode className="h-4 w-4" />
-              Source
+              {t("editor.source")}
             </button>
           )}
           <button
@@ -206,45 +209,45 @@ export function EditorLayout({
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Share2 className="h-4 w-4" />
-            Share
+            {t("editor.share")}
           </button>
           <button
             onClick={() => setShowExport(true)}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Download className="h-4 w-4" />
-            Export
+            {t("editor.export")}
           </button>
           <button
             onClick={() => setShowAI(true)}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Brain className="h-4 w-4" />
-            AI
+            {t("editor.ai")}
           </button>
           <button
             onClick={() => setShowData(true)}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title="Upload a SQL dump to explore INSERT data in tables and charts"
+            title={t("editor.uploadDumpDesc")}
           >
             <BarChart3 className="h-4 w-4" />
-            Data Explorer
+            {t("editor.dataExplorer")}
           </button>
           <button
             onClick={() => setShowDiff(true)}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <GitCompareArrows className="h-4 w-4" />
-            Diff
+            {t("editor.diff")}
           </button>
 
           <button
             onClick={handleAddAnnotation}
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title="Add a sticky note to the canvas"
+            title={t("editor.addStickyNote")}
           >
             <StickyNote className="h-4 w-4" />
-            Note
+            {t("editor.note")}
           </button>
 
           <div className="mx-1 h-6 w-px bg-border" />
@@ -255,27 +258,29 @@ export function EditorLayout({
               setErdNotation(cycle[erdNotation]);
             }}
             className="rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={`Notation: ${erdNotation === "crowsfoot" ? "Crow's Foot" : erdNotation === "uml" ? "UML" : "Chen"} — click to cycle`}
-            aria-label="Toggle ERD notation"
+            title={t("editor.notationCycle", { name: t(`editor.notation.${erdNotation}`) })}
+            aria-label={t("editor.toggleNotation")}
           >
-            {erdNotation === "crowsfoot" ? "Crow's Foot" : erdNotation === "uml" ? "UML" : "Chen"}
+            {t(`editor.notation.${erdNotation}`)}
           </button>
 
           <div className="mx-1 h-6 w-px bg-border" />
 
+          <LanguageToggle />
+
           <button
             onClick={onToggleTheme}
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={`Theme: ${themeMode} (click to cycle)`}
-            aria-label={`Theme: ${themeMode} (click to cycle)`}
+            title={t("common.themeMode", { mode: themeMode })}
+            aria-label={t("common.themeMode", { mode: themeMode })}
           >
             {themeMode === "system" ? <Monitor className="h-4 w-4" /> : theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
           <button
             onClick={() => setShowSettings(true)}
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title="AI Settings"
-            aria-label="AI Settings"
+            title={t("editor.aiSettings")}
+            aria-label={t("editor.aiSettings")}
           >
             <Settings className="h-4 w-4" />
           </button>
@@ -284,8 +289,8 @@ export function EditorLayout({
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title="GitHub Repository"
-            aria-label="GitHub Repository"
+            title={t("editor.githubRepo")}
+            aria-label={t("editor.githubRepo")}
           >
             <Github className="h-4 w-4" />
           </a>

@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { X, Copy, FileCode } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface SourceViewerProps {
   sourceContent: string;
@@ -12,11 +13,12 @@ interface SourceViewerProps {
 }
 
 export function SourceViewer({ sourceContent, diagramName, onClose }: SourceViewerProps) {
+  const { t } = useTranslation();
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(sourceContent).then(() => {
-      toast.success("Source copied to clipboard");
+      toast.success(t("source.copied"));
     });
-  }, [sourceContent]);
+  }, [sourceContent, t]);
 
   const lineCount = sourceContent.split("\n").length;
 
@@ -39,9 +41,9 @@ export function SourceViewer({ sourceContent, diagramName, onClose }: SourceView
                 <FileCode className="h-4.5 w-4.5 text-indigo-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-foreground">Source Schema</h2>
+                <h2 className="text-lg font-bold text-foreground">{t("source.title")}</h2>
                 <p className="text-xs text-muted-foreground">
-                  {diagramName} — {lineCount} lines
+                  {t("source.lines", { name: diagramName, count: lineCount })}
                 </p>
               </div>
             </div>
@@ -51,7 +53,7 @@ export function SourceViewer({ sourceContent, diagramName, onClose }: SourceView
                 className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Copy className="h-4 w-4" />
-                Copy
+                {t("common.copy")}
               </button>
               <button
                 onClick={onClose}

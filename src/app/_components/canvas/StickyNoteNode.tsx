@@ -3,6 +3,7 @@
 import { memo, useState, useCallback } from "react";
 import { type NodeProps } from "@xyflow/react";
 import { X } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface StickyNoteData {
   text: string;
@@ -24,6 +25,7 @@ function getColorClasses(color: string) {
 }
 
 function StickyNoteNodeComponent({ id, data }: NodeProps) {
+  const { t } = useTranslation();
   const { text, color, onTextChange, onDelete } = data as unknown as StickyNoteData;
   const [isEditing, setIsEditing] = useState(!text);
   const colorClasses = getColorClasses(color);
@@ -56,7 +58,7 @@ function StickyNoteNodeComponent({ id, data }: NodeProps) {
               e.currentTarget.blur();
             }
           }}
-          placeholder="Type a note..."
+          placeholder={t("stickyNote.placeholder")}
           className="nodrag w-full resize-none bg-transparent text-xs text-gray-800 placeholder-gray-500 focus:outline-none dark:text-gray-100 dark:placeholder-gray-400"
           rows={3}
         />
@@ -64,9 +66,9 @@ function StickyNoteNodeComponent({ id, data }: NodeProps) {
         <div
           onDoubleClick={() => setIsEditing(true)}
           className="cursor-text whitespace-pre-wrap text-xs text-gray-800 dark:text-gray-100"
-          title="Double-click to edit"
+          title={t("stickyNote.doubleClickToEdit")}
         >
-          {text || "Double-click to edit..."}
+          {text || t("stickyNote.doubleClickToEditFallback")}
         </div>
       )}
     </div>

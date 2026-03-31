@@ -4,6 +4,7 @@ import { memo, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { KeyRound, Link, ChevronDown, ChevronUp } from "lucide-react";
 import type { DBTable, DBRelationship } from "@/lib/domain";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface TableNodeData {
   table: DBTable;
@@ -14,6 +15,7 @@ interface TableNodeData {
 const MAX_VISIBLE_FIELDS = 12;
 
 function TableNodeComponent({ data }: NodeProps) {
+  const { t } = useTranslation();
   const { table, isSelected } = data as unknown as TableNodeData;
   const [expanded, setExpanded] = useState(false);
   const needsExpand = table.fields.length > MAX_VISIBLE_FIELDS;
@@ -40,7 +42,7 @@ function TableNodeComponent({ data }: NodeProps) {
         <span className="text-sm font-bold text-white">{table.name}</span>
         {table.isView && (
           <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-medium text-white">
-            VIEW
+            {t("tableNode.view")}
           </span>
         )}
       </div>
@@ -114,11 +116,11 @@ function TableNodeComponent({ data }: NodeProps) {
         >
           {expanded ? (
             <>
-              <ChevronUp className="h-3 w-3" /> Show less
+              <ChevronUp className="h-3 w-3" /> {t("tableNode.showLess")}
             </>
           ) : (
             <>
-              <ChevronDown className="h-3 w-3" /> +{table.fields.length - MAX_VISIBLE_FIELDS} more
+              <ChevronDown className="h-3 w-3" /> {t("tableNode.more", { count: table.fields.length - MAX_VISIBLE_FIELDS })}
             </>
           )}
         </button>

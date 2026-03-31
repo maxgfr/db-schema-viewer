@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/context";
 import {
   Download,
   Sparkles,
@@ -235,6 +236,7 @@ function ChartRenderer({
 /* ---------- Main component ---------- */
 
 export function DataCharts({ table }: DataChartsProps) {
+  const { t } = useTranslation();
   const { chartStates, updateChartState } = useDataExplorer();
   const theme = useThemeColors();
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -291,18 +293,17 @@ export function DataCharts({ table }: DataChartsProps) {
       link.download = `chart-${table.name}.png`;
       link.href = dataUrl;
       link.click();
-      toast.success("Chart exported as PNG");
+      toast.success(t("charts.exportedAsPng"));
     } catch {
-      toast.error("Failed to export chart");
+      toast.error(t("charts.failedToExport"));
     }
-  }, [table.name]);
+  }, [table.name, t]);
 
   const handleSuggestCharts = useCallback(async () => {
     const settings = loadAISettings();
     if (!settings || (!settings.apiKey && !settings.customEndpoint)) {
-      toast.error("No AI configured", {
-        description:
-          "Go to Settings to configure an API key or a local endpoint.",
+      toast.error(t("common.noAiConfigured"), {
+        description: t("common.noAiConfiguredDesc"),
       });
       return;
     }
@@ -311,28 +312,27 @@ export function DataCharts({ table }: DataChartsProps) {
     try {
       const suggestions = await suggestCharts(settings, table, columnTypes);
       if (suggestions.length === 0) {
-        toast.warning("No chart suggestions generated for this dataset.");
+        toast.warning(t("charts.noSuggestions"));
       } else {
         update({ aiSuggestions: suggestions });
-        toast.success(`${suggestions.length} chart suggestions generated`);
+        toast.success(t("charts.suggestionsGenerated", { count: suggestions.length }));
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to generate suggestions",
+        err instanceof Error ? err.message : t("charts.failedToGenerateSuggestions"),
       );
     } finally {
       setIsLoadingAI(false);
     }
-  }, [table, columnTypes, update]);
+  }, [table, columnTypes, update, t]);
 
   const handleCustomChart = useCallback(async () => {
     if (!customPrompt.trim()) return;
 
     const settings = loadAISettings();
     if (!settings || (!settings.apiKey && !settings.customEndpoint)) {
-      toast.error("No AI configured", {
-        description:
-          "Go to Settings to configure an API key or a local endpoint.",
+      toast.error(t("common.noAiConfigured"), {
+        description: t("common.noAiConfiguredDesc"),
       });
       return;
     }
@@ -346,24 +346,22 @@ export function DataCharts({ table }: DataChartsProps) {
         customPrompt.trim(),
       );
       if (!chart) {
-        toast.warning(
-          "Could not generate a chart for that request. Try rephrasing.",
-        );
+        toast.warning(t("charts.couldNotGenerate"));
       } else {
         update((prev) => ({
           aiSuggestions: [...prev.aiSuggestions, chart],
           customPrompt: "",
         }));
-        toast.success(`Chart "${chart.title}" created`);
+        toast.success(t("charts.chartCreated", { title: chart.title }));
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to generate chart",
+        err instanceof Error ? err.message : t("charts.couldNotGenerate"),
       );
     } finally {
       setIsLoadingCustom(false);
     }
-  }, [customPrompt, table, columnTypes, update]);
+  }, [customPrompt, table, columnTypes, update, t]);
 
   const handleRemoveSuggestion = useCallback(
     (index: number) => {
@@ -383,9 +381,9 @@ export function DataCharts({ table }: DataChartsProps) {
         aggregation: s.aggregation,
         activeTab: "manual",
       });
-      toast.success(`Applied: ${s.title}`);
+      toast.success(t("charts.applied", { title: s.title }));
     },
-    [update],
+    [update, t],
   );
 
   return (
@@ -401,7 +399,7 @@ export function DataCharts({ table }: DataChartsProps) {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Manual
+            {t("charts.manual")}
           </button>
           <button
             onClick={() => update({ activeTab: "ai" })}
@@ -412,7 +410,7 @@ export function DataCharts({ table }: DataChartsProps) {
             }`}
           >
             <Sparkles className="h-3.5 w-3.5" />
-            AI Charts
+            {t("charts.aiCharts")}
           </button>
         </div>
 
@@ -430,19 +428,19 @@ export function DataCharts({ table }: DataChartsProps) {
                 });
               }}
               className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-              title="Reset chart settings"
+              title={t("charts.resetChartSettings")}
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
+              {t("charts.reset")}
             </button>
             <button
               onClick={handleExportPNG}
               className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
-              title="Export chart as PNG"
-              aria-label="Export chart as PNG"
+              title={t("charts.exportChartPng")}
+              aria-label={t("charts.exportChartPng")}
             >
               <Download className="h-3.5 w-3.5" />
-              PNG
+              {t("charts.png")}
             </button>
           </>
         )}
@@ -454,7 +452,7 @@ export function DataCharts({ table }: DataChartsProps) {
           <div className="flex flex-wrap items-end gap-3">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">
-                Chart Type
+                {t("charts.chartType")}
               </label>
               <select
                 value={chartType}
@@ -463,16 +461,16 @@ export function DataCharts({ table }: DataChartsProps) {
                 }
                 className="rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
               >
-                <option value="bar">Bar</option>
-                <option value="line">Line</option>
-                <option value="pie">Pie</option>
-                <option value="scatter">Scatter</option>
-                <option value="area">Area</option>
+                <option value="bar">{t("charts.bar")}</option>
+                <option value="line">{t("charts.line")}</option>
+                <option value="pie">{t("charts.pie")}</option>
+                <option value="scatter">{t("charts.scatter")}</option>
+                <option value="area">{t("charts.area")}</option>
               </select>
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">
-                X Axis
+                {t("charts.xAxis")}
               </label>
               <select
                 value={xCol}
@@ -493,7 +491,7 @@ export function DataCharts({ table }: DataChartsProps) {
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">
-                Y Axis
+                {t("charts.yAxis")}
               </label>
               <select
                 value={yCol}
@@ -514,7 +512,7 @@ export function DataCharts({ table }: DataChartsProps) {
             </div>
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">
-                Aggregation
+                {t("charts.aggregation")}
               </label>
               <select
                 value={aggregation}
@@ -523,12 +521,12 @@ export function DataCharts({ table }: DataChartsProps) {
                 }
                 className="rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
               >
-                <option value="sum">Sum</option>
-                <option value="avg">Average</option>
-                <option value="count">Count</option>
-                <option value="min">Min</option>
-                <option value="max">Max</option>
-                <option value="none">None (raw)</option>
+                <option value="sum">{t("charts.sum")}</option>
+                <option value="avg">{t("charts.average")}</option>
+                <option value="count">{t("charts.count")}</option>
+                <option value="min">{t("charts.min")}</option>
+                <option value="max">{t("charts.max")}</option>
+                <option value="none">{t("charts.noneRaw")}</option>
               </select>
             </div>
           </div>
@@ -546,7 +544,7 @@ export function DataCharts({ table }: DataChartsProps) {
           {numericCols.length > 0 && (
             <div className="space-y-4 border-t border-border pt-4">
               <h3 className="text-sm font-semibold text-foreground">
-                Value Distribution
+                {t("charts.valueDistribution")}
               </h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 {numericCols.map((col) => {
@@ -578,7 +576,7 @@ export function DataCharts({ table }: DataChartsProps) {
                     <div key={col} className="rounded-lg border border-border bg-accent/30 p-3">
                       <p className="mb-2 text-xs font-medium text-muted-foreground">
                         {col}
-                        <span className="ml-2 text-blue-400">{values.length} values</span>
+                        <span className="ml-2 text-blue-400">{t("charts.values", { count: values.length })}</span>
                       </p>
                       <div className="h-32">
                         <ResponsiveContainer width="100%" height="100%">
@@ -630,7 +628,7 @@ export function DataCharts({ table }: DataChartsProps) {
                 ) : (
                   <Sparkles className="h-4 w-4" />
                 )}
-                {isLoadingAI ? "Analyzing data..." : "Suggest Charts"}
+                {isLoadingAI ? t("charts.analyzingData") : t("charts.suggestCharts")}
               </button>
 
               {aiSuggestions.length > 0 && (
@@ -639,7 +637,7 @@ export function DataCharts({ table }: DataChartsProps) {
                   className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-accent"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
-                  Clear
+                  {t("charts.clear")}
                 </button>
               )}
             </div>
@@ -653,7 +651,7 @@ export function DataCharts({ table }: DataChartsProps) {
                 onKeyDown={(e) =>
                   e.key === "Enter" && !isLoadingCustom && handleCustomChart()
                 }
-                placeholder='Describe a chart you want, e.g. &quot;Show revenue by category as a pie chart&quot;'
+                placeholder={t("charts.describeChart")}
                 className="flex-1 rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
                 disabled={isLoadingCustom}
               />
@@ -678,12 +676,10 @@ export function DataCharts({ table }: DataChartsProps) {
               <Sparkles className="h-10 w-10 text-muted-foreground/40" />
               <div>
                 <p className="text-sm font-medium text-foreground">
-                  AI-Powered Chart Suggestions
+                  {t("charts.aiChartSuggestions")}
                 </p>
                 <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                  Click &ldquo;Suggest Charts&rdquo; to let AI analyze your data
-                  and recommend the best visualizations, or describe a custom
-                  chart in natural language.
+                  {t("charts.aiChartSuggestionsDesc")}
                 </p>
               </div>
             </div>
@@ -693,8 +689,7 @@ export function DataCharts({ table }: DataChartsProps) {
             <div className="flex flex-col items-center gap-3 py-8">
               <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
               <p className="text-sm text-muted-foreground">
-                Analyzing {table.rows.length} rows across{" "}
-                {table.columns.length} columns...
+                {t("charts.analyzingRows", { rows: table.rows.length, cols: table.columns.length })}
               </p>
             </div>
           )}
@@ -731,16 +726,16 @@ export function DataCharts({ table }: DataChartsProps) {
                         <button
                           onClick={() => handleApplySuggestion(suggestion)}
                           className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                          title="Apply to manual chart"
-                          aria-label="Apply to manual chart"
+                          title={t("charts.applyToManual")}
+                          aria-label={t("charts.applyToManual")}
                         >
                           <BarChart3 className="h-3.5 w-3.5" />
                         </button>
                         <button
                           onClick={() => handleRemoveSuggestion(i)}
                           className="rounded p-1 text-muted-foreground hover:bg-red-500/20 hover:text-red-400"
-                          title="Remove chart"
-                          aria-label="Remove chart"
+                          title={t("charts.removeChart")}
+                          aria-label={t("charts.removeChart")}
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -803,6 +798,7 @@ function CorrelationMatrix({
   table: ParsedDumpTable;
   numericCols: string[];
 }) {
+  const { t } = useTranslation();
   const matrix = useMemo(() => {
     const cols = numericCols.slice(0, 10); // Limit to 10 for readability
     const colValues: Record<string, number[]> = {};
@@ -831,7 +827,7 @@ function CorrelationMatrix({
 
   return (
     <div className="space-y-2 border-t border-border pt-4">
-      <h3 className="text-sm font-semibold text-foreground">Correlation Matrix</h3>
+      <h3 className="text-sm font-semibold text-foreground">{t("charts.correlationMatrix")}</h3>
       <div className="overflow-x-auto">
         <table className="text-xs">
           <thead>
@@ -913,6 +909,7 @@ function DateBinning({
   columnTypes: Record<string, string>;
   theme: ReturnType<typeof useThemeColors>;
 }) {
+  const { t } = useTranslation();
   const dateCols = table.columns.filter((c) => columnTypes[c] === "date");
   const [selectedCol, setSelectedCol] = useState(dateCols[0] ?? "");
   const [bin, setBin] = useState<DateBin>("month");
@@ -935,10 +932,10 @@ function DateBinning({
 
   return (
     <div className="space-y-3 border-t border-border pt-4">
-      <h3 className="text-sm font-semibold text-foreground">Date Distribution</h3>
+      <h3 className="text-sm font-semibold text-foreground">{t("charts.dateDistribution")}</h3>
       <div className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Column</label>
+          <label className="mb-1 block text-xs text-muted-foreground">{t("charts.column")}</label>
           <select
             value={selectedCol}
             onChange={(e) => setSelectedCol(e.target.value)}
@@ -950,16 +947,16 @@ function DateBinning({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Group by</label>
+          <label className="mb-1 block text-xs text-muted-foreground">{t("charts.groupBy")}</label>
           <select
             value={bin}
             onChange={(e) => setBin(e.target.value as DateBin)}
             className="rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
           >
-            <option value="day">Day</option>
-            <option value="week">Week</option>
-            <option value="month">Month</option>
-            <option value="year">Year</option>
+            <option value="day">{t("charts.day")}</option>
+            <option value="week">{t("charts.week")}</option>
+            <option value="month">{t("charts.month")}</option>
+            <option value="year">{t("charts.year")}</option>
           </select>
         </div>
       </div>

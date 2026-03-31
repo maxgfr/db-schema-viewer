@@ -30,6 +30,7 @@ import {
   type ChallengeResponse,
 } from "@/lib/ai/ai-service";
 import { MarkdownContent } from "../shared/MarkdownContent";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface AIPanelProps {
   diagram: Diagram;
@@ -81,15 +82,16 @@ function saveChallengeEntry(entry: ChallengeHistoryEntry) {
 }
 
 const QUICK_ACTIONS = [
-  { label: "Explain as PM", prompt: "Explain this schema as if I were a product manager with no database experience. Give a business-friendly summary of what data this system manages, the main entities, and how they relate to each other." },
-  { label: "Suggest indexes", prompt: "Analyze all foreign keys, frequently queried columns, and column patterns in my schema. Recommend specific CREATE INDEX statements I should add, explaining why each index would help." },
-  { label: "Generate migration", prompt: "Based on the issues you can spot in my schema, generate concrete SQL migration statements (ALTER TABLE, ADD INDEX, ADD CONSTRAINT, etc.) in the native dialect to fix them. Group by priority." },
-  { label: "Generate query", prompt: "Generate useful SQL queries for this schema: a JOIN query across the main tables, an aggregation query, and a query that would be useful for a dashboard. Use the actual table and column names." },
-  { label: "Find issues", prompt: "Find potential issues or anti-patterns in my schema" },
-  { label: "Test queries", prompt: "Suggest SQL test queries that would validate the constraints and relationships in my schema — e.g., check referential integrity, find orphan rows, verify unique constraints, and test edge cases." },
+  { labelKey: "ai.quickAction.explainAsPm", prompt: "Explain this schema as if I were a product manager with no database experience. Give a business-friendly summary of what data this system manages, the main entities, and how they relate to each other." },
+  { labelKey: "ai.quickAction.suggestIndexes", prompt: "Analyze all foreign keys, frequently queried columns, and column patterns in my schema. Recommend specific CREATE INDEX statements I should add, explaining why each index would help." },
+  { labelKey: "ai.quickAction.generateMigration", prompt: "Based on the issues you can spot in my schema, generate concrete SQL migration statements (ALTER TABLE, ADD INDEX, ADD CONSTRAINT, etc.) in the native dialect to fix them. Group by priority." },
+  { labelKey: "ai.quickAction.generateQuery", prompt: "Generate useful SQL queries for this schema: a JOIN query across the main tables, an aggregation query, and a query that would be useful for a dashboard. Use the actual table and column names." },
+  { labelKey: "ai.quickAction.findIssues", prompt: "Find potential issues or anti-patterns in my schema" },
+  { labelKey: "ai.quickAction.testQueries", prompt: "Suggest SQL test queries that would validate the constraints and relationships in my schema — e.g., check referential integrity, find orphan rows, verify unique constraints, and test edge cases." },
 ];
 
 export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"chat" | "challenge">("chat");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -114,9 +116,9 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
 
   const handleCopyMessage = useCallback((content: string) => {
     navigator.clipboard.writeText(content).then(() => {
-      toast.success("Copied to clipboard");
+      toast.success(t("common.copiedToClipboard"));
     });
-  }, []);
+  }, [t]);
 
   const handleStop = useCallback(() => {
     if (abortControllerRef.current) {
@@ -131,13 +133,13 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
 
     const settings = loadAISettings();
     if (!settings) {
-      toast.error("Please configure your AI API key first");
+      toast.error(t("common.configureApiKeyFirst"));
       return;
     }
 
     if (!settings.apiKey && !settings.customEndpoint) {
-      toast.error("No AI configured", {
-        description: "Go to Settings to configure an API key or a local Ollama endpoint.",
+      toast.error(t("common.noAiConfigured"), {
+        description: t("common.noAiConfiguredDesc"),
       });
       return;
     }
@@ -176,7 +178,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
             if (partial.trim()) {
               setMessages((prev) => [
                 ...prev,
-                { role: "assistant", content: partial + "\n\n_(stopped)_" },
+                { role: "assistant", content: partial + "\n\n" + t("ai.stopped") },
               ]);
             }
           } else {
@@ -195,24 +197,24 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
       if ((err as Error)?.name === "AbortError") {
         const partial = streamingTextRef.current;
         if (partial.trim()) {
-          setMessages((prev) => [...prev, { role: "assistant", content: partial + "\n\n_(stopped)_" }]);
+          setMessages((prev) => [...prev, { role: "assistant", content: partial + "\n\n" + t("ai.stopped") }]);
         }
         setStreamingText("");
         streamingTextRef.current = "";
       } else {
-        toast.error(err instanceof Error ? err.message : "AI request failed");
+        toast.error(err instanceof Error ? err.message : t("ai.requestFailed"));
       }
     } finally {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, diagram]);
+  }, [input, isLoading, messages, diagram, t]);
 
   const handleChallenge = useCallback(async () => {
     const settings = loadAISettings();
     if (!settings || (!settings.apiKey && !settings.customEndpoint)) {
-      toast.error("No AI configured", {
-        description: "Go to Settings to configure an API key or a local Ollama endpoint.",
+      toast.error(t("common.noAiConfigured"), {
+        description: t("common.noAiConfiguredDesc"),
       });
       return;
     }
@@ -232,11 +234,11 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
       saveChallengeEntry(entry);
       setChallengeHistory(loadChallengeHistory());
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Challenge failed");
+      toast.error(err instanceof Error ? err.message : t("ai.challengeFailed"));
     } finally {
       setIsLoading(false);
     }
-  }, [diagram]);
+  }, [diagram, t]);
 
   const handleExportReport = useCallback((format: "json" | "md" = "json") => {
     if (!challengeResult) return;
@@ -268,7 +270,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
       link.download = "schema-challenge-report.md";
       link.click();
       URL.revokeObjectURL(url);
-      toast.success("Markdown report exported");
+      toast.success(t("ai.reportExportedMd"));
     } else {
       const json = JSON.stringify(challengeResult, null, 2);
       const blob = new Blob([json], { type: "application/json" });
@@ -278,9 +280,9 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
       link.download = "schema-challenge-report.json";
       link.click();
       URL.revokeObjectURL(url);
-      toast.success("JSON report exported");
+      toast.success(t("ai.reportExportedJson"));
     }
-  }, [challengeResult]);
+  }, [challengeResult, t]);
 
   const severityIcon = (severity: SchemaIssue["severity"]) => {
     switch (severity) {
@@ -323,8 +325,8 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h2 className="text-lg font-bold text-foreground">AI Assistant</h2>
-            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent" aria-label="Close AI panel">
+            <h2 className="text-lg font-bold text-foreground">{t("ai.title")}</h2>
+            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent" aria-label={t("ai.closePanel")}>
               <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
@@ -340,7 +342,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
               }`}
             >
               <MessageSquare className="h-4 w-4" />
-              Ask
+              {t("ai.ask")}
             </button>
             <button
               onClick={() => setTab("challenge")}
@@ -351,7 +353,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
               }`}
             >
               <Shield className="h-4 w-4" />
-              Challenge
+              {t("ai.challenge")}
             </button>
           </div>
 
@@ -363,19 +365,19 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                   <div className="flex flex-col items-center gap-4 py-10 text-center">
                     <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
                     <div>
-                      <p className="text-sm font-medium text-foreground">Ask anything about your schema</p>
+                      <p className="text-sm font-medium text-foreground">{t("ai.askAnything")}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {diagram.tables.length} tables, {diagram.relationships.length} relationships loaded
+                        {t("ai.tablesLoaded", { tables: diagram.tables.length, rels: diagram.relationships.length })}
                       </p>
                     </div>
                     <div className="flex flex-wrap justify-center gap-2">
                       {QUICK_ACTIONS.map((action) => (
                         <button
-                          key={action.label}
+                          key={action.labelKey}
                           onClick={() => handleSend(action.prompt)}
                           className="rounded-lg border border-border bg-accent px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-indigo-500/50 hover:bg-indigo-500/10"
                         >
-                          {action.label}
+                          {t(action.labelKey)}
                         </button>
                       ))}
                     </div>
@@ -399,8 +401,8 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                       <button
                         onClick={() => handleCopyMessage(msg.content)}
                         className="absolute right-2 top-2 rounded p-1 opacity-0 transition-opacity hover:bg-accent group-hover:opacity-100"
-                        title="Copy message"
-                        aria-label="Copy message"
+                        title={t("common.copyMessage")}
+                        aria-label={t("common.copyMessage")}
                       >
                         <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
@@ -422,8 +424,8 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                     <button
                       onClick={() => { setMessages([]); setStreamingText(""); }}
                       className="rounded-lg border border-border px-2 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-                      title="Clear chat history"
-                      aria-label="Clear chat history"
+                      title={t("common.clearChatHistory")}
+                      aria-label={t("common.clearChatHistory")}
                     >
                       <RotateCcw className="h-4 w-4" />
                     </button>
@@ -433,7 +435,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !isLoading && handleSend()}
-                    placeholder="Ask about your schema..."
+                    placeholder={t("ai.askPlaceholder")}
                     className="flex-1 rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
                     disabled={isLoading}
                   />
@@ -441,8 +443,8 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                     <button
                       onClick={handleStop}
                       className="rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-500"
-                      title="Stop generating"
-                      aria-label="Stop generating"
+                      title={t("common.stopGenerating")}
+                      aria-label={t("common.stopGenerating")}
                     >
                       <Square className="h-4 w-4" />
                     </button>
@@ -465,14 +467,13 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                 <div className="flex flex-col items-center py-8">
                   <Shield className="mb-4 h-12 w-12 text-muted-foreground" />
                   <p className="mb-4 text-center text-sm text-muted-foreground">
-                    Run an AI-powered review of your schema to find potential
-                    issues with naming, normalization, indexing, and more.
+                    {t("ai.challengeDescription")}
                   </p>
                   <button
                     onClick={handleChallenge}
                     className="rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white hover:bg-indigo-500"
                   >
-                    Challenge My Schema
+                    {t("ai.challengeMySchema")}
                   </button>
                 </div>
               )}
@@ -480,7 +481,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
               {isLoading && (
                 <div className="flex flex-col items-center py-8">
                   <Loader2 className="mb-4 h-8 w-8 animate-spin text-indigo-400" />
-                  <p className="text-sm text-muted-foreground">Analyzing your schema...</p>
+                  <p className="text-sm text-muted-foreground">{t("ai.analyzing")}</p>
                 </div>
               )}
 
@@ -500,15 +501,15 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                   <div className="flex items-center justify-center gap-4 text-xs">
                     <span className="flex items-center gap-1 text-red-400">
                       <AlertTriangle className="h-3 w-3" />
-                      {severityCounts.critical} critical
+                      {t("ai.severity.criticalCount", { count: severityCounts.critical })}
                     </span>
                     <span className="flex items-center gap-1 text-amber-400">
                       <AlertTriangle className="h-3 w-3" />
-                      {severityCounts.warning} warnings
+                      {t("ai.severity.warningCount", { count: severityCounts.warning })}
                     </span>
                     <span className="flex items-center gap-1 text-blue-400">
                       <Info className="h-3 w-3" />
-                      {severityCounts.info} info
+                      {t("ai.severity.infoCount", { count: severityCounts.info })}
                     </span>
                   </div>
 
@@ -520,30 +521,30 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                       onChange={(e) => setSeverityFilter(e.target.value as SeverityFilter)}
                       className="rounded-lg border border-border bg-accent px-2 py-1 text-xs text-foreground focus:outline-none"
                     >
-                      <option value="all">All Severities</option>
-                      <option value="critical">Critical</option>
-                      <option value="warning">Warning</option>
-                      <option value="info">Info</option>
+                      <option value="all">{t("ai.severity.all")}</option>
+                      <option value="critical">{t("ai.severity.critical")}</option>
+                      <option value="warning">{t("ai.severity.warning")}</option>
+                      <option value="info">{t("ai.severity.info")}</option>
                     </select>
                     <select
                       value={categoryFilter}
                       onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
                       className="rounded-lg border border-border bg-accent px-2 py-1 text-xs text-foreground focus:outline-none"
                     >
-                      <option value="all">All Categories</option>
-                      <option value="naming">Naming</option>
-                      <option value="normalization">Normalization</option>
-                      <option value="indexing">Indexing</option>
-                      <option value="relationships">Relationships</option>
-                      <option value="types">Types</option>
-                      <option value="performance">Performance</option>
-                      <option value="security">Security</option>
+                      <option value="all">{t("ai.category.all")}</option>
+                      <option value="naming">{t("ai.category.naming")}</option>
+                      <option value="normalization">{t("ai.category.normalization")}</option>
+                      <option value="indexing">{t("ai.category.indexing")}</option>
+                      <option value="relationships">{t("ai.category.relationships")}</option>
+                      <option value="types">{t("ai.category.types")}</option>
+                      <option value="performance">{t("ai.category.performance")}</option>
+                      <option value="security">{t("ai.category.security")}</option>
                     </select>
                     <div className="flex-1" />
                     <button
                       onClick={() => handleExportReport("md")}
                       className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-                      title="Export report as Markdown"
+                      title={t("ai.exportReportMd")}
                     >
                       <Download className="h-3 w-3" />
                       .md
@@ -551,7 +552,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                     <button
                       onClick={() => handleExportReport("json")}
                       className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-                      title="Export report as JSON"
+                      title={t("ai.exportReportJson")}
                     >
                       <Download className="h-3 w-3" />
                       .json
@@ -587,7 +588,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                     ))}
                     {filteredIssues.length === 0 && (
                       <p className="py-4 text-center text-sm text-muted-foreground">
-                        No issues match the current filters.
+                        {t("ai.noIssuesMatch")}
                       </p>
                     )}
                   </div>
@@ -597,19 +598,19 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                       onClick={handleChallenge}
                       className="flex-1 rounded-xl border border-border py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
                     >
-                      Run Again
+                      {t("ai.runAgain")}
                     </button>
                     <button
                       onClick={() => setShowHistory(!showHistory)}
                       className={`flex items-center gap-1 rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground ${showHistory ? "bg-accent text-foreground" : ""}`}
-                      title="View score history"
+                      title={t("ai.viewScoreHistory")}
                     >
                       <History className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => { setChallengeResult(null); setSeverityFilter("all"); setCategoryFilter("all"); }}
                       className="flex items-center gap-1 rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
-                      title="Clear challenge results"
+                      title={t("ai.clearChallengeResults")}
                     >
                       <RotateCcw className="h-3.5 w-3.5" />
                     </button>
@@ -617,7 +618,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
 
                   {showHistory && challengeHistory.length > 0 && (
                     <div className="rounded-xl border border-border bg-accent/50 p-3">
-                      <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Score History</h4>
+                      <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">{t("ai.scoreHistory")}</h4>
                       <div className="space-y-1.5">
                         {challengeHistory.slice().reverse().map((entry, i) => {
                           const prev = challengeHistory[challengeHistory.length - 1 - i - 1];
@@ -637,7 +638,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                                   {diff > 0 ? "+" : ""}{diff}
                                 </span>
                               )}
-                              <span className="text-muted-foreground">{entry.issueCount} issues</span>
+                              <span className="text-muted-foreground">{t("ai.issues", { count: entry.issueCount })}</span>
                               <span className="ml-auto text-muted-foreground/60">
                                 {new Date(entry.timestamp).toLocaleDateString()}
                               </span>

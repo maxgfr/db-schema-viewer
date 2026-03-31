@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
+import { I18nWrapper } from "./_components/I18nWrapper";
 import "./globals.css";
+
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -95,7 +97,9 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-screen bg-background font-sans antialiased">
-        {children}
+        <I18nWrapper>
+          {children}
+        </I18nWrapper>
         <Toaster position="bottom-right" />
       </body>
     </html>

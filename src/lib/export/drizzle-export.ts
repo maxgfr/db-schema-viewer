@@ -279,7 +279,7 @@ function buildColumnBuilder(
 
   // Handle defaults
   if (field.default !== undefined && field.default !== "") {
-    const defVal = field.default;
+    const defVal = String(field.default);
     if (defVal.toLowerCase() === "now()" || defVal.toLowerCase() === "current_timestamp") {
       chains.push(".defaultNow()");
     } else if (defVal === "true" || defVal === "false") {

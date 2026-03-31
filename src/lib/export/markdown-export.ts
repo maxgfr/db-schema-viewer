@@ -1,4 +1,5 @@
 import type { Diagram } from "@/lib/domain";
+import { t } from "@/lib/i18n/context";
 import { exportDiagramToMermaid } from "./mermaid-export";
 
 export function exportDiagramToMarkdown(diagram: Diagram): string {
@@ -6,13 +7,13 @@ export function exportDiagramToMarkdown(diagram: Diagram): string {
 
   lines.push(`# ${diagram.name}`);
   lines.push("");
-  lines.push(`**Database:** ${diagram.databaseType}`);
-  lines.push(`**Tables:** ${diagram.tables.length}`);
-  lines.push(`**Generated:** ${new Date().toISOString()}`);
+  lines.push(`**${t("exportFile.database")}** ${diagram.databaseType}`);
+  lines.push(`**${t("exportFile.tables")}** ${diagram.tables.length}`);
+  lines.push(`**${t("exportFile.generated")}** ${new Date().toISOString()}`);
   lines.push("");
 
   for (const table of diagram.tables) {
-    lines.push(`## ${table.isView ? "View" : "Table"}: ${table.schema ? `${table.schema}.` : ""}${table.name}`);
+    lines.push(`## ${table.isView ? t("exportFile.view") : t("exportFile.table")} ${table.schema ? `${table.schema}.` : ""}${table.name}`);
     lines.push("");
 
     if (table.comment) {
@@ -21,12 +22,12 @@ export function exportDiagramToMarkdown(diagram: Diagram): string {
     }
 
     // Fields table
-    lines.push("| Column | Type | Nullable | PK | Unique | Default |");
+    lines.push(`| ${t("exportFile.column")} | ${t("exportFile.type")} | ${t("exportFile.nullable")} | ${t("exportFile.pk")} | ${t("exportFile.unique")} | ${t("exportFile.default")} |`);
     lines.push("|--------|------|----------|----|--------|---------|");
     for (const field of table.fields) {
-      const pk = field.primaryKey ? "Yes" : "";
-      const unique = field.unique ? "Yes" : "";
-      const nullable = field.nullable ? "Yes" : "No";
+      const pk = field.primaryKey ? t("exportFile.yes") : "";
+      const unique = field.unique ? t("exportFile.yes") : "";
+      const nullable = field.nullable ? t("exportFile.yes") : t("exportFile.no");
       const def = field.default ?? "";
       lines.push(`| ${field.name} | ${field.type} | ${nullable} | ${pk} | ${unique} | ${def} |`);
     }
@@ -34,7 +35,7 @@ export function exportDiagramToMarkdown(diagram: Diagram): string {
 
     // Indexes
     if (table.indexes.length > 0) {
-      lines.push("### Indexes");
+      lines.push(`### ${t("exportFile.indexes")}`);
       lines.push("");
       for (const idx of table.indexes) {
         lines.push(`- **${idx.name}** (${idx.columns.join(", ")})${idx.unique ? " UNIQUE" : ""}`);
@@ -45,7 +46,7 @@ export function exportDiagramToMarkdown(diagram: Diagram): string {
     // Foreign keys
     const fks = table.fields.filter((f) => f.references);
     if (fks.length > 0) {
-      lines.push("### Foreign Keys");
+      lines.push(`### ${t("exportFile.foreignKeys")}`);
       lines.push("");
       for (const fk of fks) {
         lines.push(`- \`${fk.name}\` -> \`${fk.references!.table}.${fk.references!.field}\``);
@@ -56,7 +57,7 @@ export function exportDiagramToMarkdown(diagram: Diagram): string {
 
   // Mermaid ERD
   if (diagram.tables.length > 0) {
-    lines.push("## Entity Relationship Diagram");
+    lines.push(`## ${t("exportFile.entityRelationshipDiagram")}`);
     lines.push("");
     lines.push("```mermaid");
     lines.push(exportDiagramToMermaid(diagram));
@@ -66,7 +67,7 @@ export function exportDiagramToMarkdown(diagram: Diagram): string {
 
   // Relationships
   if (diagram.relationships.length > 0) {
-    lines.push("## Relationships");
+    lines.push(`## ${t("exportFile.relationships")}`);
     lines.push("");
     for (const rel of diagram.relationships) {
       const srcTable = diagram.tables.find((t) => t.id === rel.sourceTableId);

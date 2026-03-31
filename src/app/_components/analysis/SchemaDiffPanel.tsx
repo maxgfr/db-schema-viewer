@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { X, Upload, Plus, Minus, RefreshCw, ArrowRight, Brain, Loader2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/context";
 import type { Diagram } from "@/lib/domain";
 import { diffSchemas, type SchemaDiff, type TableDiff, type FieldDiff } from "@/lib/analysis/schema-diff";
 import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
@@ -33,6 +34,7 @@ function FieldDiffRow({ diff }: { diff: FieldDiff }) {
 }
 
 function TableDiffCard({ diff }: { diff: TableDiff }) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border border-border bg-card/50 p-4">
       <div className="flex items-center gap-2">
@@ -72,7 +74,7 @@ function TableDiffCard({ diff }: { diff: TableDiff }) {
         <div className="mt-2 space-y-1">
           {diff.addedIndexes.map((idx) => (
             <div key={idx} className="ml-4 flex items-center gap-2 text-xs text-emerald-400">
-              <Plus className="h-3 w-3" /> index: {idx}
+              <Plus className="h-3 w-3" /> {t("diff.index", { name: idx })}
             </div>
           ))}
         </div>
@@ -82,7 +84,7 @@ function TableDiffCard({ diff }: { diff: TableDiff }) {
         <div className="mt-2 space-y-1">
           {diff.removedIndexes.map((idx) => (
             <div key={idx} className="ml-4 flex items-center gap-2 text-xs text-red-400">
-              <Minus className="h-3 w-3" /> index: {idx}
+              <Minus className="h-3 w-3" /> {t("diff.index", { name: idx })}
             </div>
           ))}
         </div>
@@ -92,6 +94,7 @@ function TableDiffCard({ diff }: { diff: TableDiff }) {
 }
 
 export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProps) {
+  const { t } = useTranslation();
   const [diff, setDiff] = useState<SchemaDiff | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState("");
@@ -109,20 +112,20 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
         setAiAnalysis("");
         toast.success(result.summary);
       } catch (err) {
-        toast.error("Failed to parse schema for comparison", {
-          description: err instanceof Error ? err.message : "Unknown error",
+        toast.error(t("diff.failedToParse"), {
+          description: err instanceof Error ? err.message : t("common.unknownError"),
         });
       }
     },
-    [currentDiagram]
+    [currentDiagram, t]
   );
 
   const handleAIAnalysis = useCallback(async () => {
     if (!diff || !newDiagramRef.current) return;
     const settings = loadAISettings();
     if (!settings || (!settings.apiKey && !settings.customEndpoint)) {
-      toast.error("No AI configured", {
-        description: "Go to Settings to configure an API key.",
+      toast.error(t("common.noAiConfigured"), {
+        description: t("common.noAiConfiguredDesc"),
       });
       return;
     }
@@ -153,9 +156,9 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
       );
     } catch {
       setIsAnalyzing(false);
-      toast.error("AI analysis failed");
+      toast.error(t("diff.aiAnalysisFailed"));
     }
-  }, [diff, currentDiagram]);
+  }, [diff, currentDiagram, t]);
 
   const handleFile = useCallback(
     (file: File) => {
@@ -165,11 +168,11 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
         if (content) handleCompare(content, file.name);
       };
       reader.onerror = () => {
-        toast.error("Failed to read file");
+        toast.error(t("common.failedToReadFile"));
       };
       reader.readAsText(file);
     },
-    [handleCompare]
+    [handleCompare, t]
   );
 
   const handleDrop = useCallback(
@@ -203,7 +206,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <h2 className="text-lg font-bold text-foreground">Schema Diff</h2>
+            <h2 className="text-lg font-bold text-foreground">{t("diff.title")}</h2>
             <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent">
               <X className="h-5 w-5 text-muted-foreground" />
             </button>
@@ -213,7 +216,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
             {!diff ? (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Upload a new schema to compare against the current one. Changes will be highlighted.
+                  {t("diff.uploadDesc")}
                 </p>
                 <div
                   onDragOver={(e) => {
@@ -231,10 +234,10 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
                 >
                   <Upload className="mb-3 h-8 w-8 text-muted-foreground" />
                   <p className="text-sm font-medium text-foreground">
-                    Drop schema file or click to browse
+                    {t("diff.dropFile")}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    SQL, Drizzle (.ts), Prisma (.prisma), DBML (.dbml)
+                    {t("diff.acceptedFormats")}
                   </p>
                   <input
                     ref={fileInputRef}
@@ -256,14 +259,14 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
 
                 {noChanges && (
                   <p className="text-center text-sm text-muted-foreground py-6">
-                    The schemas are identical.
+                    {t("diff.identical")}
                   </p>
                 )}
 
                 {diff.addedTables.length > 0 && (
                   <div className="space-y-2">
                     <h3 className="text-xs font-medium uppercase text-emerald-400 tracking-wider">
-                      Added Tables
+                      {t("diff.addedTables")}
                     </h3>
                     {diff.addedTables.map((t) => (
                       <div key={t} className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-400">
@@ -276,7 +279,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
                 {diff.removedTables.length > 0 && (
                   <div className="space-y-2">
                     <h3 className="text-xs font-medium uppercase text-red-400 tracking-wider">
-                      Removed Tables
+                      {t("diff.removedTables")}
                     </h3>
                     {diff.removedTables.map((t) => (
                       <div key={t} className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-sm text-red-400">
@@ -289,7 +292,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
                 {diff.modifiedTables.length > 0 && (
                   <div className="space-y-2">
                     <h3 className="text-xs font-medium uppercase text-amber-400 tracking-wider">
-                      Modified Tables
+                      {t("diff.modifiedTables")}
                     </h3>
                     {diff.modifiedTables.map((td) => (
                       <TableDiffCard key={td.tableName} diff={td} />
@@ -300,7 +303,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
                 {diff.addedRelationships.length > 0 && (
                   <div className="space-y-2">
                     <h3 className="text-xs font-medium uppercase text-emerald-400 tracking-wider">
-                      Added Relationships
+                      {t("diff.addedRelationships")}
                     </h3>
                     {diff.addedRelationships.map((r, i) => (
                       <div key={i} className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-400">
@@ -315,7 +318,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
                 {diff.removedRelationships.length > 0 && (
                   <div className="space-y-2">
                     <h3 className="text-xs font-medium uppercase text-red-400 tracking-wider">
-                      Removed Relationships
+                      {t("diff.removedRelationships")}
                     </h3>
                     {diff.removedRelationships.map((r, i) => (
                       <div key={i} className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-400">
@@ -333,14 +336,14 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
                   >
                     <Brain className="h-4 w-4" />
-                    Analyze with AI
+                    {t("diff.analyzeWithAI")}
                   </button>
                 )}
 
                 {isAnalyzing && (
                   <div className="flex items-center gap-2 rounded-xl border border-border bg-accent/50 px-4 py-3 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
-                    Analyzing migration...
+                    {t("diff.analyzingMigration")}
                   </div>
                 )}
 
@@ -354,7 +357,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
                   onClick={() => { setDiff(null); setAiAnalysis(""); }}
                   className="w-full rounded-xl border border-border py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent"
                 >
-                  Compare another schema
+                  {t("diff.compareAnother")}
                 </button>
               </>
             )}

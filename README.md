@@ -3,7 +3,7 @@
 [![CI](https://github.com/maxgfr/db-schema-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/maxgfr/db-schema-viewer/actions/workflows/ci.yml)
 [![Deploy](https://github.com/maxgfr/db-schema-viewer/actions/workflows/deploy.yml/badge.svg)](https://github.com/maxgfr/db-schema-viewer/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-554%20passing-brightgreen)](https://github.com/maxgfr/db-schema-viewer/actions)
+[![Tests](https://img.shields.io/badge/tests-616%20passing-brightgreen)](https://github.com/maxgfr/db-schema-viewer/actions)
 
 > **100% client-side** database schema visualizer. Upload SQL, Drizzle, Prisma, TypeORM, Sequelize, MikroORM, Kysely, or DBML schemas, visualize interactive ER diagrams, analyze with AI, and export to 10 formats. Your data never leaves your browser.
 
@@ -124,6 +124,12 @@ Weighted pattern matching detects the database type from SQL syntax:
 - Service worker for offline access to the application shell
 - Cache-first strategy with background updates for static assets
 
+### i18n
+- **English** and **French** language support
+- Language toggle in the editor toolbar (Globe icon)
+- Browser language auto-detection with localStorage persistence
+- 400+ translation keys covering all UI surfaces
+
 ---
 
 ## Tech Stack
@@ -139,7 +145,7 @@ Weighted pattern matching detects the database type from SQL syntax:
 | Charts | Recharts 3 |
 | Sharing | lz-string |
 | Export | html-to-image + jsPDF |
-| Testing | Vitest + happy-dom (554 tests) |
+| Testing | Vitest + happy-dom (616 tests) |
 | CI/CD | GitHub Actions → GitHub Pages |
 | Package Manager | pnpm 10 |
 
@@ -192,63 +198,6 @@ pnpm build:export  # Static build for GitHub Pages
 
 ---
 
-## Test Coverage
-
-```
-47 test files — 554 tests passing
-
-src/__tests__/lib/
-├── ai/              ai-prompts.test.ts              (6 tests)  — Prompt context builder
-│                    ai-prompts-edge-cases.test.ts    (5 tests)  — Edge cases (empty, special chars)
-├── analysis/        schema-analyzer.test.ts          (19 tests) — Anti-patterns + quality score
-│                    schema-diff.test.ts              (15 tests) — Schema diffing
-├── dbml/            dbml-parser.test.ts              (12 tests) — DBML parsing
-├── domain/          domain.test.ts                   (7 tests)  — Zod schema validation
-├── drizzle/         drizzle-parser.test.ts           (14 tests) — Drizzle ORM parsing
-│                    drizzle-edge-cases.test.ts        (7 tests)  — Enums, self-refs, comments
-│                    egapro-regression.test.ts         (26 tests) — Callback syntax regression
-│                    strip-imports.test.ts              (6 tests)  — Import stripping
-├── dump/            dump-parser.test.ts               (7 tests)  — SQL dump INSERT parsing
-│                    dump-parser-edge-cases.test.ts     (5 tests)  — Unicode, multi-line, escapes
-│                    data-types.test.ts                 (7 tests)  — Column type inference
-│                    data-types-edge-cases.test.ts      (7 tests)  — UUID, JSON, dates, monetary
-│                    fake-data-generator.test.ts       (27 tests) — Fake data generation
-│                    fake-data-integration.test.ts     (52 tests) — End-to-end fake data
-├── examples/        example-schemas.test.ts           (16 tests) — Multi-format examples
-├── export/          sql-export.test.ts                (4 tests)  — SQL generation
-│                    sql-export-roundtrip.test.ts       (5 tests)  — Parse → export → reparse
-│                    export-full-pipeline.test.ts      (36 tests) — All export formats
-│                    mermaid-export.test.ts             (7 tests)  — Mermaid ERD output
-│                    dbml-export.test.ts                (8 tests)  — DBML output
-│                    plantuml-export.test.ts            (7 tests)  — PlantUML output
-│                    prisma-export.test.ts              (8 tests)  — Prisma schema output
-│                    drizzle-export.test.ts             (7 tests)  — Drizzle TS output
-│                    markdown-export.test.ts            (7 tests)  — Markdown docs output
-│                    case-utils.test.ts                 (7 tests)  — Case conversion utilities
-├── layout/          auto-layout.test.ts              (14 tests) — BFS grid layout algorithm
-├── parsing/         parse-schema-file.test.ts        (11 tests) — Format detection + routing
-│                    extract-brace-block.test.ts        (8 tests)  — Brace block extraction
-├── prisma/          prisma-parser.test.ts            (12 tests) — Prisma schema parsing
-│                    prisma-edge-cases.test.ts         (10 tests) — @@map, composite keys, named rels
-├── sharing/         encode-state.test.ts             (10 tests) — URL compression/decompression
-│                    encode-state-roundtrip.test.ts     (5 tests)  — Large schema roundtrip
-├── sql/             detect-db-type.test.ts           (14 tests) — DB type detection (all 9 + generic)
-│                    dialects.test.ts                  (11 tests) — Per-dialect parsing
-│                    sample-schemas.test.ts            (10 tests) — Sample schema roundtrip
-│                    schema-templates.test.ts          (10 tests) — Template schemas
-│                    sql-import.test.ts                 (7 tests)  — SQL→Diagram pipeline
-│                    performance.test.ts                (3 tests)  — Parse 100/500/1000 tables
-├── storage/         local-storage.test.ts             (5 tests)  — Diagram persistence
-│                    cookie-storage.test.ts             (7 tests)  — AI settings storage
-├── typeorm/         typeorm-parser.test.ts            (11 tests) — TypeORM entity parsing
-├── sequelize/       sequelize-parser.test.ts          (16 tests) — Sequelize model parsing
-├── mikroorm/        mikroorm-parser.test.ts           (14 tests) — MikroORM entity parsing
-├── kysely/          kysely-parser.test.ts             (14 tests) — Kysely type parsing
-└── utils/           utils.test.ts                     (6 tests)  — Utility functions
-```
-
----
-
 ## Architecture
 
 ```
@@ -291,12 +240,13 @@ src/
 │   ├── export/                 # PNG/SVG/PDF/Markdown/Mermaid/DBML/PlantUML/Prisma/Drizzle
 │   ├── sql-export/             # Cross-dialect SQL generation (CASCADE, INDEX, COMMENT ON, ENUM, VIEW)
 │   ├── dump/                   # SQL dump parser + type inference + fake data generator
+│   ├── i18n/                   # Translations (en.ts, fr.ts) + context provider
 │   └── utils.ts                # generateId, getTableColor, cn()
 ├── hooks/
 │   ├── use-theme.ts            # Dark/Light toggle + localStorage
 │   └── use-keyboard-shortcuts.ts
 ├── components/ui/              # Radix UI wrappers (Button, Tooltip)
-└── __tests__/                  # 47 test files, 554 tests
+└── __tests__/                  # 48 test files, 616 tests
 ```
 
 ---
@@ -339,4 +289,4 @@ Before submitting a PR, make sure:
 
 ## License
 
-MIT
+[MIT](LICENSE)

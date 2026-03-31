@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { Search, Table, Eye, ChevronDown, ChevronRight, KeyRound, Link, SearchX, ChevronsUpDown, ChevronsDownUp, Hash, FolderOpen } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface SchemaSidebarProps {
   diagram: Diagram;
@@ -35,6 +36,7 @@ export function SchemaSidebar({
   onTableSelect,
   onTableZoom,
 }: SchemaSidebarProps) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -106,29 +108,29 @@ export function SchemaSidebar({
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search tables & fields..."
+            placeholder={t("sidebar.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-lg border border-border bg-accent py-2 pl-9 pr-3 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
-            aria-label="Search tables and fields"
+            aria-label={t("sidebar.searchAriaLabel")}
           />
         </div>
         <div className="mt-2 flex gap-1">
           <button
             onClick={expandAll}
             className="flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-            title="Expand all tables"
+            title={t("sidebar.expandAllTitle")}
           >
             <ChevronsUpDown className="h-3 w-3" />
-            Expand all
+            {t("sidebar.expandAll")}
           </button>
           <button
             onClick={collapseAll}
             className="flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-            title="Collapse all tables"
+            title={t("sidebar.collapseAllTitle")}
           >
             <ChevronsDownUp className="h-3 w-3" />
-            Collapse all
+            {t("sidebar.collapseAll")}
           </button>
         </div>
       </div>
@@ -139,13 +141,13 @@ export function SchemaSidebar({
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             <SearchX className="h-8 w-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">
-              No tables match &ldquo;{searchTerm}&rdquo;
+              {t("sidebar.noMatch", { term: searchTerm })}
             </p>
             <button
               onClick={() => setSearch("")}
               className="text-xs text-indigo-400 hover:underline"
             >
-              Clear search
+              {t("sidebar.clearSearch")}
             </button>
           </div>
         )}
@@ -190,7 +192,7 @@ export function SchemaSidebar({
                           ? "bg-indigo-500/20 text-indigo-600 dark:text-indigo-300"
                           : "text-foreground/80 hover:bg-accent"
                       }`}
-                      title="Click to expand, double-click to zoom"
+                      title={t("sidebar.clickToExpand")}
                     >
                       {isExpanded ? (
                         <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
@@ -207,12 +209,12 @@ export function SchemaSidebar({
                       </span>
                       <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
                         {fkCount > 0 && (
-                          <span className="flex items-center gap-0.5 text-blue-400" title={`${fkCount} foreign keys`}>
+                          <span className="flex items-center gap-0.5 text-blue-400" title={t("sidebar.foreignKeys", { count: fkCount })}>
                             <Link className="h-2.5 w-2.5" />{fkCount}
                           </span>
                         )}
                         {idxCount > 0 && (
-                          <span className="flex items-center gap-0.5 text-emerald-400" title={`${idxCount} indexes`}>
+                          <span className="flex items-center gap-0.5 text-emerald-400" title={t("sidebar.indexes", { count: idxCount })}>
                             <Hash className="h-2.5 w-2.5" />{idxCount}
                           </span>
                         )}
@@ -259,11 +261,11 @@ export function SchemaSidebar({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             {filteredTables.length !== diagram.tables.length
-              ? `${filteredTables.length}/${diagram.tables.length} tables`
-              : `${diagram.tables.length} tables`}
+              ? t("sidebar.tablesFiltered", { filtered: filteredTables.length, total: diagram.tables.length })
+              : t("sidebar.tables", { count: diagram.tables.length })}
           </span>
-          <span>{totalFKs} FKs</span>
-          <span>{diagram.relationships.length} rels</span>
+          <span>{t("sidebar.fks", { count: totalFKs })}</span>
+          <span>{t("sidebar.rels", { count: diagram.relationships.length })}</span>
         </div>
       </div>
     </div>

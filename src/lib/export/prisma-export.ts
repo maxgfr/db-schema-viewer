@@ -129,7 +129,7 @@ function buildFieldAttributes(field: DBField): string {
   if (isAutoIncrement(field.type)) {
     attrs.push("@default(autoincrement())");
   } else if (field.default !== undefined && field.default !== "") {
-    const defVal = field.default;
+    const defVal = String(field.default);
     if (defVal.toLowerCase() === "uuid()" || defVal.toLowerCase() === "gen_random_uuid()") {
       attrs.push("@default(uuid())");
     } else if (defVal.toLowerCase() === "now()" || defVal.toLowerCase() === "current_timestamp") {

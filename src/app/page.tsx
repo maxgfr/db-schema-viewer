@@ -6,6 +6,7 @@ import type { Diagram } from "@/lib/domain";
 import { getStateFromUrl, generateShareUrl } from "@/lib/sharing/encode-state";
 import { saveDiagram } from "@/lib/storage/local-storage";
 import { useTheme } from "@/hooks/use-theme";
+import { useTranslation } from "@/lib/i18n/context";
 import { Landing } from "./_components/landing/Landing";
 import { EditorLayout } from "./_components/canvas/EditorLayout";
 
@@ -14,6 +15,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { theme, mode, toggleTheme } = useTheme();
+  const { t } = useTranslation();
   const urlSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -26,13 +28,13 @@ export default function Home() {
       if (fromUrl) {
         setDiagram(fromUrl);
       } else {
-        toast.error("Failed to load shared schema", {
-          description: "The URL may be corrupted or truncated. Try getting a fresh share link.",
+        toast.error(t("page.failedToLoadSharedSchema"), {
+          description: t("page.failedToLoadSharedSchemaDesc"),
         });
       }
       return;
     }
-  }, []);
+  }, [t]);
 
   // Keep URL in sync with current diagram (debounced to avoid lag on drag)
   useEffect(() => {

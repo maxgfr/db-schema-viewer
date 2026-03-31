@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/context";
 import {
 	X,
 	Upload,
@@ -70,6 +71,7 @@ function DataExplorerContent({
 	diagram,
 	visible = true,
 }: DataExplorerProps) {
+	const { t } = useTranslation();
 	const {
 		tables,
 		setTables,
@@ -105,9 +107,8 @@ function DataExplorerContent({
 	const handleFile = useCallback(
 		(file: File) => {
 			if (file.size > MAX_FILE_SIZE) {
-				toast.error("File too large", {
-					description:
-						"Maximum file size is 5MB. Please use a smaller SQL dump.",
+				toast.error(t("data.fileTooLarge"), {
+					description: t("data.fileTooLargeDesc"),
 				});
 				return;
 			}
@@ -117,30 +118,30 @@ function DataExplorerContent({
 					const content = e.target?.result as string;
 					const parsed = parseSQLDump(content);
 					if (parsed.length === 0) {
-						toast.error("No INSERT statements found in the file");
+						toast.error(t("data.noInsertStatements"));
 						return;
 					}
 					setTables(parsed);
 					setSelectedTable(parsed[0]!.name);
 					setDataSource("upload");
-					toast.success(`Loaded ${parsed.length} tables with data`);
+					toast.success(t("data.loadedTablesWithData", { count: parsed.length }));
 				} catch (err) {
 					toast.error(
-						err instanceof Error ? err.message : "Failed to parse dump",
+						err instanceof Error ? err.message : t("data.failedToParseDump"),
 					);
 				}
 			};
 			reader.onerror = () => {
-				toast.error("Failed to read file");
+				toast.error(t("common.failedToReadFile"));
 			};
 			reader.readAsText(file);
 		},
-		[setTables, setSelectedTable, setDataSource],
+		[setTables, setSelectedTable, setDataSource, t],
 	);
 
 	const handleGenerateFakeData = useCallback(() => {
 		if (!diagram || diagram.tables.length === 0) {
-			toast.error("No schema loaded to generate data from");
+			toast.error(t("data.noSchemaLoaded"));
 			return;
 		}
 		try {
@@ -150,23 +151,23 @@ function DataExplorerContent({
 					seed: nextSeed,
 				});
 				if (faked.length === 0) {
-					toast.error("Could not generate data for the current schema");
+					toast.error(t("data.couldNotGenerate"));
 					return prev;
 				}
 				setTables(faked);
 				setSelectedTable(faked[0]!.name);
 				setDataSource("fake");
 				toast.success(
-					`Generated fake data for ${faked.length} tables (${faked[0]!.rows.length} rows each)`,
+					t("data.generatedFakeData", { count: faked.length, rows: faked[0]!.rows.length }),
 				);
 				return nextSeed;
 			});
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Failed to generate fake data",
+				err instanceof Error ? err.message : t("data.couldNotGenerate"),
 			);
 		}
-	}, [diagram, setFakeSeed, setTables, setSelectedTable, setDataSource]);
+	}, [diagram, setFakeSeed, setTables, setSelectedTable, setDataSource, t]);
 
 	const handleClearData = useCallback(() => {
 		clearAll();
@@ -340,8 +341,8 @@ function DataExplorerContent({
 		link.download = `${currentTable.name}.csv`;
 		link.click();
 		URL.revokeObjectURL(url);
-		toast.success("CSV exported");
-	}, [currentTable, filteredRows]);
+		toast.success(t("data.csvExported"));
+	}, [currentTable, filteredRows, t]);
 
 	const allTablesStats = useMemo(() => {
 		if (tables.length === 0) return null;
@@ -400,7 +401,7 @@ function DataExplorerContent({
 					<div className="flex items-center justify-between border-b border-border px-6 py-4">
 						<div className="flex items-center gap-3">
 							<h2 className="text-lg font-bold text-foreground">
-								Data Explorer
+								{t("data.title")}
 							</h2>
 							{dataSource !== "none" && (
 								<span
@@ -412,11 +413,11 @@ function DataExplorerContent({
 								>
 									{dataSource === "fake" ? (
 										<>
-											<FlaskConical className="h-3 w-3" /> Generated data
+											<FlaskConical className="h-3 w-3" /> {t("data.generatedData")}
 										</>
 									) : (
 										<>
-											<Database className="h-3 w-3" /> SQL dump
+											<Database className="h-3 w-3" /> {t("data.sqlDump")}
 										</>
 									)}
 								</span>
@@ -434,10 +435,10 @@ function DataExplorerContent({
 						/* ── Empty state ── */
 						<div className="flex flex-col items-center p-12">
 							<h3 className="mb-2 text-xl font-bold text-foreground">
-								Explore Your Data
+								{t("data.exploreYourData")}
 							</h3>
 							<p className="mb-8 max-w-md text-center text-sm text-muted-foreground">
-								Browse data in tables, sort, filter, and generate charts.
+								{t("data.exploreDesc")}
 							</p>
 
 							<div className="flex w-full max-w-2xl gap-6">
@@ -454,16 +455,16 @@ function DataExplorerContent({
 								>
 									<Upload className="mb-3 h-8 w-8 text-muted-foreground" />
 									<p className="mb-1 text-sm font-semibold text-foreground">
-										{isDragOver ? "Drop file here..." : "Upload SQL Dump"}
+										{isDragOver ? t("data.dropFileHere") : t("data.uploadDump")}
 									</p>
 									<p className="mb-4 text-center text-xs text-muted-foreground">
-										Drag & drop or browse for a .sql file with INSERT statements
+										{t("data.dragDropBrowse")}
 									</p>
 									<button
 										onClick={() => fileInputRef.current?.click()}
 										className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
 									>
-										Choose File
+									{t("data.chooseFile")}
 									</button>
 									<input
 										ref={fileInputRef}
@@ -476,7 +477,7 @@ function DataExplorerContent({
 										}}
 									/>
 									<p className="mt-3 text-xs text-muted-foreground/60">
-										Max 5MB
+										{t("data.max5mb")}
 									</p>
 								</div>
 
@@ -485,28 +486,26 @@ function DataExplorerContent({
 									<div className="flex flex-1 flex-col items-center rounded-xl border border-border bg-accent/30 p-6">
 										<FlaskConical className="mb-3 h-8 w-8 text-purple-400" />
 										<p className="mb-1 text-sm font-semibold text-foreground">
-											Generate Test Data
+											{t("data.generateTestData")}
 										</p>
 										<p className="mb-4 text-center text-xs text-muted-foreground">
-											Create realistic fake data from your{" "}
-											{diagram!.tables.length} tables using field names and
-											types
+											{t("data.generateTestDataDesc", { count: diagram!.tables.length })}
 										</p>
 										<button
 											onClick={handleGenerateFakeData}
 											className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white hover:bg-purple-500"
 										>
-											Generate Data
+											{t("data.generateData")}
 										</button>
 										<p className="mt-3 text-xs text-muted-foreground/60">
-											30 rows per table
+											{t("data.rowsPerTable")}
 										</p>
 									</div>
 								)}
 							</div>
 
 							<p className="mt-6 max-w-md text-center text-xs text-muted-foreground/60">
-								All data is processed entirely in your browser.
+								{t("data.browserProcessed")}
 							</p>
 						</div>
 					) : (
@@ -519,7 +518,7 @@ function DataExplorerContent({
 							{isDragOver && (
 								<div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-indigo-500 bg-indigo-500/10">
 									<p className="text-sm font-semibold text-indigo-400">
-										Drop SQL dump to replace data...
+										{t("data.dropReplaceData")}
 									</p>
 								</div>
 							)}
@@ -528,7 +527,7 @@ function DataExplorerContent({
 								{/* Sidebar header */}
 								<div className="flex items-center justify-between border-b border-border px-3 py-2">
 									<span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-										Tables ({tables.length})
+										{t("data.tables", { count: tables.length })}
 									</span>
 									<div className="flex items-center gap-1">
 										{hasDiagram && dataSource === "fake" && (
@@ -536,7 +535,7 @@ function DataExplorerContent({
 												type="button"
 												onClick={handleGenerateFakeData}
 												className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-												title="Regenerate with new random data"
+												title={t("data.regenerateData")}
 											>
 												<RefreshCw className="h-3.5 w-3.5" />
 											</button>
@@ -545,7 +544,7 @@ function DataExplorerContent({
 											type="button"
 											onClick={handleClearData}
 											className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-red-400"
-											title="Clear data and go back"
+											title={t("data.clearData")}
 										>
 											<Trash2 className="h-3.5 w-3.5" />
 										</button>
@@ -565,7 +564,7 @@ function DataExplorerContent({
 											}`}
 										>
 											<Database className="h-3.5 w-3.5 shrink-0" />
-											<span className="truncate font-medium">All tables</span>
+											<span className="truncate font-medium">{t("data.allTables")}</span>
 											<span className="ml-auto shrink-0 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-mono tabular-nums text-muted-foreground">
 												{tables.reduce((s, t) => s + t.rows.length, 0)}
 											</span>
@@ -608,7 +607,7 @@ function DataExplorerContent({
 													: "text-muted-foreground hover:text-foreground"
 											}`}
 										>
-											<Table className="h-3.5 w-3.5" /> Table
+											<Table className="h-3.5 w-3.5" /> {t("data.viewTable")}
 										</button>
 										<button
 											type="button"
@@ -619,7 +618,7 @@ function DataExplorerContent({
 													: "text-muted-foreground hover:text-foreground"
 											}`}
 										>
-											<BarChart3 className="h-3.5 w-3.5" /> Charts
+											<BarChart3 className="h-3.5 w-3.5" /> {t("data.viewCharts")}
 										</button>
 										<button
 											type="button"
@@ -630,7 +629,7 @@ function DataExplorerContent({
 													: "text-muted-foreground hover:text-foreground"
 											}`}
 										>
-											<MessageSquare className="h-3.5 w-3.5" /> Chat
+											<MessageSquare className="h-3.5 w-3.5" /> {t("data.viewChat")}
 										</button>
 									</div>
 
@@ -639,7 +638,7 @@ function DataExplorerContent({
 									{/* Stats inline */}
 									{!isAllTables && stats && (
 										<div className="flex items-center gap-2 text-xs text-muted-foreground">
-											<span>{stats.rows} rows</span>
+											<span>{t("data.rows", { count: stats.rows })}</span>
 											<span className="text-border">&middot;</span>
 											<span className="flex items-center gap-1">
 												{stats.columns} cols
@@ -660,7 +659,7 @@ function DataExplorerContent({
 												<>
 													<span className="text-border">&middot;</span>
 													<span className="text-indigo-400">
-														{filteredRows.length} matching
+														{t("data.matching", { count: filteredRows.length })}
 													</span>
 												</>
 											)}
@@ -668,8 +667,8 @@ function DataExplorerContent({
 									)}
 									{isAllTables && allTablesStats && (
 										<span className="text-xs text-muted-foreground">
-											{allTablesStats.totalRows} total rows &middot;{" "}
-											{allTablesStats.totalCols} columns
+											{t("data.totalRows", { count: allTablesStats.totalRows })} &middot;{" "}
+											{t("data.columns", { count: allTablesStats.totalCols })}
 										</span>
 									)}
 
@@ -679,10 +678,10 @@ function DataExplorerContent({
 										type="button"
 										onClick={handleExportCSV}
 										className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
-										title="Export current table as CSV"
+										title={t("data.exportCsvTitle")}
 									>
 										<Download className="h-3.5 w-3.5" />
-										CSV
+										{t("data.csv")}
 									</button>
 								</div>
 
@@ -700,7 +699,7 @@ function DataExplorerContent({
 														page: 0,
 													});
 												}}
-												placeholder="Search across all columns..."
+												placeholder={t("data.searchColumns")}
 												className="w-full rounded-lg border border-border bg-accent py-1.5 pl-8 pr-3 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
 											/>
 										</div>
@@ -721,16 +720,16 @@ function DataExplorerContent({
 													<thead className="sticky top-0 z-10">
 														<tr className="border-b border-border bg-accent/80 backdrop-blur-sm">
 															<th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">
-																Table
+																{t("data.tableHeader")}
 															</th>
 															<th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">
-																Rows
+																{t("data.rowsHeader")}
 															</th>
 															<th className="whitespace-nowrap px-4 py-2 text-right font-medium text-foreground">
-																Columns
+																{t("data.columnsHeader")}
 															</th>
 															<th className="whitespace-nowrap px-4 py-2 text-left font-medium text-foreground">
-																Column Names
+																{t("data.columnNames")}
 															</th>
 														</tr>
 													</thead>
@@ -840,8 +839,8 @@ function DataExplorerContent({
 																	className="px-4 py-8 text-center text-sm text-muted-foreground"
 																>
 																	{searchQuery.trim()
-																		? "No rows match your search."
-																		: "No data available."}
+																		? t("data.noRowsMatch")
+																		: t("data.noDataAvailable")}
 																</td>
 															</tr>
 														)}
@@ -925,10 +924,10 @@ function DataExplorerContent({
 											disabled={page === 0}
 											className="rounded px-3 py-1 text-sm text-muted-foreground hover:bg-accent disabled:opacity-50"
 										>
-											Previous
+											{t("common.previous")}
 										</button>
 										<span className="text-xs text-muted-foreground">
-											Page {page + 1} of {totalPages}
+											{t("data.pageOf", { current: page + 1, total: totalPages })}
 										</span>
 										<button
 											type="button"
@@ -940,7 +939,7 @@ function DataExplorerContent({
 											disabled={page >= totalPages - 1}
 											className="rounded px-3 py-1 text-sm text-muted-foreground hover:bg-accent disabled:opacity-50"
 										>
-											Next
+											{t("common.next")}
 										</button>
 									</div>
 								)}

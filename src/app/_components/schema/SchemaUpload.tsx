@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
+import { useTranslation } from "@/lib/i18n/context";
 import {
   Upload,
   X,
@@ -25,12 +26,12 @@ type SchemaFormat = "sql" | "drizzle" | "prisma" | "typeorm" | "dbml" | "auto";
 
 interface FormatOption {
   id: SchemaFormat;
-  label: string;
+  labelKey: string;
   icon: typeof Database;
-  description: string;
+  descriptionKey: string;
   accepts: string;
   extensions: string;
-  placeholder: string;
+  placeholderKey: string;
   example: string;
   synthesizedFileName: string | undefined;
 }
@@ -38,24 +39,23 @@ interface FormatOption {
 const FORMAT_OPTIONS: FormatOption[] = [
   {
     id: "auto",
-    label: "Auto-Detect",
+    labelKey: "upload.format.auto.label",
     icon: Sparkles,
-    description: "Drop any supported file and we'll figure it out",
+    descriptionKey: "upload.format.auto.description",
     accepts: ".sql,.txt,.ts,.js,.prisma,.dbml",
     extensions: ".sql, .txt, .ts, .js, .prisma, .dbml",
-    placeholder: "Paste any supported schema format here...",
+    placeholderKey: "upload.format.auto.placeholder",
     example: "",
     synthesizedFileName: undefined,
   },
   {
     id: "sql",
-    label: "SQL",
+    labelKey: "upload.format.sql.label",
     icon: Database,
-    description:
-      "PostgreSQL, MySQL, SQLite, MariaDB, Supabase, CockroachDB, ClickHouse, BigQuery, Snowflake",
+    descriptionKey: "upload.format.sql.description",
     accepts: ".sql,.txt",
     extensions: ".sql, .txt",
-    placeholder: "Paste your SQL schema here...",
+    placeholderKey: "upload.format.sql.placeholder",
     example: `CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   email VARCHAR(255) NOT NULL
@@ -64,12 +64,12 @@ const FORMAT_OPTIONS: FormatOption[] = [
   },
   {
     id: "drizzle",
-    label: "Drizzle ORM",
+    labelKey: "upload.format.drizzle.label",
     icon: Code,
-    description: "TypeScript schema with pgTable, mysqlTable, or sqliteTable",
+    descriptionKey: "upload.format.drizzle.description",
     accepts: ".ts,.js",
     extensions: ".ts, .js",
-    placeholder: "Paste your Drizzle schema here...",
+    placeholderKey: "upload.format.drizzle.placeholder",
     example: `export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).notNull(),
@@ -78,12 +78,12 @@ const FORMAT_OPTIONS: FormatOption[] = [
   },
   {
     id: "prisma",
-    label: "Prisma",
+    labelKey: "upload.format.prisma.label",
     icon: Layers,
-    description: "Prisma schema with model definitions",
+    descriptionKey: "upload.format.prisma.description",
     accepts: ".prisma",
     extensions: ".prisma",
-    placeholder: "Paste your Prisma schema here...",
+    placeholderKey: "upload.format.prisma.placeholder",
     example: `model User {
   id    Int    @id @default(autoincrement())
   email String @unique
@@ -92,12 +92,12 @@ const FORMAT_OPTIONS: FormatOption[] = [
   },
   {
     id: "typeorm",
-    label: "TypeORM",
+    labelKey: "upload.format.typeorm.label",
     icon: Braces,
-    description: "TypeScript entities with @Entity, @Column decorators",
+    descriptionKey: "upload.format.typeorm.description",
     accepts: ".ts,.js",
     extensions: ".ts, .js",
-    placeholder: "Paste your TypeORM entity here...",
+    placeholderKey: "upload.format.typeorm.placeholder",
     example: `@Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -107,12 +107,12 @@ export class User {
   },
   {
     id: "dbml",
-    label: "DBML",
+    labelKey: "upload.format.dbml.label",
     icon: FileText,
-    description: "Database Markup Language for schema definitions",
+    descriptionKey: "upload.format.dbml.description",
     accepts: ".dbml",
     extensions: ".dbml",
-    placeholder: "Paste your DBML schema here...",
+    placeholderKey: "upload.format.dbml.placeholder",
     example: `Table users {
   id integer [pk, increment]
   email varchar(255) [not null]
@@ -122,6 +122,7 @@ export class User {
 ];
 
 export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedFormat, setSelectedFormat] = useState<SchemaFormat | null>(
     null,
@@ -160,11 +161,11 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
         }
       };
       reader.onerror = () => {
-        toast.error("Failed to read file");
+        toast.error(t("common.failedToReadFile"));
       };
       reader.readAsText(file);
     },
-    [onSQLParsed, onClose],
+    [onSQLParsed, onClose, t],
   );
 
   const handleDrop = useCallback(
@@ -208,12 +209,12 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
               )}
               <div>
                 <h2 className="text-lg font-bold text-foreground">
-                  Import Schema
+                  {t("upload.title")}
                 </h2>
                 <p className="text-xs text-muted-foreground">
                   {step === 1
-                    ? "Step 1 of 2 — Choose format"
-                    : `Step 2 of 2 — ${formatOption?.label}`}
+                    ? t("upload.step1")
+                    : t("upload.step2", { label: t(formatOption!.labelKey) })}
                 </p>
               </div>
             </div>
@@ -242,10 +243,10 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-foreground">
-                          {format.label}
+                          {t(format.labelKey)}
                         </p>
                         <p className="mt-0.5 line-clamp-2 text-[11px] leading-tight text-muted-foreground">
-                          {format.description}
+                          {t(format.descriptionKey)}
                         </p>
                       </div>
                     </button>
@@ -273,10 +274,10 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
                 >
                   <Upload className="mb-2 h-6 w-6 text-muted-foreground" />
                   <p className="mb-1 text-sm font-medium text-foreground">
-                    Drop your file here or click to browse
+                    {t("upload.dropFile")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Accepted: {formatOption.extensions}
+                    {t("upload.accepted", { extensions: formatOption.extensions })}
                   </p>
                   <input
                     ref={fileInputRef}
@@ -301,7 +302,7 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
                         className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <Info className="h-3.5 w-3.5" />
-                        {showExample ? "Hide" : "Show"} example
+                        {showExample ? t("upload.hide") : t("upload.show")}{t("upload.example")}
                       </button>
                       {showExample && (
                         <pre className="mt-2 overflow-x-auto rounded-lg border border-border bg-accent/50 p-3 font-mono text-[11px] leading-relaxed text-muted-foreground">
@@ -313,7 +314,7 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
                   <textarea
                     value={pasteContent}
                     onChange={(e) => setPasteContent(e.target.value)}
-                    placeholder={formatOption.placeholder}
+                    placeholder={t(formatOption.placeholderKey)}
                     className="h-48 w-full resize-none rounded-xl border border-border bg-accent/50 p-4 font-mono text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
                   />
                   <button
@@ -321,7 +322,7 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
                     disabled={!pasteContent.trim()}
                     className="w-full rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white transition-all hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Parse {formatOption.label}
+                    {t("upload.parseFormat", { format: t(formatOption.labelKey) })}
                   </button>
                 </div>
               </div>

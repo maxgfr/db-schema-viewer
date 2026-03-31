@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { X, Image, FileText, Code, Download, Copy, Braces, Database, Layers, Loader2, Globe } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/context";
 import type { Diagram, DatabaseType } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
 import { exportFullDiagramToPng, exportToSvg, downloadDataUrl } from "@/lib/export/image-export";
@@ -25,6 +26,7 @@ interface ExportDialogProps {
 type ExportTab = "image" | "pdf" | "sql" | "markdown" | "mermaid" | "dbml" | "plantuml" | "prisma" | "drizzle" | "embed";
 
 export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<ExportTab>("image");
   const [imageScale, setImageScale] = useState(2);
   const [imageFormat, setImageFormat] = useState<"png" | "svg">("png");
@@ -43,35 +45,35 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
       } else {
         const viewport = document.querySelector(".react-flow__viewport") as HTMLElement;
         if (!viewport) {
-          toast.error("Canvas not found");
+          toast.error(t("export.canvasNotFound"));
           return;
         }
         const dataUrl = await exportToSvg(viewport, { transparent });
         downloadDataUrl(dataUrl, `${diagram.name}.svg`);
       }
-      toast.success(`Exported as ${imageFormat.toUpperCase()}`);
+      toast.success(t("export.exportedAs", { format: imageFormat.toUpperCase() }));
     } catch (err) {
-      toast.error("Export failed", {
-        description: err instanceof Error ? err.message : "Unknown error",
+      toast.error(t("export.exportFailed"), {
+        description: err instanceof Error ? err.message : t("common.unknownError"),
       });
     } finally {
       setIsExporting(false);
     }
-  }, [diagram.name, imageFormat, imageScale, transparent]);
+  }, [diagram.name, imageFormat, imageScale, transparent, t]);
 
   const handlePdfExport = useCallback(async () => {
     setIsExporting(true);
     try {
       await exportToPdf(diagram);
-      toast.success("Exported as PDF");
+      toast.success(t("export.exportedAsPdf"));
     } catch (err) {
-      toast.error("Export failed", {
-        description: err instanceof Error ? err.message : "Unknown error",
+      toast.error(t("export.exportFailed"), {
+        description: err instanceof Error ? err.message : t("common.unknownError"),
       });
     } finally {
       setIsExporting(false);
     }
-  }, [diagram]);
+  }, [diagram, t]);
 
   const handleSQLExport = useCallback(() => {
     const sql = exportDiagramToSQL(diagram, targetDb);
@@ -79,15 +81,15 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     const url = URL.createObjectURL(blob);
     downloadDataUrl(url, `${diagram.name}.sql`);
     URL.revokeObjectURL(url);
-    toast.success(`Exported as ${DATABASE_TYPE_LABELS[targetDb]} SQL`);
-  }, [diagram, targetDb]);
+    toast.success(t("export.exportedAs", { format: DATABASE_TYPE_LABELS[targetDb] + " SQL" }));
+  }, [diagram, targetDb, t]);
 
   const handleSQLCopy = useCallback(() => {
     const sql = exportDiagramToSQL(diagram, targetDb);
     navigator.clipboard.writeText(sql).then(() => {
-      toast.success("SQL copied to clipboard");
+      toast.success(t("export.sqlCopied"));
     });
-  }, [diagram, targetDb]);
+  }, [diagram, targetDb, t]);
 
   const handleMarkdownExport = useCallback(() => {
     const md = exportDiagramToMarkdown(diagram);
@@ -95,8 +97,8 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     const url = URL.createObjectURL(blob);
     downloadDataUrl(url, `${diagram.name}.md`);
     URL.revokeObjectURL(url);
-    toast.success("Exported as Markdown");
-  }, [diagram]);
+    toast.success(t("export.exportedAsMarkdown"));
+  }, [diagram, t]);
 
   const handleGenerateMermaid = useCallback(() => {
     const mermaid = exportDiagramToMermaid(diagram);
@@ -106,9 +108,9 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   const handleMermaidCopy = useCallback(() => {
     if (!mermaidOutput) return;
     navigator.clipboard.writeText(mermaidOutput).then(() => {
-      toast.success("Mermaid diagram copied to clipboard");
+      toast.success(t("export.mermaidCopied"));
     });
-  }, [mermaidOutput]);
+  }, [mermaidOutput, t]);
 
   const handlePrismaExport = useCallback(() => {
     const prisma = exportDiagramToPrisma(diagram);
@@ -116,15 +118,15 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     const url = URL.createObjectURL(blob);
     downloadDataUrl(url, `${diagram.name}.prisma`);
     URL.revokeObjectURL(url);
-    toast.success("Exported as Prisma schema");
-  }, [diagram]);
+      toast.success(t("export.exportedAsPrisma"));
+  }, [diagram, t]);
 
   const handlePrismaCopy = useCallback(() => {
     const prisma = exportDiagramToPrisma(diagram);
     navigator.clipboard.writeText(prisma).then(() => {
-      toast.success("Prisma schema copied to clipboard");
+      toast.success(t("export.prismaCopied"));
     });
-  }, [diagram]);
+  }, [diagram, t]);
 
   const handleDrizzleExport = useCallback(() => {
     const drizzle = exportDiagramToDrizzle(diagram);
@@ -132,8 +134,8 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     const url = URL.createObjectURL(blob);
     downloadDataUrl(url, `${diagram.name}.ts`);
     URL.revokeObjectURL(url);
-    toast.success("Exported as Drizzle schema");
-  }, [diagram]);
+      toast.success(t("export.exportedAsDrizzle"));
+  }, [diagram, t]);
 
   const handleDBMLExport = useCallback(() => {
     const dbml = exportDiagramToDBML(diagram);
@@ -141,15 +143,15 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     const url = URL.createObjectURL(blob);
     downloadDataUrl(url, `${diagram.name}.dbml`);
     URL.revokeObjectURL(url);
-    toast.success("Exported as DBML");
-  }, [diagram]);
+      toast.success(t("export.exportedAsDbml"));
+  }, [diagram, t]);
 
   const handleDBMLCopy = useCallback(() => {
     const dbml = exportDiagramToDBML(diagram);
     navigator.clipboard.writeText(dbml).then(() => {
-      toast.success("DBML copied to clipboard");
+      toast.success(t("export.dbmlCopied"));
     });
-  }, [diagram]);
+  }, [diagram, t]);
 
   const handlePlantUMLExport = useCallback(() => {
     const puml = exportDiagramToPlantUML(diagram);
@@ -157,34 +159,34 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     const url = URL.createObjectURL(blob);
     downloadDataUrl(url, `${diagram.name}.puml`);
     URL.revokeObjectURL(url);
-    toast.success("Exported as PlantUML");
-  }, [diagram]);
+      toast.success(t("export.exportedAsPlantuml"));
+  }, [diagram, t]);
 
   const handlePlantUMLCopy = useCallback(() => {
     const puml = exportDiagramToPlantUML(diagram);
     navigator.clipboard.writeText(puml).then(() => {
-      toast.success("PlantUML copied to clipboard");
+      toast.success(t("export.plantumlCopied"));
     });
-  }, [diagram]);
+  }, [diagram, t]);
 
   const handleDrizzleCopy = useCallback(() => {
     const drizzle = exportDiagramToDrizzle(diagram);
     navigator.clipboard.writeText(drizzle).then(() => {
-      toast.success("Drizzle schema copied to clipboard");
+      toast.success(t("export.drizzleCopied"));
     });
-  }, [diagram]);
+  }, [diagram, t]);
 
-  const TAB_ITEMS: Array<{ id: ExportTab; label: string; icon: typeof Image }> = [
-    { id: "image", label: "Image", icon: Image },
-    { id: "pdf", label: "PDF", icon: FileText },
-    { id: "sql", label: "SQL", icon: Code },
-    { id: "markdown", label: "Markdown", icon: FileText },
-    { id: "mermaid", label: "Mermaid", icon: Braces },
-    { id: "dbml", label: "DBML", icon: Braces },
-    { id: "plantuml", label: "PlantUML", icon: Braces },
-    { id: "prisma", label: "Prisma", icon: Database },
-    { id: "drizzle", label: "Drizzle", icon: Layers },
-    { id: "embed", label: "Embed", icon: Globe },
+  const TAB_ITEMS: Array<{ id: ExportTab; labelKey: string; icon: typeof Image }> = [
+    { id: "image", labelKey: "export.tab.image", icon: Image },
+    { id: "pdf", labelKey: "export.tab.pdf", icon: FileText },
+    { id: "sql", labelKey: "export.tab.sql", icon: Code },
+    { id: "markdown", labelKey: "export.tab.markdown", icon: FileText },
+    { id: "mermaid", labelKey: "export.tab.mermaid", icon: Braces },
+    { id: "dbml", labelKey: "export.tab.dbml", icon: Braces },
+    { id: "plantuml", labelKey: "export.tab.plantuml", icon: Braces },
+    { id: "prisma", labelKey: "export.tab.prisma", icon: Database },
+    { id: "drizzle", labelKey: "export.tab.drizzle", icon: Layers },
+    { id: "embed", labelKey: "export.tab.embed", icon: Globe },
   ];
 
   const modalContent = (
@@ -200,15 +202,15 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <h2 className="text-lg font-bold text-foreground">Export Diagram</h2>
-            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent" aria-label="Close export dialog">
+            <h2 className="text-lg font-bold text-foreground">{t("export.title")}</h2>
+            <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent" aria-label={t("export.closeDialog")}>
               <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
 
           {/* Tabs */}
           <div className="flex overflow-x-auto border-b border-border">
-            {TAB_ITEMS.map(({ id, label, icon: Icon }) => (
+            {TAB_ITEMS.map(({ id, labelKey, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
@@ -219,7 +221,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
-                {label}
+                {t(labelKey)}
               </button>
             ))}
           </div>
@@ -229,7 +231,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
             {tab === "image" && (
               <>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-foreground">Format</label>
+                  <label className="mb-2 block text-sm font-medium text-foreground">{t("export.format")}</label>
                   <div className="flex gap-2">
                     {(["png", "svg"] as const).map((fmt) => (
                       <button
@@ -249,7 +251,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
 
                 {imageFormat === "png" && (
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">Scale</label>
+                     <label className="mb-2 block text-sm font-medium text-foreground">{t("export.scale")}</label>
                     <div className="flex gap-2">
                       {[1, 2, 3].map((s) => (
                         <button
@@ -275,16 +277,16 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     onChange={(e) => setTransparent(e.target.checked)}
                     className="rounded border-border"
                   />
-                  Transparent background
-                </label>
+                   {t("export.transparentBg")}
+                 </label>
 
-                <button
-                  onClick={handleImageExport}
-                  disabled={isExporting}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
-                >
-                  {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                  {isExporting ? "Exporting..." : `Export ${imageFormat.toUpperCase()}`}
+                 <button
+                   onClick={handleImageExport}
+                   disabled={isExporting}
+                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                 >
+                   {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                   {isExporting ? t("export.exporting") : t("export.exportImage", { format: imageFormat.toUpperCase() })}
                 </button>
               </>
             )}
@@ -296,7 +298,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
               >
                 {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                {isExporting ? "Generating PDF..." : "Export PDF"}
+                {isExporting ? t("export.generatingPdf") : t("export.exportPdf")}
               </button>
             )}
 
@@ -304,7 +306,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
               <>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-foreground">
-                    Target Database
+                    {t("export.targetDatabase")}
                   </label>
                   <select
                     value={targetDb}
@@ -325,13 +327,13 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
                   >
                     <Download className="h-4 w-4" />
-                    Download .sql
+                    {t("export.downloadSql")}
                   </button>
                   <button
                     onClick={handleSQLCopy}
                     className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
-                    aria-label="Copy SQL to clipboard"
-                    title="Copy SQL to clipboard"
+                    aria-label={t("export.copySqlToClipboard")}
+                    title={t("export.copySqlToClipboard")}
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -342,14 +344,14 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
             {tab === "markdown" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Export your schema documentation as a Markdown file with tables, columns, indexes, and relationships.
+                  {t("export.markdownDescription")}
                 </p>
                 <button
                   onClick={handleMarkdownExport}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
                 >
                   <Download className="h-4 w-4" />
-                  Download .md
+                  {t("export.downloadMd")}
                 </button>
               </>
             )}
@@ -357,7 +359,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
             {tab === "mermaid" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Generate a Mermaid ERD diagram that can be embedded in Markdown, GitHub, or any Mermaid-compatible renderer.
+                  {t("export.mermaidDescription")}
                 </p>
                 {!mermaidOutput ? (
                   <button
@@ -365,7 +367,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
                   >
                     <Code className="h-4 w-4" />
-                    Generate Mermaid ERD
+                    {t("export.generateMermaid")}
                   </button>
                 ) : (
                   <>
@@ -379,7 +381,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                       className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 font-semibold text-foreground hover:bg-accent"
                     >
                       <Copy className="h-4 w-4" />
-                      Copy to Clipboard
+                      {t("export.copyToClipboard")}
                     </button>
                   </>
                 )}
@@ -389,7 +391,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
             {tab === "dbml" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Export your schema in DBML format, compatible with dbdiagram.io and other DBML tools.
+                  {t("export.dbmlDescription")}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -397,13 +399,13 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
                   >
                     <Download className="h-4 w-4" />
-                    Download .dbml
+                    {t("export.downloadDbml")}
                   </button>
                   <button
                     onClick={handleDBMLCopy}
                     className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
-                    aria-label="Copy DBML to clipboard"
-                    title="Copy DBML to clipboard"
+                    aria-label={t("export.copyDbmlToClipboard")}
+                    title={t("export.copyDbmlToClipboard")}
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -414,7 +416,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
             {tab === "plantuml" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Export your schema as a PlantUML entity-relationship diagram.
+                  {t("export.plantumlDescription")}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -422,13 +424,13 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
                   >
                     <Download className="h-4 w-4" />
-                    Download .puml
+                    {t("export.downloadPuml")}
                   </button>
                   <button
                     onClick={handlePlantUMLCopy}
                     className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
-                    aria-label="Copy PlantUML to clipboard"
-                    title="Copy PlantUML to clipboard"
+                    aria-label={t("export.copyPlantumlToClipboard")}
+                    title={t("export.copyPlantumlToClipboard")}
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -439,7 +441,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
             {tab === "prisma" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Export your schema as a Prisma schema file with models, relations, and field attributes.
+                  {t("export.prismaDescription")}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -447,13 +449,13 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
                   >
                     <Download className="h-4 w-4" />
-                    Download .prisma
+                    {t("export.downloadPrisma")}
                   </button>
                   <button
                     onClick={handlePrismaCopy}
                     className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
-                    aria-label="Copy Prisma schema to clipboard"
-                    title="Copy Prisma schema to clipboard"
+                    aria-label={t("export.copyPrismaToClipboard")}
+                    title={t("export.copyPrismaToClipboard")}
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -464,7 +466,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
             {tab === "drizzle" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Export your schema as Drizzle ORM TypeScript code with table definitions and column builders.
+                  {t("export.drizzleDescription")}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -472,13 +474,13 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
                   >
                     <Download className="h-4 w-4" />
-                    Download .ts
+                    {t("export.downloadTs")}
                   </button>
                   <button
                     onClick={handleDrizzleCopy}
                     className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
-                    aria-label="Copy Drizzle schema to clipboard"
-                    title="Copy Drizzle schema to clipboard"
+                    aria-label={t("export.copyDrizzleToClipboard")}
+                    title={t("export.copyDrizzleToClipboard")}
                   >
                     <Copy className="h-4 w-4" />
                   </button>
@@ -489,7 +491,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
             {tab === "embed" && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Generate an embeddable snippet to include this schema viewer in another page.
+                  {t("export.embedDescription")}
                 </p>
                 {!embedSnippet ? (
                   <button
@@ -501,7 +503,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
                   >
                     <Code className="h-4 w-4" />
-                    Generate Embed Code
+                    {t("export.generateEmbed")}
                   </button>
                 ) : (
                   <>
@@ -513,13 +515,13 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(embedSnippet).then(() => {
-                          toast.success("Embed snippet copied to clipboard");
+                          toast.success(t("export.embedCopied"));
                         });
                       }}
                       className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 font-semibold text-foreground hover:bg-accent"
                     >
                       <Copy className="h-4 w-4" />
-                      Copy to Clipboard
+                      {t("export.copyToClipboard")}
                     </button>
                   </>
                 )}

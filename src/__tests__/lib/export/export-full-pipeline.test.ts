@@ -370,12 +370,12 @@ describe("Markdown full pipeline", () => {
     const md = exportDiagramToMarkdown(emptyDiagram);
     expect(md).toContain("# Empty");
     expect(md).not.toContain("## Table:");
-    expect(md).not.toContain("## View:");
+    expect(md).not.toContain("## View ");
   });
 
-  it("views use View: heading", () => {
+  it("views use View heading", () => {
     const md = exportDiagramToMarkdown(viewDiagram);
-    expect(md).toContain("## View: user_stats");
+    expect(md).toContain("## View user_stats");
   });
 
   it("contains Mermaid ERD block", () => {

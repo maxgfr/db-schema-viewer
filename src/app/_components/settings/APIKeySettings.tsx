@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { X, Key, Eye, EyeOff, Server, Loader2, Zap, Check, AlertTriangle, Search } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/context";
 import {
   loadAISettings,
   saveAISettings,
@@ -51,6 +52,7 @@ interface APIKeySettingsProps {
 }
 
 export function APIKeySettings({ onClose }: APIKeySettingsProps) {
+  const { t } = useTranslation();
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("gpt-4o");
   const [providerId, setProviderId] = useState("openai");
@@ -173,24 +175,24 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
   const handleSave = () => {
     const settings = buildSettings();
     saveAISettings(settings);
-    toast.success("AI settings saved");
+    toast.success(t("settings.saved"));
     onClose();
   };
 
   const handleClear = () => {
     clearAISettings();
     setApiKey("");
-    toast.success("AI settings cleared");
+    toast.success(t("settings.cleared"));
   };
 
   const handleTestConnection = useCallback(async () => {
     const settings = buildSettings();
     if (!settings.apiKey && !useCustomEndpoint) {
-      toast.error("Please enter an API key first");
+      toast.error(t("settings.enterApiKeyFirst"));
       return;
     }
     if (useCustomEndpoint && (!customEndpoint.trim() || !customModel.trim())) {
-      toast.error("Please fill in both the endpoint URL and model name");
+      toast.error(t("settings.fillEndpointAndModel"));
       return;
     }
 
@@ -223,13 +225,13 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
         () => {},
         []
       );
-      toast.success("Connection successful!");
+      toast.success(t("settings.connectionSuccessful"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Connection failed");
+      toast.error(err instanceof Error ? err.message : t("settings.connectionFailed"));
     } finally {
       setIsTesting(false);
     }
-  }, [buildSettings, useCustomEndpoint, customEndpoint, customModel]);
+  }, [buildSettings, useCustomEndpoint, customEndpoint, customModel, t]);
 
   // Recommended model for the current provider
   const recommendedModelId = DEFAULT_MODEL_BY_PROVIDER[providerId];
@@ -251,7 +253,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
               <div className="rounded-xl border border-indigo-500/40 bg-indigo-500/20 p-2">
                 <Key className="h-5 w-5 text-indigo-400" />
               </div>
-              <h2 className="text-lg font-bold text-foreground">AI Settings</h2>
+              <h2 className="text-lg font-bold text-foreground">{t("settings.title")}</h2>
             </div>
             <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent">
               <X className="h-5 w-5 text-muted-foreground" />
@@ -262,9 +264,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
           <div className="space-y-5 p-6">
             {/* Security notice */}
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
-              <strong>100% client-side</strong> — your schema data and API keys never leave your browser.
-              All AI calls go directly from your browser to the provider. No backend, no proxy, no telemetry.
-              For full offline use, configure a local Ollama instance below.
+              {t("settings.securityNotice")}
             </div>
 
             {/* Custom endpoint toggle */}
@@ -276,31 +276,31 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
                 className="rounded border-border"
               />
               <Server className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-foreground">Use Custom / Local Endpoint (Ollama, LM Studio, etc.)</span>
+              <span className="text-sm text-foreground">{t("settings.useCustomEndpoint")}</span>
             </label>
 
             {useCustomEndpoint ? (
               <div className="space-y-3">
                 <div>
-                  <label className="mb-1 block text-sm text-foreground">API Base URL</label>
+                  <label className="mb-1 block text-sm text-foreground">{t("settings.apiBaseUrl")}</label>
                   <input
                     type="text"
                     value={customEndpoint}
                     onChange={(e) => setCustomEndpoint(e.target.value)}
-                    placeholder="http://localhost:11434/v1"
+                    placeholder={t("settings.apiBaseUrlPlaceholder")}
                     className="w-full rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Ollama: <code className="rounded bg-accent px-1">http://localhost:11434/v1</code> — LM Studio: <code className="rounded bg-accent px-1">http://localhost:1234/v1</code>
+                    {t("settings.apiBaseUrlHint")}
                   </p>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm text-foreground">Model Name</label>
+                  <label className="mb-1 block text-sm text-foreground">{t("settings.modelName")}</label>
                   <input
                     type="text"
                     value={customModel}
                     onChange={(e) => setCustomModel(e.target.value)}
-                    placeholder="llama3.2, mistral, qwen2.5, etc."
+                    placeholder={t("settings.modelNamePlaceholder")}
                     className="w-full rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -309,11 +309,11 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
               <>
                 {/* Provider */}
                 <div>
-                  <label className="mb-1 block text-sm text-foreground">Provider</label>
+                  <label className="mb-1 block text-sm text-foreground">{t("settings.provider")}</label>
                   {isLoadingCatalog ? (
                     <div className="flex items-center gap-2 rounded-lg border border-border bg-accent px-3 py-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading providers...
+                      {t("settings.loadingProviders")}
                     </div>
                   ) : (
                     <select
@@ -337,14 +337,14 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
                       className="w-full rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground focus:outline-none"
                     >
                       {providerSelectOptions.recommended.length > 0 && (
-                        <optgroup label="Recommended">
+                        <optgroup label={t("settings.recommended")}>
                           {providerSelectOptions.recommended.map((p) => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                           ))}
                         </optgroup>
                       )}
                       {providerSelectOptions.others.length > 0 && (
-                        <optgroup label="Other Providers">
+                        <optgroup label={t("settings.otherProviders")}>
                           {providerSelectOptions.others.map((p) => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                           ))}
@@ -356,7 +356,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
                     <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
                       <p className="text-xs text-amber-400">
-                        This provider must be OpenAI-compatible and support <strong>client-side requests</strong> (CORS enabled).
+                        {t("settings.openAiCompatibleWarning")}
                       </p>
                     </div>
                   )}
@@ -364,14 +364,14 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
 
                 {/* Model */}
                 <div>
-                  <label className="mb-1 block text-sm text-foreground">Model</label>
+                  <label className="mb-1 block text-sm text-foreground">{t("settings.model")}</label>
 
                   {/* Recommended model badge */}
                   {recommendedModel && (
                     <div className="mb-2">
                       <div className="mb-1 flex items-center gap-1.5">
                         <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                        <span className="text-[10px] font-semibold tracking-wide text-emerald-400 uppercase">Recommended</span>
+                        <span className="text-[10px] font-semibold tracking-wide text-emerald-400 uppercase">{t("settings.recommended")}</span>
                       </div>
                       <button
                         type="button"
@@ -398,7 +398,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search models..."
+                        placeholder={t("settings.searchModels")}
                         className="w-full rounded-lg border border-border bg-accent pl-8 pr-3 py-1.5 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
                       />
                     </div>
@@ -433,13 +433,13 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
                     ))}
                     {modelOptions.length === 0 && !isLoadingCatalog && (
                       <p className="py-2 text-center text-xs text-muted-foreground">
-                        {searchTerm ? "No models match your search." : "No models available for this provider."}
+                        {searchTerm ? t("settings.noModelsMatchSearch") : t("settings.noModelsAvailable")}
                       </p>
                     )}
                     {isLoadingCatalog && (
                       <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading models...
+                        {t("settings.loadingModels")}
                       </div>
                     )}
                   </div>
@@ -450,14 +450,14 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
             {/* API Key */}
             <div>
               <label className="mb-1 block text-sm text-foreground">
-                API Key {useCustomEndpoint && "(optional)"}
+                {useCustomEndpoint ? t("settings.apiKeyOptional") : t("settings.apiKey")}
               </label>
               <div className="relative">
                 <input
                   type={showKey ? "text" : "password"}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-..."
+                  placeholder={t("settings.apiKeyPlaceholder")}
                   className="w-full rounded-lg border border-border bg-accent px-3 py-2 pr-10 text-sm text-foreground placeholder-muted-foreground focus:border-indigo-500 focus:outline-none"
                 />
                 <button
@@ -473,7 +473,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
                 </button>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Stored in a secure cookie (SameSite=Strict). Sent only to the AI provider you chose, directly from your browser.
+                {t("settings.cookieStorageInfo")}
               </p>
             </div>
           </div>
@@ -484,7 +484,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
               onClick={handleClear}
               className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
             >
-              Clear
+              {t("common.clear")}
             </button>
             <div className="flex-1" />
             <button
@@ -497,13 +497,13 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
               ) : (
                 <Zap className="h-4 w-4" />
               )}
-              Test
+              {t("settings.test")}
             </button>
             <button
               onClick={onClose}
               className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               onClick={handleSave}
@@ -514,7 +514,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
               }
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
             >
-              Save
+              {t("common.save")}
             </button>
           </div>
         </div>

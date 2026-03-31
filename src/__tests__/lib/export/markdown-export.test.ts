@@ -158,7 +158,7 @@ describe("exportDiagramToMarkdown", () => {
     };
 
     const md = exportDiagramToMarkdown(viewDiagram);
-    expect(md).toContain("## View: user_summary");
+    expect(md).toContain("## View user_summary");
   });
 
   it("includes index section when indexes exist", () => {

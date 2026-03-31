@@ -7,6 +7,7 @@ import type { ParsedDumpTable } from "@/lib/dump/dump-parser";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
 import { queryData } from "@/lib/ai/ai-service";
 import { MarkdownContent } from "../shared/MarkdownContent";
+import { useTranslation } from "@/lib/i18n/context";
 
 export type { DataChatMessage } from "./DataExplorerContext";
 import type { DataChatMessage } from "./DataExplorerContext";
@@ -21,20 +22,21 @@ interface DataChatProps {
 }
 
 const SINGLE_TABLE_ACTIONS = [
-  { label: "Summarize data", prompt: "Give me a concise summary of this dataset: key statistics, notable patterns, and any anomalies." },
-  { label: "Find patterns", prompt: "What patterns or trends can you identify in this data?" },
-  { label: "Data quality", prompt: "Analyze the data quality: are there missing values, outliers, or inconsistencies?" },
-  { label: "Key insights", prompt: "What are the top 3 most interesting insights from this data?" },
+  { labelKey: "dataChat.summarize", prompt: "Give me a concise summary of this dataset: key statistics, notable patterns, and any anomalies." },
+  { labelKey: "dataChat.findPatterns", prompt: "What patterns or trends can you identify in this data?" },
+  { labelKey: "dataChat.dataQuality", prompt: "Analyze the data quality: are there missing values, outliers, or inconsistencies?" },
+  { labelKey: "dataChat.keyInsights", prompt: "What are the top 3 most interesting insights from this data?" },
 ];
 
 const MULTI_TABLE_ACTIONS = [
-  { label: "Overview", prompt: "Give me an overview of all tables: key statistics, sizes, and what each table seems to contain." },
-  { label: "Cross-table patterns", prompt: "Identify relationships and patterns across the different tables. Are there foreign key links or shared columns?" },
-  { label: "Data quality", prompt: "Analyze the data quality across all tables: missing values, inconsistencies, and potential issues." },
-  { label: "Key insights", prompt: "What are the top 5 most interesting insights from this entire dataset?" },
+  { labelKey: "dataChat.overview", prompt: "Give me an overview of all tables: key statistics, sizes, and what each table seems to contain." },
+  { labelKey: "dataChat.crossTablePatterns", prompt: "Identify relationships and patterns across the different tables. Are there foreign key links or shared columns?" },
+  { labelKey: "dataChat.dataQuality", prompt: "Analyze the data quality across all tables: missing values, inconsistencies, and potential issues." },
+  { labelKey: "dataChat.keyInsights", prompt: "What are the top 5 most interesting insights from this entire dataset?" },
 ];
 
 export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataChatProps) {
+  const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState("");
@@ -63,9 +65,9 @@ export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataCh
 
   const handleCopy = useCallback((content: string) => {
     navigator.clipboard.writeText(content).then(() => {
-      toast.success("Copied to clipboard");
+      toast.success(t("common.copiedToClipboard"));
     });
-  }, []);
+  }, [t]);
 
   const handleStop = useCallback(() => {
     if (abortControllerRef.current) {
@@ -80,12 +82,12 @@ export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataCh
 
     const settings = loadAISettings();
     if (!settings) {
-      toast.error("Please configure your AI API key first");
+      toast.error(t("common.configureApiKeyFirst"));
       return;
     }
     if (!settings.apiKey && !settings.customEndpoint) {
-      toast.error("No AI configured", {
-        description: "Go to Settings to configure an API key or a local Ollama endpoint.",
+      toast.error(t("common.noAiConfigured"), {
+        description: t("common.noAiConfiguredDesc"),
       });
       return;
     }
@@ -125,7 +127,7 @@ export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataCh
             if (partial.trim()) {
               onMessagesChange((prev) => [
                 ...prev,
-                { role: "assistant", content: partial + "\n\n_(stopped)_" },
+                { role: "assistant", content: partial + "\n\n" + t("ai.stopped") },
               ]);
             }
           } else {
@@ -144,22 +146,22 @@ export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataCh
       if ((err as Error)?.name === "AbortError") {
         const partial = streamingTextRef.current;
         if (partial.trim()) {
-          onMessagesChange((prev) => [...prev, { role: "assistant", content: partial + "\n\n_(stopped)_" }]);
+          onMessagesChange((prev) => [...prev, { role: "assistant", content: partial + "\n\n" + t("ai.stopped") }]);
         }
         setStreamingText("");
         streamingTextRef.current = "";
       } else {
-        toast.error(err instanceof Error ? err.message : "AI request failed");
+        toast.error(err instanceof Error ? err.message : t("ai.requestFailed"));
       }
     } finally {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, tables, onMessagesChange, chatKey]);
+  }, [input, isLoading, messages, tables, onMessagesChange, chatKey, t]);
 
   const placeholder = isMultiTable
-    ? `Ask about all ${tables.length} tables...`
-    : `Ask about ${tables[0]?.name ?? "data"}...`;
+    ? t("dataChat.askAllTables", { count: tables.length })
+    : t("dataChat.askAboutTable", { name: tables[0]?.name ?? "data" });
 
   return (
     <div className="flex h-full flex-col">
@@ -168,17 +170,17 @@ export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataCh
           <div className="flex flex-col items-center gap-4 py-10 text-center">
             <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
             <div>
-              <p className="text-sm font-medium text-foreground">Ask anything about your data</p>
+              <p className="text-sm font-medium text-foreground">{t("dataChat.askAnything")}</p>
               <p className="mt-1 text-xs text-muted-foreground">{contextLabel}</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               {quickActions.map((action) => (
                 <button
-                  key={action.label}
+                  key={action.labelKey}
                   onClick={() => handleSend(action.prompt)}
                   className="rounded-lg border border-border bg-accent px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-indigo-500/50 hover:bg-indigo-500/10"
                 >
-                  {action.label}
+                  {t(action.labelKey)}
                 </button>
               ))}
             </div>
@@ -202,8 +204,8 @@ export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataCh
               <button
                 onClick={() => handleCopy(msg.content)}
                 className="absolute right-2 top-2 rounded p-1 opacity-0 transition-opacity hover:bg-accent group-hover:opacity-100"
-                title="Copy message"
-                aria-label="Copy message"
+                title={t("common.copyMessage")}
+                aria-label={t("common.copyMessage")}
               >
                 <Copy className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
@@ -224,8 +226,8 @@ export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataCh
             <button
               onClick={() => onMessagesChange([])}
               className="rounded-lg border border-border px-2 py-2 text-muted-foreground hover:bg-accent hover:text-foreground"
-              title="Clear chat history"
-              aria-label="Clear chat history"
+              title={t("common.clearChatHistory")}
+              aria-label={t("common.clearChatHistory")}
             >
               <RotateCcw className="h-4 w-4" />
             </button>
@@ -243,8 +245,8 @@ export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataCh
             <button
               onClick={handleStop}
               className="rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-500"
-              title="Stop generating"
-              aria-label="Stop generating"
+              title={t("common.stopGenerating")}
+              aria-label={t("common.stopGenerating")}
             >
               <Square className="h-4 w-4" />
             </button>
