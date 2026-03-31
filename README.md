@@ -3,9 +3,9 @@
 [![CI](https://github.com/maxgfr/db-schema-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/maxgfr/db-schema-viewer/actions/workflows/ci.yml)
 [![Deploy](https://github.com/maxgfr/db-schema-viewer/actions/workflows/deploy.yml/badge.svg)](https://github.com/maxgfr/db-schema-viewer/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-104%20passing-brightgreen)](https://github.com/maxgfr/db-schema-viewer/actions)
+[![Tests](https://img.shields.io/badge/tests-531%20passing-brightgreen)](https://github.com/maxgfr/db-schema-viewer/actions)
 
-> **100% client-side** database schema visualizer. Upload SQL, Drizzle or Prisma schemas, visualize interactive diagrams, analyze with AI, export to PDF/PNG/SQL. Your data never leaves your browser.
+> **100% client-side** database schema visualizer. Upload SQL, Drizzle, Prisma, TypeORM, Sequelize, MikroORM, Kysely, or DBML schemas, visualize interactive ER diagrams, analyze with AI, and export to 10 formats. Your data never leaves your browser.
 
 **[Live Demo](https://maxgfr.github.io/db-schema-viewer/)**
 
@@ -16,7 +16,7 @@
 - **Everything runs locally** — no backend, no data transmission, no account. API keys in cookies, diagrams in localStorage.
 - **Simple UI** — upload a schema, see a diagram. Primary keys, foreign keys, relations (1:1, 1:N, N:M) visible at a glance.
 - **Schema analysis, not schema editing** — the tool is a *viewer* and *analyzer*, not a full database designer.
-- **Multi-format input** — SQL (9 dialects), Drizzle ORM, Prisma (all in beta for ORM formats).
+- **Multi-format input** — SQL (9 dialects), Drizzle ORM, Prisma, TypeORM, Sequelize, MikroORM, Kysely, DBML.
 
 ---
 
@@ -24,18 +24,28 @@
 
 ### Schema Visualization
 - Interactive drag/zoom/pan canvas (React Flow) with table nodes and relationship edges
+- **3 ERD notations**: Crow's Foot, UML, and Chen — toggle with one click
 - Color-coded tables with PK (amber), FK (blue) icons per field
-- Cardinality labels on edges (1, N) with smooth-step paths
 - Expandable table nodes (12+ fields collapse with "show more")
 - MiniMap + Controls for navigation
-- Searchable sidebar with table/field filtering
+- **Double-click to zoom** on any table from the sidebar
+- **Table grouping** by schema (public, auth, etc.) in the sidebar
+- **Expand/collapse all** tables in the sidebar
+- **Enhanced stats**: FK count, index count, field count per table
+- **Canvas annotations**: add draggable sticky notes on the canvas (4 colors)
 
 ### Schema Input
+
 | Format | Status | Parser | Supported Variants |
 |--------|--------|--------|--------------------|
 | SQL | **Stable** | `node-sql-parser` + regex fallback | PostgreSQL, MySQL, MariaDB, SQLite, Supabase, CockroachDB, ClickHouse, BigQuery, Snowflake |
-| Drizzle ORM (.ts) | **Beta** | Regex-based | pgTable, mysqlTable, sqliteTable |
+| Drizzle ORM (.ts) | **Beta** | Regex-based | pgTable, mysqlTable, sqliteTable, pgTableCreator |
 | Prisma (.prisma) | **Beta** | Regex-based | All providers (postgresql, mysql, sqlite, cockroachdb) |
+| TypeORM (.ts) | **Beta** | Regex-based | @Entity, @Column, @ManyToOne, @OneToMany, @OneToOne |
+| DBML (.dbml) | **Beta** | Regex-based | Table, Ref, indexes, inline refs |
+| Sequelize (.ts/.js) | **Beta** | Regex-based | sequelize.define(), Model.init(), DataTypes, associations |
+| MikroORM (.ts) | **Beta** | Regex-based | @Entity, @Property, @PrimaryKey, @ManyToOne, @OneToOne |
+| Kysely (.ts) | **Beta** | Regex-based | interface Database, Generated<T>, ColumnType<S,I,U> |
 | Paste SQL | **Stable** | Same as file upload | All dialects |
 
 ### Auto-Detection
@@ -50,37 +60,69 @@ Weighted pattern matching detects the database type from SQL syntax:
 - BigQuery: `INT64`, `STRING`, `STRUCT<`, `ARRAY<`
 - Snowflake: `VARIANT`, `NUMBER(38,0)`, `CREATE STAGE`
 
+### Schema Analysis (client-side, no AI)
+- **Anti-pattern detection**: tables without PK, nullable FK, orphan tables, naming inconsistencies, reserved words, type mismatches, wide tables, missing FK indexes
+- **Normalization validation**: detect potential 1NF violations (multi-value columns, JSON/array types), 2NF issues (composite keys with partial dependencies), and 3NF hints (transitive dependencies)
+- **Quality score** (0-100): naming conventions, normalization, relationships, indexing
+- **Schema metrics**: table count, field count, relationship count, relational density, FK hierarchy depth, connected components
+- **Schema diff**: upload a second schema to compare — added/removed/modified tables, fields, indexes, and relationships
+
 ### AI-Powered Analysis
 - **Chat mode** — Ask questions about your schema with streaming responses and conversation history
-- **Challenge mode** — Structured review with score (0-100), severity levels (info/warning/critical), and categories (naming, normalization, indexing, relationships, types, performance, security)
+- **Quick actions** — Explain as PM, Suggest indexes, Generate migration, Generate query, Find issues, Test queries
+- **Challenge mode** — Structured review with score (0-100), severity levels, and 8 categories
+- **Challenge history** — Track score evolution over time with trend indicators
+- **Schema diff AI** — Upload two schemas, then let AI evaluate the migration safety and breaking changes
+- **Report export** — Download challenge results as JSON or Markdown
+- **Review by category** — Filter issues by severity (critical/warning/info) and category (naming, security, performance...)
 - **Multi-provider** — OpenAI, Anthropic, Google Gemini, Mistral, or any OpenAI-compatible endpoint
 - **Secure** — API keys stored in cookies (365d, secure, sameSite strict), never sent to our servers
 
 ### Export
+
 | Format | Details |
 |--------|---------|
 | **PNG** | 2x scale by default, transparent background option |
 | **SVG** | Vector format, lossless |
-| **PDF** | Auto-orientation, title with table/relationship count |
-| **SQL** | Cross-dialect conversion: export a PG schema as MySQL, SQLite, BigQuery, etc. |
+| **PDF** | Multi-page: title + TOC + diagram + per-table detail (fields, types, FKs, indexes) |
+| **SQL** | Cross-dialect conversion with CASCADE, CREATE INDEX, COMMENT ON, ENUM types, CREATE VIEW |
+| **Markdown** | Full documentation with tables, columns, indexes, relationships, and embedded Mermaid ERD |
+| **Mermaid** | ERD diagram for GitHub READMEs and Mermaid-compatible renderers |
+| **DBML** | Compatible with dbdiagram.io |
+| **PlantUML** | Entity-relationship diagram |
+| **Prisma** | .prisma schema file with models, relations, and field attributes |
+| **Drizzle** | TypeScript Drizzle ORM code with table definitions and column builders |
+| **Embed** | Embeddable `<iframe>` snippet with encoded schema URL |
 
 ### Sharing
 - Compress schema to URL via lz-string (like Excalidraw)
-- `?d=<encoded>` parameter, no server needed
+- `#d=<encoded>` hash fragment, no server needed
 - Size warning when URL exceeds 8KB
 
 ### Data Exploration
-- Upload small SQL dumps (INSERT INTO statements, 5MB max)
+- Upload small SQL dumps (INSERT INTO statements, 5MB max) or generate fake data from your schema
+- **Drag-and-drop** upload at any time (empty state or with data loaded)
 - Paginated table view with NULL highlighting
-- 5 chart types: Bar, Line, Pie, Scatter, Area
-- Aggregation modes: Sum, Avg, Count, None
-- Automatic column type inference (numeric vs categorical)
+- **Column sorting** — click a header to sort ASC/DESC, click again to reverse, third click to reset
+- **Data search** — filter rows by value across all columns
+- **Automatic stats** — min, max, avg, median, distinct count per numeric column in table footer
+- **Histograms** — value distribution charts for all numeric columns
+- **Correlation matrix** — Pearson correlation heatmap between numeric columns
+- **Date binning** — group date columns by day, week, month, or year
+- 5 chart types: Bar, Line, Pie, Scatter, Area with aggregation (sum, avg, count, min, max)
+- **AI charts** — let AI suggest the best visualizations, or describe a chart in natural language
+- **CSV export** — download displayed data (respects current search/sort)
+- **Data chat** — ask questions about your data with AI, per-table conversation history
 
 ### Theme
-- Dark / Light mode toggle
-- System preference detection (`prefers-color-scheme`)
+- Dark / Light mode toggle with system preference detection
 - Flash-free via inline script (no FOUC)
 - All components use CSS variable theming
+
+### PWA
+- Installable as a desktop/mobile app
+- Service worker for offline access to the application shell
+- Cache-first strategy with background updates for static assets
 
 ---
 
@@ -97,7 +139,7 @@ Weighted pattern matching detects the database type from SQL syntax:
 | Charts | Recharts 3 |
 | Sharing | lz-string |
 | Export | html-to-image + jsPDF |
-| Testing | Vitest + happy-dom (104 tests) |
+| Testing | Vitest + happy-dom (531 tests) |
 | CI/CD | GitHub Actions → GitHub Pages |
 | Package Manager | pnpm 10 |
 
@@ -136,128 +178,74 @@ pnpm build:export  # Static build for GitHub Pages
 | BigQuery | Regex parser | — | INT64, STRING, STRUCT<, ARRAY< |
 | Snowflake | Regex parser | — | VARIANT, NUMBER(38,0), CREATE STAGE/PIPE |
 
-### ORM Schema Loaders (Beta)
+### ORM & Schema Loaders
 
-| ORM | File | What's Parsed |
-|-----|------|---------------|
-| **Drizzle** | `.ts` / `.js` | pgTable/mysqlTable/sqliteTable, column types, .primaryKey(), .notNull(), .unique(), .references(), relations() |
-| **Prisma** | `.prisma` | model, enum, @id, @unique, @default, @relation, @@id, @@index, @@map, datasource provider |
+| Format | File | What's Parsed |
+|--------|------|---------------|
+| **Drizzle** | `.ts` / `.js` | pgTable/mysqlTable/sqliteTable/pgTableCreator, column types, .primaryKey(), .notNull(), .unique(), .references(), .default(), relations(), pgEnum, indexes, composite PK |
+| **Prisma** | `.prisma` | model, enum, @id, @unique, @default, @relation, @@id, @@index, @@map, @map, datasource provider |
+| **TypeORM** | `.ts` | @Entity, @Column, @PrimaryGeneratedColumn, @ManyToOne, @OneToMany, @OneToOne, @JoinColumn, @Index |
+| **DBML** | `.dbml` | Table, columns with [pk/unique/not null/default/ref], Ref blocks, inline refs, indexes, aliases |
+| **Sequelize** | `.ts` / `.js` | sequelize.define(), Model.init(), DataTypes mapping, primaryKey, allowNull, unique, defaultValue, references, belongsTo/hasMany/hasOne/belongsToMany |
+| **MikroORM** | `.ts` | @Entity, @Property, @PrimaryKey, @Unique, @ManyToOne, @OneToOne, @Enum, @Index, TypeScript type inference |
+| **Kysely** | `.ts` | interface Database, Generated<T>, ColumnType<S,I,U>, nullable unions, optional fields, FK by naming convention |
 
 ---
 
 ## Test Coverage
 
 ```
-14 test files — 104 tests passing
+47 test files — 531 tests passing
 
 src/__tests__/lib/
-├── domain/          domain.test.ts          (7 tests)  — Zod schema validation
-├── drizzle/         drizzle-parser.test.ts  (6 tests)  — Drizzle ORM parsing
-├── dump/            dump-parser.test.ts     (7 tests)  — SQL dump INSERT parsing
-│                    data-types.test.ts      (7 tests)  — Column type inference
-├── export/          sql-export.test.ts      (4 tests)  — Cross-dialect SQL generation
-├── layout/          auto-layout.test.ts     (4 tests)  — Grid layout algorithm
-├── prisma/          prisma-parser.test.ts   (12 tests) — Prisma schema parsing
-├── sharing/         encode-state.test.ts    (5 tests)  — URL compression/decompression
-├── sql/             detect-db-type.test.ts  (14 tests) — DB type detection (all 9 + generic)
-│                    dialects.test.ts        (11 tests) — Per-dialect parsing
-│                    sample-schemas.test.ts  (9 tests)  — Sample schema roundtrip
-│                    sql-import.test.ts      (7 tests)  — SQL→Diagram pipeline
-├── storage/         local-storage.test.ts   (5 tests)  — Diagram persistence
-└── utils/           utils.test.ts           (6 tests)  — Utility functions
+├── ai/              ai-prompts.test.ts              (6 tests)  — Prompt context builder
+│                    ai-prompts-edge-cases.test.ts    (5 tests)  — Edge cases (empty, special chars)
+├── analysis/        schema-analyzer.test.ts          (19 tests) — Anti-patterns + quality score
+│                    schema-diff.test.ts              (15 tests) — Schema diffing
+├── dbml/            dbml-parser.test.ts              (12 tests) — DBML parsing
+├── domain/          domain.test.ts                   (7 tests)  — Zod schema validation
+├── drizzle/         drizzle-parser.test.ts           (14 tests) — Drizzle ORM parsing
+│                    drizzle-edge-cases.test.ts        (7 tests)  — Enums, self-refs, comments
+│                    egapro-regression.test.ts         (26 tests) — Callback syntax regression
+│                    strip-imports.test.ts              (6 tests)  — Import stripping
+├── dump/            dump-parser.test.ts               (7 tests)  — SQL dump INSERT parsing
+│                    dump-parser-edge-cases.test.ts     (5 tests)  — Unicode, multi-line, escapes
+│                    data-types.test.ts                 (7 tests)  — Column type inference
+│                    data-types-edge-cases.test.ts      (7 tests)  — UUID, JSON, dates, monetary
+│                    fake-data-generator.test.ts       (27 tests) — Fake data generation
+│                    fake-data-integration.test.ts     (52 tests) — End-to-end fake data
+├── examples/        example-schemas.test.ts           (16 tests) — Multi-format examples
+├── export/          sql-export.test.ts                (4 tests)  — SQL generation
+│                    sql-export-roundtrip.test.ts       (5 tests)  — Parse → export → reparse
+│                    export-full-pipeline.test.ts      (36 tests) — All export formats
+│                    mermaid-export.test.ts             (7 tests)  — Mermaid ERD output
+│                    dbml-export.test.ts                (8 tests)  — DBML output
+│                    plantuml-export.test.ts            (7 tests)  — PlantUML output
+│                    prisma-export.test.ts              (8 tests)  — Prisma schema output
+│                    drizzle-export.test.ts             (7 tests)  — Drizzle TS output
+│                    markdown-export.test.ts            (7 tests)  — Markdown docs output
+│                    case-utils.test.ts                 (7 tests)  — Case conversion utilities
+├── layout/          auto-layout.test.ts              (14 tests) — BFS grid layout algorithm
+├── parsing/         parse-schema-file.test.ts        (11 tests) — Format detection + routing
+│                    extract-brace-block.test.ts        (8 tests)  — Brace block extraction
+├── prisma/          prisma-parser.test.ts            (12 tests) — Prisma schema parsing
+│                    prisma-edge-cases.test.ts         (10 tests) — @@map, composite keys, named rels
+├── sharing/         encode-state.test.ts             (10 tests) — URL compression/decompression
+│                    encode-state-roundtrip.test.ts     (5 tests)  — Large schema roundtrip
+├── sql/             detect-db-type.test.ts           (14 tests) — DB type detection (all 9 + generic)
+│                    dialects.test.ts                  (11 tests) — Per-dialect parsing
+│                    sample-schemas.test.ts            (10 tests) — Sample schema roundtrip
+│                    schema-templates.test.ts          (10 tests) — Template schemas
+│                    sql-import.test.ts                 (7 tests)  — SQL→Diagram pipeline
+│                    performance.test.ts                (3 tests)  — Parse 100/500/1000 tables
+├── storage/         local-storage.test.ts             (5 tests)  — Diagram persistence
+│                    cookie-storage.test.ts             (7 tests)  — AI settings storage
+├── typeorm/         typeorm-parser.test.ts            (11 tests) — TypeORM entity parsing
+├── sequelize/       sequelize-parser.test.ts          (16 tests) — Sequelize model parsing
+├── mikroorm/        mikroorm-parser.test.ts           (14 tests) — MikroORM entity parsing
+├── kysely/          kysely-parser.test.ts             (14 tests) — Kysely type parsing
+└── utils/           utils.test.ts                     (6 tests)  — Utility functions
 ```
-
----
-
-## Roadmap
-
-### Advanced Schema Analysis
-
-| Feature | Description | Priority |
-|---------|-------------|----------|
-| **Detailed relations on canvas** | Display full cardinality (0..1, 1..1, 0..N, 1..N) on edges with Crow's Foot, Chen, or UML notation | High |
-| **Anti-pattern detection** | Automatically detect (without AI): tables without PK, nullable FK columns, orphan tables, obvious missing FKs, suspicious `data`/`misc`/`info` columns | High |
-| **Local quality score** | Compute a client-side schema quality score (0-100) without AI: naming conventions, normalization, index coverage, type consistency | High |
-| **Schema metrics** | Table count, field count, relationship count, relational density, FK hierarchy depth, connected components | Medium |
-| **Inconsistent type detection** | Flag when the same logical column (e.g., `user_id`) has different types across tables | Medium |
-| **Normalization validation** | Detect 1NF/2NF/3NF violations (multi-value columns, transitive dependencies) client-side | Low |
-
-### AI — What More We Can Do
-
-| Feature | Description | Priority |
-|---------|-------------|----------|
-| **SQL migration generation** | AI suggests migrations to fix detected issues (ADD INDEX, ALTER COLUMN, etc.) in native SQL for the source dialect | High |
-| **Index suggestions** | Analyze FKs and column patterns to recommend missing INDEX/UNIQUE constraints | High |
-| **Natural language explain** | "Explain this schema as if I were a PM" — business-friendly summary of the data model | High |
-| **Schema comparison** | Upload 2 schemas, AI describes differences and evaluates the migration | Medium |
-| **Query generation** | "Give me the query to retrieve a user's orders with products" — contextual SQL | Medium |
-| **Review by category** | Filter AI challenge by category (security only, performance only, naming only) | Medium |
-| **AI report export** | Download challenge results as JSON, Markdown, or PDF | Medium |
-| **Challenge history** | Compare score before/after fixes to track improvement | Low |
-| **SQL test suggestions** | AI suggests test queries to validate schema constraints | Low |
-
-### Data & Charts
-
-| Feature | Description | Priority |
-|---------|-------------|----------|
-| **Column sorting** | Click a header to sort ASC/DESC | High |
-| **Data search** | Filter rows by value in any column | High |
-| **Automatic stats** | Min, Max, Avg, Median, Distinct count per numeric column | High |
-| **CSV export** | Download displayed data as CSV | Medium |
-| **Histograms** | Value distribution for numeric columns | Medium |
-| **Drag-and-drop upload** | Drag and drop the SQL dump directly onto the data area | Medium |
-| **Correlation matrix** | Correlation matrix between numeric columns (heatmap) | Low |
-| **Date binning** | Automatically group date columns by day/week/month/year | Low |
-
-### Export & Sharing
-
-| Feature | Description | Priority |
-|---------|-------------|----------|
-| **Multi-page PDF** | Page 1 = diagram, following pages = per-table detail (fields, types, FKs, indexes) | High |
-| **Enhanced SQL export** | ON DELETE/UPDATE CASCADE, INDEX, CHECK, COMMENT ON, ENUM, CREATE VIEW | High |
-| **Markdown export** | Summary table for each table in Markdown format (for docs) | Medium |
-| **DBML export** | Convert schema to DBML format (dbdiagram.io) | Medium |
-| **Mermaid export** | Generate an ERD diagram in Mermaid format (for GitHub READMEs) | Medium |
-| **PlantUML export** | Generate a PlantUML schema | Low |
-| **Embed snippet** | Generate an embeddable `<iframe>` with the encoded schema | Low |
-
-### Additional ORM Loaders (Beta)
-
-| ORM | Patterns to Parse | Priority |
-|-----|-------------------|----------|
-| **TypeORM** | `@Entity()`, `@Column()`, `@PrimaryGeneratedColumn()`, `@ManyToOne()`, `@OneToMany()` | Medium |
-| **DBML** | `Table users { id int [pk] }`, `Ref: posts.user_id > users.id` | Medium |
-| **Sequelize** | `define('User', { ... })`, `belongsTo()`, `hasMany()` | Low |
-| **MikroORM** | `@Entity()`, `@Property()`, `@ManyToOne()` | Low |
-| **Kysely** | `interface Database { users: UsersTable }` + migrations | Low |
-
-### Tests to Add
-
-| Category | Missing Tests | Priority |
-|----------|---------------|----------|
-| **AI prompts** | Test `schemaToPromptContext()`: output format, edge case handling (0 tables, tables without fields, special names) | High |
-| **SQL export roundtrip** | Parse SQL → export to another dialect → re-parse and verify tables/FKs are preserved | High |
-| **Drizzle edge cases** | `.default(sql`...`)`, enums, multi-line definitions, code comments, aliased imports | High |
-| **Prisma edge cases** | `@@map`, `@map`, explicit many-to-many relations, `@ignore`, composite FK, views | High |
-| **URL sharing roundtrip** | Encode a large schema → decode → verify full integrity (including positions) | Medium |
-| **Auto-layout** | Test with 50+ tables, disconnected components, self-references | Medium |
-| **Dump parser edge cases** | Unicode characters, mixed NULL values, INSERT with SELECT, multi-line values | Medium |
-| **Type inference** | Test UUID, JSON, full ISO dates, monetary values, percentages | Medium |
-| **Integration tests** | Test the full flow: upload → parse → layout → export (with Testing Library) | Low |
-| **Performance tests** | Measure parsing time for schemas with 100+, 500+, 1000+ tables | Low |
-
-### UX & UI
-
-| Feature | Description | Priority |
-|---------|-------------|----------|
-| **ERD notation toggle** | Switch between Crow's Foot, Chen, and UML for relations | High |
-| **Zoom to table** | Double-click a table in the sidebar = zoom + center | Medium |
-| **Enhanced sidebar stats** | Field count, FK count, index count per table + visual indicators | Medium |
-| **Table grouping** | Group tables by schema (public, auth, etc.) in the sidebar | Medium |
-| **Expand/Collapse all** | Buttons to expand/collapse all items in the sidebar | Medium |
-| **Canvas annotations** | Clickable sticky notes on the canvas for adding notes | Low |
-| **PWA** | Service worker, offline mode, local installation | Low |
-| **i18n** | FR/EN language support | Low |
 
 ---
 
@@ -272,33 +260,43 @@ src/
 │   └── _components/
 │       ├── canvas/             # EditorLayout, SchemaCanvas, TableNode, RelationshipEdge
 │       ├── landing/            # Landing page with sample schemas
-│       ├── schema/             # SchemaUpload modal, SchemaSidebar
-│       ├── ai/                 # AIPanel (Chat + Challenge tabs)
-│       ├── data/               # DataExplorer + DataCharts
-│       ├── export/             # ExportDialog (Image/PDF/SQL tabs)
+│       ├── schema/             # SchemaUpload modal, SchemaSidebar (grouping, zoom, stats)
+│       ├── ai/                 # AIPanel (Chat + Challenge + History)
+│       ├── analysis/           # SchemaDiffPanel (with AI comparison)
+│       ├── data/               # DataExplorer + DataCharts (histograms, AI charts)
+│       ├── export/             # ExportDialog (10 format tabs)
+│       ├── source/             # SourceViewer (original schema code)
 │       └── settings/           # APIKeySettings modal
 ├── lib/
 │   ├── domain/                 # Zod schemas (Diagram, DBTable, DBField, etc.)
 │   ├── sql/                    # SQL parsing pipeline
 │   │   ├── detect-db-type.ts   # Weighted pattern matching
 │   │   ├── sql-import.ts       # Main entry: parseSQLToDiagram()
-│   │   ├── sample-schemas.ts   # 5 sample SQL schemas
+│   │   ├── sample-schemas.ts   # Built-in sample schemas
+│   │   ├── schema-templates.ts # Extended templates (Social, IoT, LMS, Analytics)
 │   │   └── dialects/           # node-sql-parser + regex parsers
-│   ├── drizzle/                # Drizzle ORM parser (beta)
-│   ├── prisma/                 # Prisma schema parser (beta)
+│   ├── drizzle/                # Drizzle ORM parser
+│   ├── prisma/                 # Prisma schema parser
+│   ├── typeorm/                # TypeORM entity parser
+│   ├── sequelize/              # Sequelize ORM parser
+│   ├── mikroorm/               # MikroORM entity parser
+│   ├── kysely/                 # Kysely type definition parser
+│   ├── dbml/                   # DBML parser
 │   ├── ai/                     # AI service + prompt context builder
+│   ├── analysis/               # Schema analyzer + diff engine
 │   ├── sharing/                # URL encoding (lz-string)
 │   ├── storage/                # Cookie (AI keys) + localStorage (diagrams)
 │   ├── layout/                 # Auto-layout algorithm (BFS + grid)
-│   ├── export/                 # PNG/SVG/PDF export
-│   ├── sql-export/             # Cross-dialect SQL generation
-│   ├── dump/                   # SQL dump parser + type inference
+│   ├── parsing/                # Shared: format detection + routing
+│   ├── export/                 # PNG/SVG/PDF/Markdown/Mermaid/DBML/PlantUML/Prisma/Drizzle
+│   ├── sql-export/             # Cross-dialect SQL generation (CASCADE, INDEX, COMMENT ON, ENUM, VIEW)
+│   ├── dump/                   # SQL dump parser + type inference + fake data generator
 │   └── utils.ts                # generateId, getTableColor, cn()
 ├── hooks/
 │   ├── use-theme.ts            # Dark/Light toggle + localStorage
 │   └── use-keyboard-shortcuts.ts
 ├── components/ui/              # Radix UI wrappers (Button, Tooltip)
-└── __tests__/                  # 14 test files, 104 tests
+└── __tests__/                  # 47 test files, 531 tests
 ```
 
 ---
@@ -317,7 +315,7 @@ The fundamental advantage of a 100% client-side viewer is that it can be used:
 
 5. **For code review** — upload a schema.prisma or schema.ts directly from the repo, visualize relationships, then run an AI challenge to detect issues before merging.
 
-6. **For migration** — import a PostgreSQL schema, export it as MySQL to see type differences and detect incompatibilities.
+6. **For migration** — import a PostgreSQL schema, export it as MySQL to see type differences and detect incompatibilities. Use the AI-powered diff to evaluate migration safety.
 
 ---
 

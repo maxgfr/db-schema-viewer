@@ -16,6 +16,10 @@ import {
   Download,
   Filter,
   RotateCcw,
+  History,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
@@ -49,11 +53,40 @@ type CategoryFilter =
   | "performance"
   | "security";
 
+interface ChallengeHistoryEntry {
+  score: number;
+  issueCount: number;
+  timestamp: string;
+  schemaName: string;
+}
+
+const CHALLENGE_HISTORY_KEY = "db-schema-viewer-challenge-history";
+
+function loadChallengeHistory(): ChallengeHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(CHALLENGE_HISTORY_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as ChallengeHistoryEntry[];
+  } catch {
+    return [];
+  }
+}
+
+function saveChallengeEntry(entry: ChallengeHistoryEntry) {
+  const history = loadChallengeHistory();
+  history.push(entry);
+  // Keep last 20 entries
+  const trimmed = history.slice(-20);
+  localStorage.setItem(CHALLENGE_HISTORY_KEY, JSON.stringify(trimmed));
+}
+
 const QUICK_ACTIONS = [
-  { label: "Suggest indexes", prompt: "Suggest indexes for my schema to improve query performance" },
-  { label: "Explain schema", prompt: "Explain the overall structure and relationships of my schema" },
-  { label: "Generate migration", prompt: "Generate a migration plan for improving my schema" },
+  { label: "Explain as PM", prompt: "Explain this schema as if I were a product manager with no database experience. Give a business-friendly summary of what data this system manages, the main entities, and how they relate to each other." },
+  { label: "Suggest indexes", prompt: "Analyze all foreign keys, frequently queried columns, and column patterns in my schema. Recommend specific CREATE INDEX statements I should add, explaining why each index would help." },
+  { label: "Generate migration", prompt: "Based on the issues you can spot in my schema, generate concrete SQL migration statements (ALTER TABLE, ADD INDEX, ADD CONSTRAINT, etc.) in the native dialect to fix them. Group by priority." },
+  { label: "Generate query", prompt: "Generate useful SQL queries for this schema: a JOIN query across the main tables, an aggregation query, and a query that would be useful for a dashboard. Use the actual table and column names." },
   { label: "Find issues", prompt: "Find potential issues or anti-patterns in my schema" },
+  { label: "Test queries", prompt: "Suggest SQL test queries that would validate the constraints and relationships in my schema — e.g., check referential integrity, find orphan rows, verify unique constraints, and test edge cases." },
 ];
 
 export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
@@ -65,6 +98,8 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
   const [challengeResult, setChallengeResult] = useState<ChallengeResponse | null>(null);
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [showHistory, setShowHistory] = useState(false);
+  const [challengeHistory, setChallengeHistory] = useState<ChallengeHistoryEntry[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamingTextRef = useRef("");
@@ -72,6 +107,10 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingText]);
+
+  useEffect(() => {
+    setChallengeHistory(loadChallengeHistory());
+  }, []);
 
   const handleCopyMessage = useCallback((content: string) => {
     navigator.clipboard.writeText(content).then(() => {
@@ -184,6 +223,14 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
     try {
       const result = await challengeSchema(settings, diagram);
       setChallengeResult(result);
+      const entry: ChallengeHistoryEntry = {
+        score: result.overallScore,
+        issueCount: result.issues.length,
+        timestamp: new Date().toISOString(),
+        schemaName: diagram.name,
+      };
+      saveChallengeEntry(entry);
+      setChallengeHistory(loadChallengeHistory());
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Challenge failed");
     } finally {
@@ -191,17 +238,48 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
     }
   }, [diagram]);
 
-  const handleExportReport = useCallback(() => {
+  const handleExportReport = useCallback((format: "json" | "md" = "json") => {
     if (!challengeResult) return;
-    const json = JSON.stringify(challengeResult, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "schema-challenge-report.json";
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success("Report exported");
+    if (format === "md") {
+      const lines: string[] = [];
+      lines.push(`# Schema Challenge Report`);
+      lines.push("");
+      lines.push(`**Score:** ${challengeResult.overallScore}/100`);
+      lines.push("");
+      lines.push(`**Summary:** ${challengeResult.summary}`);
+      lines.push("");
+      lines.push(`## Issues (${challengeResult.issues.length})`);
+      lines.push("");
+      for (const issue of challengeResult.issues) {
+        const icon = issue.severity === "critical" ? "🔴" : issue.severity === "warning" ? "🟡" : "🔵";
+        const location = issue.table ? (issue.field ? `\`${issue.table}.${issue.field}\`` : `\`${issue.table}\``) : "";
+        lines.push(`### ${icon} [${issue.severity.toUpperCase()}] ${issue.category}${location ? ` — ${location}` : ""}`);
+        lines.push("");
+        lines.push(issue.description);
+        lines.push("");
+        lines.push(`> **Suggestion:** ${issue.suggestion}`);
+        lines.push("");
+      }
+      const md = lines.join("\n");
+      const blob = new Blob([md], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "schema-challenge-report.md";
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Markdown report exported");
+    } else {
+      const json = JSON.stringify(challengeResult, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "schema-challenge-report.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("JSON report exported");
+    }
   }, [challengeResult]);
 
   const severityIcon = (severity: SchemaIssue["severity"]) => {
@@ -463,12 +541,20 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                     </select>
                     <div className="flex-1" />
                     <button
-                      onClick={handleExportReport}
+                      onClick={() => handleExportReport("md")}
+                      className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
+                      title="Export report as Markdown"
+                    >
+                      <Download className="h-3 w-3" />
+                      .md
+                    </button>
+                    <button
+                      onClick={() => handleExportReport("json")}
                       className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
                       title="Export report as JSON"
                     >
                       <Download className="h-3 w-3" />
-                      Export Report
+                      .json
                     </button>
                   </div>
 
@@ -514,14 +600,53 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
                       Run Again
                     </button>
                     <button
+                      onClick={() => setShowHistory(!showHistory)}
+                      className={`flex items-center gap-1 rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground ${showHistory ? "bg-accent text-foreground" : ""}`}
+                      title="View score history"
+                    >
+                      <History className="h-3.5 w-3.5" />
+                    </button>
+                    <button
                       onClick={() => { setChallengeResult(null); setSeverityFilter("all"); setCategoryFilter("all"); }}
                       className="flex items-center gap-1 rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
                       title="Clear challenge results"
                     >
                       <RotateCcw className="h-3.5 w-3.5" />
-                      Reset
                     </button>
                   </div>
+
+                  {showHistory && challengeHistory.length > 0 && (
+                    <div className="rounded-xl border border-border bg-accent/50 p-3">
+                      <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">Score History</h4>
+                      <div className="space-y-1.5">
+                        {challengeHistory.slice().reverse().map((entry, i) => {
+                          const prev = challengeHistory[challengeHistory.length - 1 - i - 1];
+                          const diff = prev ? entry.score - prev.score : 0;
+                          let TrendIcon: typeof TrendingUp;
+                          let trendColor: string;
+                          if (diff > 0) { TrendIcon = TrendingUp; trendColor = "text-emerald-400"; }
+                          else if (diff < 0) { TrendIcon = TrendingDown; trendColor = "text-red-400"; }
+                          else { TrendIcon = Minus; trendColor = "text-muted-foreground"; }
+
+                          return (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                              <span className="font-mono font-bold text-foreground">{entry.score}</span>
+                              {prev && (
+                                <span className={`flex items-center gap-0.5 ${trendColor}`}>
+                                  <TrendIcon className="h-3 w-3" />
+                                  {diff > 0 ? "+" : ""}{diff}
+                                </span>
+                              )}
+                              <span className="text-muted-foreground">{entry.issueCount} issues</span>
+                              <span className="ml-auto text-muted-foreground/60">
+                                {new Date(entry.timestamp).toLocaleDateString()}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

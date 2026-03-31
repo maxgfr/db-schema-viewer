@@ -68,7 +68,7 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-// Inline script to prevent flash of wrong theme
+// Inline script to prevent flash of wrong theme + register service worker
 const themeScript = `
 (function() {
   try {
@@ -77,6 +77,9 @@ const themeScript = `
     document.documentElement.classList.add(t);
   } catch(e) {
     document.documentElement.classList.add('dark');
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(function() {});
   }
 })()
 `;

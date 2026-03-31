@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -16,13 +16,14 @@ import {
   GitCompareArrows,
   Github,
   FileCode,
+  StickyNote,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
 import { generateShareUrl, estimateUrlSize } from "@/lib/sharing/encode-state";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import type { Theme, ThemeMode } from "@/hooks/use-theme";
-import { SchemaCanvas } from "./SchemaCanvas";
+import { SchemaCanvas, type Annotation } from "./SchemaCanvas";
 import type { ERDNotation } from "./RelationshipEdge";
 import { SchemaSidebar } from "../schema/SchemaSidebar";
 import { SchemaUpload } from "../schema/SchemaUpload";
@@ -60,7 +61,33 @@ export function EditorLayout({
   const [showDiff, setShowDiff] = useState(false);
   const [showSource, setShowSource] = useState(false);
   const [erdNotation, setErdNotation] = useState<ERDNotation>("crowsfoot");
+  const [zoomTarget, setZoomTarget] = useState<{ id: string; key: number } | null>(null);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const zoomCounter = useRef(0);
+  const annotationCounter = useRef(0);
   const canvasRef = { current: null as HTMLDivElement | null };
+
+  const handleZoomToTable = useCallback((tableId: string) => {
+    zoomCounter.current++;
+    setZoomTarget({ id: tableId, key: zoomCounter.current });
+  }, []);
+
+  const handleAddAnnotation = useCallback(() => {
+    annotationCounter.current++;
+    const id = `note-${annotationCounter.current}-${Date.now()}`;
+    setAnnotations((prev) => [
+      ...prev,
+      { id, text: "", x: 100 + Math.random() * 200, y: 100 + Math.random() * 200, color: String(annotationCounter.current % 4) },
+    ]);
+  }, []);
+
+  const handleAnnotationUpdate = useCallback((id: string, patch: Partial<Annotation>) => {
+    setAnnotations((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  }, []);
+
+  const handleAnnotationDelete = useCallback((id: string) => {
+    setAnnotations((prev) => prev.filter((a) => a.id !== id));
+  }, []);
 
   const closeAll = useCallback(() => {
     setShowUpload(false);
@@ -211,15 +238,27 @@ export function EditorLayout({
             Diff
           </button>
 
+          <button
+            onClick={handleAddAnnotation}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title="Add a sticky note to the canvas"
+          >
+            <StickyNote className="h-4 w-4" />
+            Note
+          </button>
+
           <div className="mx-1 h-6 w-px bg-border" />
 
           <button
-            onClick={() => setErdNotation(erdNotation === "crowsfoot" ? "uml" : "crowsfoot")}
+            onClick={() => {
+              const cycle: Record<ERDNotation, ERDNotation> = { crowsfoot: "uml", uml: "chen", chen: "crowsfoot" };
+              setErdNotation(cycle[erdNotation]);
+            }}
             className="rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            title={`Notation: ${erdNotation === "crowsfoot" ? "Crow's Foot (1, N)" : "UML (0..*, 1)"} — click to toggle`}
+            title={`Notation: ${erdNotation === "crowsfoot" ? "Crow's Foot" : erdNotation === "uml" ? "UML" : "Chen"} — click to cycle`}
             aria-label="Toggle ERD notation"
           >
-            {erdNotation === "crowsfoot" ? "Crow's Foot" : "UML"}
+            {erdNotation === "crowsfoot" ? "Crow's Foot" : erdNotation === "uml" ? "UML" : "Chen"}
           </button>
 
           <div className="mx-1 h-6 w-px bg-border" />
@@ -259,6 +298,7 @@ export function EditorLayout({
           diagram={diagram}
           selectedTableId={selectedTableId}
           onTableSelect={setSelectedTableId}
+          onTableZoom={handleZoomToTable}
         />
         <div className="flex-1" ref={(el) => { canvasRef.current = el; }}>
           <SchemaCanvas
@@ -268,6 +308,10 @@ export function EditorLayout({
             onTableSelect={setSelectedTableId}
             onTablePositionUpdate={handleTablePositionUpdate}
             notation={erdNotation}
+            zoomTarget={zoomTarget}
+            annotations={annotations}
+            onAnnotationUpdate={handleAnnotationUpdate}
+            onAnnotationDelete={handleAnnotationDelete}
           />
         </div>
       </div>

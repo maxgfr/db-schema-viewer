@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -8,6 +8,8 @@ import {
   Controls,
   useNodesState,
   useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
   type Node,
   type Edge,
   type NodeChange,
@@ -17,6 +19,15 @@ import "@xyflow/react/dist/style.css";
 import type { Diagram } from "@/lib/domain";
 import { TableNode } from "./TableNode";
 import { RelationshipEdge, type ERDNotation } from "./RelationshipEdge";
+import { StickyNoteNode } from "./StickyNoteNode";
+
+export interface Annotation {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+}
 
 interface SchemaCanvasProps {
   diagram: Diagram;
@@ -24,23 +35,55 @@ interface SchemaCanvasProps {
   onTableSelect: (tableId: string) => void;
   onTablePositionUpdate: (tableId: string, x: number, y: number) => void;
   notation?: ERDNotation;
+  zoomTarget?: { id: string; key: number } | null;
+  annotations?: Annotation[];
+  onAnnotationUpdate?: (id: string, patch: Partial<Annotation>) => void;
+  onAnnotationDelete?: (id: string) => void;
 }
 
-const nodeTypes = { table: TableNode };
+const nodeTypes = { table: TableNode, stickyNote: StickyNoteNode };
 const edgeTypes = { relationship: RelationshipEdge };
 
-export function SchemaCanvas({
+function FitViewHandler({ zoomTarget }: { zoomTarget?: { id: string; key: number } | null }) {
+  const { fitView } = useReactFlow();
+  const lastKey = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (zoomTarget && zoomTarget.key !== lastKey.current) {
+      lastKey.current = zoomTarget.key;
+      fitView({ nodes: [{ id: zoomTarget.id }], duration: 500, padding: 0.5 });
+    }
+  }, [zoomTarget, fitView]);
+
+  return null;
+}
+
+function SchemaCanvasInner({
   diagram,
   selectedTableId,
   onTableSelect,
   onTablePositionUpdate,
   notation = "crowsfoot",
+  zoomTarget,
+  annotations = [],
+  onAnnotationUpdate,
+  onAnnotationDelete,
 }: SchemaCanvasProps) {
+  const handleNoteTextChange = useCallback(
+    (id: string, text: string) => onAnnotationUpdate?.(id, { text }),
+    [onAnnotationUpdate],
+  );
+
+  const handleNoteDelete = useCallback(
+    (id: string) => onAnnotationDelete?.(id),
+    [onAnnotationDelete],
+  );
+
   const initialNodes: Node[] = useMemo(
-    () =>
-      diagram.tables.map((table) => ({
+    () => [
+      ...diagram.tables.map((table) => ({
         id: table.id,
-        type: "table",
+        type: "table" as const,
         position: { x: table.x, y: table.y },
         data: {
           table,
@@ -51,7 +94,19 @@ export function SchemaCanvas({
         },
         selected: table.id === selectedTableId,
       })),
-    [diagram.tables, diagram.relationships, selectedTableId]
+      ...annotations.map((note) => ({
+        id: note.id,
+        type: "stickyNote" as const,
+        position: { x: note.x, y: note.y },
+        data: {
+          text: note.text,
+          color: note.color,
+          onTextChange: handleNoteTextChange,
+          onDelete: handleNoteDelete,
+        },
+      })),
+    ],
+    [diagram.tables, diagram.relationships, selectedTableId, annotations, handleNoteTextChange, handleNoteDelete]
   );
 
   const initialEdges: Edge[] = useMemo(
@@ -76,11 +131,17 @@ export function SchemaCanvas({
       onNodesChange(changes);
       for (const change of changes) {
         if (change.type === "position" && change.position && !change.dragging) {
-          onTablePositionUpdate(change.id, change.position.x, change.position.y);
+          // Check if this is a sticky note or a table
+          const isNote = annotations.some((n) => n.id === change.id);
+          if (isNote) {
+            onAnnotationUpdate?.(change.id, { x: change.position.x, y: change.position.y });
+          } else {
+            onTablePositionUpdate(change.id, change.position.x, change.position.y);
+          }
         }
       }
     },
-    [onNodesChange, onTablePositionUpdate]
+    [onNodesChange, onTablePositionUpdate, annotations, onAnnotationUpdate]
   );
 
   const handleNodeClick = useCallback(
@@ -115,8 +176,17 @@ export function SchemaCanvas({
         />
         <Controls />
         <MarkerDefinitions />
+        <FitViewHandler zoomTarget={zoomTarget} />
       </ReactFlow>
     </div>
+  );
+}
+
+export function SchemaCanvas(props: SchemaCanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <SchemaCanvasInner {...props} />
+    </ReactFlowProvider>
   );
 }
 

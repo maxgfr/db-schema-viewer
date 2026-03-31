@@ -244,6 +244,36 @@ function DataExplorerContent({
 		};
 	}, [currentTable, columnTypes]);
 
+	const columnStats = useMemo(() => {
+		if (!currentTable || currentTable.rows.length === 0) return null;
+		const result: Record<
+			string,
+			{ min: number; max: number; avg: number; median: number; distinct: number }
+		> = {};
+		for (const col of currentTable.columns) {
+			if (columnTypes[col] !== "number") continue;
+			const values = currentTable.rows
+				.map((r) => r[col])
+				.filter((v): v is number => typeof v === "number");
+			if (values.length === 0) continue;
+			const sorted = [...values].sort((a, b) => a - b);
+			const sum = sorted.reduce((a, b) => a + b, 0);
+			const mid = Math.floor(sorted.length / 2);
+			const median =
+				sorted.length % 2 === 0
+					? (sorted[mid - 1]! + sorted[mid]!) / 2
+					: sorted[mid]!;
+			result[col] = {
+				min: sorted[0]!,
+				max: sorted[sorted.length - 1]!,
+				avg: Math.round((sum / sorted.length) * 100) / 100,
+				median: Math.round(median * 100) / 100,
+				distinct: new Set(values).size,
+			};
+		}
+		return Object.keys(result).length > 0 ? result : null;
+	}, [currentTable, columnTypes]);
+
 	const filteredRows = useMemo(() => {
 		if (!currentTable) return [];
 		let rows = currentTable.rows;
@@ -480,7 +510,19 @@ function DataExplorerContent({
 							</p>
 						</div>
 					) : (
-						<div className="flex flex-1 overflow-hidden">
+						<div
+							className="flex flex-1 overflow-hidden"
+							onDragOver={handleDragOver}
+							onDragLeave={handleDragLeave}
+							onDrop={handleDrop}
+						>
+							{isDragOver && (
+								<div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-indigo-500 bg-indigo-500/10">
+									<p className="text-sm font-semibold text-indigo-400">
+										Drop SQL dump to replace data...
+									</p>
+								</div>
+							)}
 							{/* ── Left sidebar: table list ── */}
 							<div className="flex w-52 shrink-0 flex-col border-r border-border">
 								{/* Sidebar header */}
@@ -804,6 +846,40 @@ function DataExplorerContent({
 															</tr>
 														)}
 													</tbody>
+													{columnStats && (
+														<tfoot className="border-t-2 border-border bg-accent/50">
+															{(["min", "max", "avg", "median", "distinct"] as const).map(
+																(stat) => (
+																	<tr
+																		key={stat}
+																		className="border-b border-border/30"
+																	>
+																		{currentTable.columns.map((col, ci) => (
+																			<td
+																				key={col}
+																				className="whitespace-nowrap px-4 py-1 text-xs font-mono"
+																			>
+																				{ci === 0 && !columnStats[col] ? (
+																					<span className="font-sans font-medium uppercase text-muted-foreground">
+																						{stat}
+																					</span>
+																				) : columnStats[col] ? (
+																					<span className="text-blue-400/80">
+																						{ci === 0 && (
+																							<span className="mr-2 font-sans font-medium uppercase text-muted-foreground">
+																								{stat}
+																							</span>
+																						)}
+																						{columnStats[col][stat]}
+																					</span>
+																				) : null}
+																			</td>
+																		))}
+																	</tr>
+																),
+															)}
+														</tfoot>
+													)}
 												</table>
 											</div>
 										) : null}

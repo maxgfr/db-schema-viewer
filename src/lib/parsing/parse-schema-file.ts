@@ -4,6 +4,9 @@ import { parseDrizzleSchema } from "@/lib/drizzle/drizzle-parser";
 import { parsePrismaSchema } from "@/lib/prisma/prisma-parser";
 import { parseDBMLSchema } from "@/lib/dbml/dbml-parser";
 import { parseTypeORMSchema } from "@/lib/typeorm/typeorm-parser";
+import { parseSequelizeSchema } from "@/lib/sequelize/sequelize-parser";
+import { parseMikroORMSchema } from "@/lib/mikroorm/mikroorm-parser";
+import { parseKyselySchema } from "@/lib/kysely/kysely-parser";
 import { autoLayout } from "@/lib/layout/auto-layout";
 
 /**
@@ -26,6 +29,15 @@ export function parseSchemaFile(content: string, fileName?: string): Diagram {
     case "typeorm":
       diagram = parseTypeORMSchema(content, name);
       break;
+    case "sequelize":
+      diagram = parseSequelizeSchema(content, name);
+      break;
+    case "mikroorm":
+      diagram = parseMikroORMSchema(content, name);
+      break;
+    case "kysely":
+      diagram = parseKyselySchema(content, name);
+      break;
     case "drizzle":
       diagram = parseDrizzleSchema(content, name);
       break;
@@ -37,7 +49,7 @@ export function parseSchemaFile(content: string, fileName?: string): Diagram {
   return { ...diagram, tables: layoutedTables };
 }
 
-type SchemaFormat = "sql" | "drizzle" | "prisma" | "typeorm" | "dbml";
+type SchemaFormat = "sql" | "drizzle" | "prisma" | "typeorm" | "dbml" | "sequelize" | "mikroorm" | "kysely";
 
 /**
  * Detect schema format from file extension first, then fall back to
@@ -50,8 +62,19 @@ export function detectFormat(content: string, fileName?: string): SchemaFormat {
 
   const isTS = fileName?.endsWith(".ts") || fileName?.endsWith(".js");
   if (isTS) {
-    if (/(@Entity|@Column|@PrimaryGeneratedColumn)/.test(content))
+    // TypeORM: @Entity, @Column decorators
+    if (/(@Entity|@Column|@PrimaryGeneratedColumn)/.test(content)) {
+      // MikroORM also uses @Entity but with @Property instead of @Column
+      if (/@Property\s*\(/.test(content) || /@PrimaryKey\s*\(/.test(content))
+        return "mikroorm";
       return "typeorm";
+    }
+    // Sequelize: define() or Model.init()
+    if (/sequelize\.define\s*\(/.test(content) || /\.init\s*\(\s*\{/.test(content) && /DataTypes\./.test(content))
+      return "sequelize";
+    // Kysely: interface Database or type Database
+    if (/(?:interface|type)\s+Database\s*[={]/.test(content) && /Generated</.test(content))
+      return "kysely";
     return "drizzle";
   }
 
@@ -66,9 +89,21 @@ export function detectFormat(content: string, fileName?: string): SchemaFormat {
     return "drizzle";
   }
 
+  // MikroORM: @Entity + @Property
+  if (/@Entity\s*\(/.test(content) && /@Property\s*\(/.test(content))
+    return "mikroorm";
+
   // TypeORM: decorators
   if (/(@Entity|@Column|@PrimaryGeneratedColumn)/.test(content))
     return "typeorm";
+
+  // Sequelize: define() or DataTypes
+  if (/sequelize\.define\s*\(/.test(content) || (/\.init\s*\(/.test(content) && /DataTypes\./.test(content)))
+    return "sequelize";
+
+  // Kysely: interface Database with Generated<>
+  if (/(?:interface|type)\s+Database\s*[={]/.test(content) && /Generated</.test(content))
+    return "kysely";
 
   // Prisma: model blocks with field definitions
   if (/^\s*model\s+\w+\s*\{/m.test(content)) return "prisma";

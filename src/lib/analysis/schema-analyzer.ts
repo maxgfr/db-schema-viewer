@@ -361,7 +361,66 @@ export function detectAntiPatterns(diagram: Diagram): AntiPattern[] {
     }
   }
 
-  // 9. Naming - plural table names inconsistency
+  // 9. Normalization hints (basic 1NF/2NF/3NF detection)
+  // 1NF: detect potential multi-value columns (json, array, text with comma patterns in name)
+  const multiValuePatterns = /^(tags|categories|items|values|list|roles|permissions|emails|phones|addresses|features|options|labels|keywords|skills|languages|interests|hobbies)$/i;
+  const multiValueTypePatterns = /\b(json|jsonb|array|text\[\]|varchar\[\]|_text|_varchar)\b/i;
+  for (const table of diagram.tables) {
+    for (const field of table.fields) {
+      if (multiValuePatterns.test(field.name) || multiValueTypePatterns.test(field.type)) {
+        patterns.push({
+          id: nextAntiPatternId(),
+          severity: "info",
+          category: "generic",
+          table: table.name,
+          field: field.name,
+          description: `Field "${field.name}" (${field.type}) in "${table.name}" may violate 1NF by storing multiple values in a single column.`,
+          suggestion:
+            "Consider normalizing into a separate table with a foreign key relationship.",
+        });
+      }
+    }
+  }
+
+  // 2NF: detect tables with composite PK where non-key fields may depend on only part of the key
+  for (const table of nonViewTables) {
+    const pkFields = table.fields.filter((f) => f.primaryKey);
+    const nonPkFields = table.fields.filter((f) => !f.primaryKey);
+    if (pkFields.length >= 2 && nonPkFields.length > 0) {
+      patterns.push({
+        id: nextAntiPatternId(),
+        severity: "info",
+        category: "generic",
+        table: table.name,
+        description: `Table "${table.name}" has a composite primary key (${pkFields.map((f) => f.name).join(", ")}) with ${nonPkFields.length} non-key fields — potential 2NF violation if non-key fields depend on only part of the key.`,
+        suggestion:
+          "Verify that all non-key columns depend on the entire composite key, not just part of it.",
+      });
+    }
+  }
+
+  // 3NF: detect potential transitive dependencies (non-key field referencing another non-key field's table)
+  for (const table of nonViewTables) {
+    const fkFields = table.fields.filter((f) => f.isForeignKey && !f.primaryKey);
+    if (fkFields.length >= 2) {
+      // If a table has 2+ FKs to different tables plus its own non-FK/non-PK data columns,
+      // it might be a join table or have transitive deps
+      const dataFields = table.fields.filter((f) => !f.primaryKey && !f.isForeignKey);
+      if (dataFields.length >= 3) {
+        patterns.push({
+          id: nextAntiPatternId(),
+          severity: "info",
+          category: "generic",
+          table: table.name,
+          description: `Table "${table.name}" has ${fkFields.length} foreign keys and ${dataFields.length} data columns — review for potential 3NF transitive dependency violations.`,
+          suggestion:
+            "Check if any non-key field depends on another non-key field rather than the primary key.",
+        });
+      }
+    }
+  }
+
+  // 10. Naming - plural table names inconsistency
   if (nonViewTables.length >= 2) {
     const pluralTables = nonViewTables.filter((t) => looksPlural(t.name));
     const singularTables = nonViewTables.filter((t) => looksSingular(t.name));

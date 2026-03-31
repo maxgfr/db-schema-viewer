@@ -95,7 +95,88 @@ function generateFK(
   const refTable = quoteIdentifier(field.references.table, targetDb);
   const refCol = quoteIdentifier(field.references.field, targetDb);
 
-  return `ALTER TABLE ${srcTable} ADD CONSTRAINT fk_${table.name}_${field.name} FOREIGN KEY (${srcCol}) REFERENCES ${refTable} (${refCol});`;
+  // BigQuery doesn't support ON DELETE/UPDATE actions
+  const cascade = targetDb === "bigquery" ? "" : " ON DELETE CASCADE ON UPDATE CASCADE";
+
+  return `ALTER TABLE ${srcTable} ADD CONSTRAINT fk_${table.name}_${field.name} FOREIGN KEY (${srcCol}) REFERENCES ${refTable} (${refCol})${cascade};`;
+}
+
+function generateIndexes(table: DBTable, targetDb: DatabaseType): string[] {
+  const statements: string[] = [];
+  for (const idx of table.indexes) {
+    const tableName = quoteIdentifier(table.name, targetDb);
+    const cols = idx.columns.map((c) => quoteIdentifier(c, targetDb)).join(", ");
+    const unique = idx.unique ? "UNIQUE " : "";
+    const idxName = idx.name || `idx_${table.name}_${idx.columns.join("_")}`;
+    statements.push(`CREATE ${unique}INDEX ${quoteIdentifier(idxName, targetDb)} ON ${tableName} (${cols});`);
+  }
+  return statements;
+}
+
+function generateComments(table: DBTable, targetDb: DatabaseType): string[] {
+  // COMMENT ON is only supported by PostgreSQL-family and Snowflake
+  if (!["postgresql", "supabase", "cockroachdb", "snowflake"].includes(targetDb)) return [];
+
+  const statements: string[] = [];
+  const tableName = quoteIdentifier(table.name, targetDb);
+
+  if (table.comment) {
+    statements.push(`COMMENT ON TABLE ${tableName} IS '${table.comment.replace(/'/g, "''")}';`);
+  }
+
+  for (const field of table.fields) {
+    if (field.comment) {
+      statements.push(`COMMENT ON COLUMN ${tableName}.${quoteIdentifier(field.name, targetDb)} IS '${field.comment.replace(/'/g, "''")}';`);
+    }
+  }
+
+  return statements;
+}
+
+function collectEnumTypes(diagram: Diagram): Map<string, string[]> {
+  const enums = new Map<string, string[]>();
+  for (const table of diagram.tables) {
+    for (const field of table.fields) {
+      // Detect ENUM(TypeName) pattern from Prisma/Drizzle parsers
+      const enumMatch = field.type.match(/^ENUM\((\w+)\)$/i);
+      if (enumMatch) {
+        const enumName = enumMatch[1]!;
+        if (!enums.has(enumName)) {
+          enums.set(enumName, []);
+        }
+      }
+    }
+  }
+  return enums;
+}
+
+function generateEnumTypes(enums: Map<string, string[]>, targetDb: DatabaseType): string[] {
+  if (enums.size === 0) return [];
+  // Only PostgreSQL-family supports CREATE TYPE ... AS ENUM
+  if (!["postgresql", "supabase", "cockroachdb"].includes(targetDb)) return [];
+
+  const statements: string[] = [];
+  for (const [enumName] of enums) {
+    // We don't have the actual enum values from the diagram, so generate a placeholder
+    statements.push(`CREATE TYPE ${quoteIdentifier(enumName, targetDb)} AS ENUM ();`);
+  }
+  return statements;
+}
+
+function generateViews(diagram: Diagram, targetDb: DatabaseType): string[] {
+  const statements: string[] = [];
+  for (const table of diagram.tables) {
+    if (!table.isView) continue;
+    const qName = table.schema
+      ? `${quoteIdentifier(table.schema, targetDb)}.${quoteIdentifier(table.name, targetDb)}`
+      : quoteIdentifier(table.name, targetDb);
+    const cols = table.fields.map((f) => quoteIdentifier(f.name, targetDb)).join(", ");
+    statements.push(`-- View: ${table.name} (columns: ${table.fields.map((f) => f.name).join(", ")})`);
+    statements.push(`CREATE OR REPLACE VIEW ${qName} AS`);
+    statements.push(`  SELECT ${cols || "*"}`);
+    statements.push(`  FROM /* source table */;`);
+  }
+  return statements;
 }
 
 export function exportDiagramToSQL(diagram: Diagram, targetDb?: DatabaseType): string {
@@ -107,6 +188,15 @@ export function exportDiagramToSQL(diagram: Diagram, targetDb?: DatabaseType): s
   parts.push(`-- Date: ${new Date().toISOString()}`);
   parts.push("");
 
+  // Enum types (PostgreSQL-family)
+  const enums = collectEnumTypes(diagram);
+  const enumStatements = generateEnumTypes(enums, db);
+  if (enumStatements.length > 0) {
+    parts.push("-- Enum types");
+    parts.push(...enumStatements);
+    parts.push("");
+  }
+
   // Create tables
   for (const table of diagram.tables) {
     if (table.isView) continue;
@@ -115,11 +205,47 @@ export function exportDiagramToSQL(diagram: Diagram, targetDb?: DatabaseType): s
   }
 
   // Foreign keys
+  const fkStatements: string[] = [];
   for (const table of diagram.tables) {
     for (const field of table.fields) {
       const fk = generateFK(table, field, db);
-      if (fk) parts.push(fk);
+      if (fk) fkStatements.push(fk);
     }
+  }
+  if (fkStatements.length > 0) {
+    parts.push(...fkStatements);
+    parts.push("");
+  }
+
+  // Indexes
+  const indexStatements: string[] = [];
+  for (const table of diagram.tables) {
+    if (table.isView) continue;
+    indexStatements.push(...generateIndexes(table, db));
+  }
+  if (indexStatements.length > 0) {
+    parts.push("-- Indexes");
+    parts.push(...indexStatements);
+    parts.push("");
+  }
+
+  // Comments (PostgreSQL-family only)
+  const commentStatements: string[] = [];
+  for (const table of diagram.tables) {
+    commentStatements.push(...generateComments(table, db));
+  }
+  if (commentStatements.length > 0) {
+    parts.push("-- Comments");
+    parts.push(...commentStatements);
+    parts.push("");
+  }
+
+  // Views
+  const viewStatements = generateViews(diagram, db);
+  if (viewStatements.length > 0) {
+    parts.push("-- Views");
+    parts.push(...viewStatements);
+    parts.push("");
   }
 
   return parts.join("\n");

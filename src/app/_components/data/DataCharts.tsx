@@ -541,6 +541,78 @@ export function DataCharts({ table }: DataChartsProps) {
               theme={theme}
             />
           </div>
+
+          {/* Histograms for numeric columns */}
+          {numericCols.length > 0 && (
+            <div className="space-y-4 border-t border-border pt-4">
+              <h3 className="text-sm font-semibold text-foreground">
+                Value Distribution
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {numericCols.map((col) => {
+                  const values = table.rows
+                    .map((r) => r[col])
+                    .filter((v): v is number => typeof v === "number");
+                  if (values.length === 0) return null;
+
+                  const min = Math.min(...values);
+                  const max = Math.max(...values);
+                  const bucketCount = Math.min(15, Math.max(5, Math.ceil(Math.sqrt(values.length))));
+                  const range = max - min || 1;
+                  const bucketSize = range / bucketCount;
+
+                  const buckets = Array.from({ length: bucketCount }, (_, i) => ({
+                    label: `${Math.round((min + i * bucketSize) * 100) / 100}`,
+                    count: 0,
+                  }));
+
+                  for (const v of values) {
+                    const idx = Math.min(
+                      Math.floor((v - min) / bucketSize),
+                      bucketCount - 1,
+                    );
+                    buckets[idx]!.count++;
+                  }
+
+                  return (
+                    <div key={col} className="rounded-lg border border-border bg-accent/30 p-3">
+                      <p className="mb-2 text-xs font-medium text-muted-foreground">
+                        {col}
+                        <span className="ml-2 text-blue-400">{values.length} values</span>
+                      </p>
+                      <div className="h-32">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={buckets}>
+                            <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+                            <XAxis dataKey="label" stroke={theme.axis} tick={{ fontSize: 9 }} />
+                            <YAxis stroke={theme.axis} tick={{ fontSize: 9 }} />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: theme.tooltipBg,
+                                border: `1px solid ${theme.tooltipBorder}`,
+                                borderRadius: "8px",
+                              }}
+                            />
+                            <Bar dataKey="count" fill="#6366f1" radius={[2, 2, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Correlation matrix */}
+          {numericCols.length >= 2 && (
+            <CorrelationMatrix table={table} numericCols={numericCols} />
+          )}
+
+          {/* Date binning */}
+          {table.columns.some((c) => columnTypes[c] === "date") && (
+            <DateBinning table={table} columnTypes={columnTypes} theme={theme} />
+          )}
         </>
       ) : (
         <>
@@ -698,6 +770,217 @@ export function DataCharts({ table }: DataChartsProps) {
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Correlation Matrix ---------- */
+
+function pearsonCorrelation(x: number[], y: number[]): number {
+  const n = x.length;
+  if (n < 2) return 0;
+  const meanX = x.reduce((a, b) => a + b, 0) / n;
+  const meanY = y.reduce((a, b) => a + b, 0) / n;
+  let num = 0;
+  let denX = 0;
+  let denY = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = x[i]! - meanX;
+    const dy = y[i]! - meanY;
+    num += dx * dy;
+    denX += dx * dx;
+    denY += dy * dy;
+  }
+  const den = Math.sqrt(denX * denY);
+  return den === 0 ? 0 : num / den;
+}
+
+function CorrelationMatrix({
+  table,
+  numericCols,
+}: {
+  table: ParsedDumpTable;
+  numericCols: string[];
+}) {
+  const matrix = useMemo(() => {
+    const cols = numericCols.slice(0, 10); // Limit to 10 for readability
+    const colValues: Record<string, number[]> = {};
+    for (const col of cols) {
+      colValues[col] = table.rows
+        .map((r) => r[col])
+        .map((v) => (typeof v === "number" ? v : NaN));
+    }
+
+    return cols.map((rowCol) =>
+      cols.map((colCol) => {
+        const x = colValues[rowCol]!;
+        const y = colValues[colCol]!;
+        const pairs = x
+          .map((v, i) => [v, y[i]!] as [number, number])
+          .filter(([a, b]) => !isNaN(a) && !isNaN(b));
+        return pearsonCorrelation(
+          pairs.map((p) => p[0]),
+          pairs.map((p) => p[1]),
+        );
+      }),
+    );
+  }, [table, numericCols]);
+
+  const cols = numericCols.slice(0, 10);
+
+  return (
+    <div className="space-y-2 border-t border-border pt-4">
+      <h3 className="text-sm font-semibold text-foreground">Correlation Matrix</h3>
+      <div className="overflow-x-auto">
+        <table className="text-xs">
+          <thead>
+            <tr>
+              <th className="px-2 py-1" />
+              {cols.map((c) => (
+                <th key={c} className="max-w-[80px] truncate px-2 py-1 font-medium text-muted-foreground">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {cols.map((rowCol, ri) => (
+              <tr key={rowCol}>
+                <td className="max-w-[80px] truncate px-2 py-1 font-medium text-muted-foreground">
+                  {rowCol}
+                </td>
+                {cols.map((_, ci) => {
+                  const val = matrix[ri]![ci]!;
+                  const rounded = Math.round(val * 100) / 100;
+                  const absVal = Math.abs(val);
+                  const bg =
+                    val > 0
+                      ? `rgba(34, 197, 94, ${absVal * 0.5})`
+                      : val < 0
+                        ? `rgba(239, 68, 68, ${absVal * 0.5})`
+                        : "transparent";
+                  return (
+                    <td
+                      key={ci}
+                      className="px-2 py-1 text-center font-mono"
+                      style={{ backgroundColor: bg }}
+                      title={`${rowCol} × ${cols[ci]}: ${rounded}`}
+                    >
+                      {rounded}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Date Binning ---------- */
+
+type DateBin = "day" | "week" | "month" | "year";
+
+function binDate(dateStr: string, bin: DateBin): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  switch (bin) {
+    case "day":
+      return d.toISOString().slice(0, 10);
+    case "week": {
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d);
+      monday.setDate(diff);
+      return `W ${monday.toISOString().slice(0, 10)}`;
+    }
+    case "month":
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    case "year":
+      return String(d.getFullYear());
+  }
+}
+
+function DateBinning({
+  table,
+  columnTypes,
+  theme,
+}: {
+  table: ParsedDumpTable;
+  columnTypes: Record<string, string>;
+  theme: ReturnType<typeof useThemeColors>;
+}) {
+  const dateCols = table.columns.filter((c) => columnTypes[c] === "date");
+  const [selectedCol, setSelectedCol] = useState(dateCols[0] ?? "");
+  const [bin, setBin] = useState<DateBin>("month");
+
+  const binData = useMemo(() => {
+    if (!selectedCol) return [];
+    const groups = new Map<string, number>();
+    for (const row of table.rows) {
+      const val = row[selectedCol];
+      if (val === null || val === undefined) continue;
+      const key = binDate(String(val), bin);
+      groups.set(key, (groups.get(key) ?? 0) + 1);
+    }
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([label, count]) => ({ label, count }));
+  }, [table, selectedCol, bin]);
+
+  if (dateCols.length === 0) return null;
+
+  return (
+    <div className="space-y-3 border-t border-border pt-4">
+      <h3 className="text-sm font-semibold text-foreground">Date Distribution</h3>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Column</label>
+          <select
+            value={selectedCol}
+            onChange={(e) => setSelectedCol(e.target.value)}
+            className="rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
+          >
+            {dateCols.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Group by</label>
+          <select
+            value={bin}
+            onChange={(e) => setBin(e.target.value as DateBin)}
+            className="rounded-lg border border-border bg-accent px-3 py-1.5 text-sm text-foreground focus:outline-none"
+          >
+            <option value="day">Day</option>
+            <option value="week">Week</option>
+            <option value="month">Month</option>
+            <option value="year">Year</option>
+          </select>
+        </div>
+      </div>
+      {binData.length > 0 && (
+        <div className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={binData}>
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+              <XAxis dataKey="label" stroke={theme.axis} tick={{ fontSize: 10 }} />
+              <YAxis stroke={theme.axis} tick={{ fontSize: 10 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: theme.tooltipBg,
+                  border: `1px solid ${theme.tooltipBorder}`,
+                  borderRadius: "8px",
+                }}
+              />
+              <Bar dataKey="count" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </div>
   );

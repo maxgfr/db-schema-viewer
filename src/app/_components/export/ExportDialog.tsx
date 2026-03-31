@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { X, Image, FileText, Code, Download, Copy, Braces, Database, Layers, Loader2 } from "lucide-react";
+import { X, Image, FileText, Code, Download, Copy, Braces, Database, Layers, Loader2, Globe } from "lucide-react";
 import type { Diagram, DatabaseType } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
 import { exportFullDiagramToPng, exportToSvg, downloadDataUrl } from "@/lib/export/image-export";
@@ -13,13 +13,16 @@ import { exportDiagramToMarkdown } from "@/lib/export/markdown-export";
 import { exportDiagramToMermaid } from "@/lib/export/mermaid-export";
 import { exportDiagramToPrisma } from "@/lib/export/prisma-export";
 import { exportDiagramToDrizzle } from "@/lib/export/drizzle-export";
+import { exportDiagramToDBML } from "@/lib/export/dbml-export";
+import { exportDiagramToPlantUML } from "@/lib/export/plantuml-export";
+import { generateShareUrl } from "@/lib/sharing/encode-state";
 
 interface ExportDialogProps {
   diagram: Diagram;
   onClose: () => void;
 }
 
-type ExportTab = "image" | "pdf" | "sql" | "markdown" | "mermaid" | "prisma" | "drizzle";
+type ExportTab = "image" | "pdf" | "sql" | "markdown" | "mermaid" | "dbml" | "plantuml" | "prisma" | "drizzle" | "embed";
 
 export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   const [tab, setTab] = useState<ExportTab>("image");
@@ -29,6 +32,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   const [targetDb, setTargetDb] = useState<DatabaseType>(diagram.databaseType);
   const [isExporting, setIsExporting] = useState(false);
   const [mermaidOutput, setMermaidOutput] = useState("");
+  const [embedSnippet, setEmbedSnippet] = useState("");
 
   const handleImageExport = useCallback(async () => {
     setIsExporting(true);
@@ -131,6 +135,38 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     toast.success("Exported as Drizzle schema");
   }, [diagram]);
 
+  const handleDBMLExport = useCallback(() => {
+    const dbml = exportDiagramToDBML(diagram);
+    const blob = new Blob([dbml], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    downloadDataUrl(url, `${diagram.name}.dbml`);
+    URL.revokeObjectURL(url);
+    toast.success("Exported as DBML");
+  }, [diagram]);
+
+  const handleDBMLCopy = useCallback(() => {
+    const dbml = exportDiagramToDBML(diagram);
+    navigator.clipboard.writeText(dbml).then(() => {
+      toast.success("DBML copied to clipboard");
+    });
+  }, [diagram]);
+
+  const handlePlantUMLExport = useCallback(() => {
+    const puml = exportDiagramToPlantUML(diagram);
+    const blob = new Blob([puml], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    downloadDataUrl(url, `${diagram.name}.puml`);
+    URL.revokeObjectURL(url);
+    toast.success("Exported as PlantUML");
+  }, [diagram]);
+
+  const handlePlantUMLCopy = useCallback(() => {
+    const puml = exportDiagramToPlantUML(diagram);
+    navigator.clipboard.writeText(puml).then(() => {
+      toast.success("PlantUML copied to clipboard");
+    });
+  }, [diagram]);
+
   const handleDrizzleCopy = useCallback(() => {
     const drizzle = exportDiagramToDrizzle(diagram);
     navigator.clipboard.writeText(drizzle).then(() => {
@@ -144,8 +180,11 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     { id: "sql", label: "SQL", icon: Code },
     { id: "markdown", label: "Markdown", icon: FileText },
     { id: "mermaid", label: "Mermaid", icon: Braces },
+    { id: "dbml", label: "DBML", icon: Braces },
+    { id: "plantuml", label: "PlantUML", icon: Braces },
     { id: "prisma", label: "Prisma", icon: Database },
     { id: "drizzle", label: "Drizzle", icon: Layers },
+    { id: "embed", label: "Embed", icon: Globe },
   ];
 
   const modalContent = (
@@ -347,6 +386,56 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
               </>
             )}
 
+            {tab === "dbml" && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Export your schema in DBML format, compatible with dbdiagram.io and other DBML tools.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleDBMLExport}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download .dbml
+                  </button>
+                  <button
+                    onClick={handleDBMLCopy}
+                    className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
+                    aria-label="Copy DBML to clipboard"
+                    title="Copy DBML to clipboard"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {tab === "plantuml" && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Export your schema as a PlantUML entity-relationship diagram.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handlePlantUMLExport}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download .puml
+                  </button>
+                  <button
+                    onClick={handlePlantUMLCopy}
+                    className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
+                    aria-label="Copy PlantUML to clipboard"
+                    title="Copy PlantUML to clipboard"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+              </>
+            )}
+
             {tab === "prisma" && (
               <>
                 <p className="text-sm text-muted-foreground">
@@ -394,6 +483,46 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                     <Copy className="h-4 w-4" />
                   </button>
                 </div>
+              </>
+            )}
+
+            {tab === "embed" && (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Generate an embeddable snippet to include this schema viewer in another page.
+                </p>
+                {!embedSnippet ? (
+                  <button
+                    onClick={() => {
+                      const url = generateShareUrl(diagram);
+                      const snippet = `<iframe\n  src="${url}"\n  width="100%"\n  height="600"\n  frameborder="0"\n  style="border: 1px solid #e5e7eb; border-radius: 8px;"\n  title="DB Schema Viewer"\n></iframe>`;
+                      setEmbedSnippet(snippet);
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
+                  >
+                    <Code className="h-4 w-4" />
+                    Generate Embed Code
+                  </button>
+                ) : (
+                  <>
+                    <textarea
+                      readOnly
+                      value={embedSnippet}
+                      className="h-32 w-full rounded-lg border border-border bg-accent p-3 font-mono text-xs text-foreground focus:outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(embedSnippet).then(() => {
+                          toast.success("Embed snippet copied to clipboard");
+                        });
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 font-semibold text-foreground hover:bg-accent"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copy to Clipboard
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>

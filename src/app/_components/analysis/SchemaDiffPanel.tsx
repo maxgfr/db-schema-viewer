@@ -3,10 +3,13 @@
 import { useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { X, Upload, Plus, Minus, RefreshCw, ArrowRight } from "lucide-react";
+import { X, Upload, Plus, Minus, RefreshCw, ArrowRight, Brain, Loader2 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { diffSchemas, type SchemaDiff, type TableDiff, type FieldDiff } from "@/lib/analysis/schema-diff";
 import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
+import { loadAISettings } from "@/lib/storage/cookie-storage";
+import { querySchema } from "@/lib/ai/ai-service";
+import { MarkdownContent } from "../shared/MarkdownContent";
 
 interface SchemaDiffPanelProps {
   currentDiagram: Diagram;
@@ -91,14 +94,19 @@ function TableDiffCard({ diff }: { diff: TableDiff }) {
 export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProps) {
   const [diff, setDiff] = useState<SchemaDiff | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const newDiagramRef = useRef<Diagram | null>(null);
 
   const handleCompare = useCallback(
     (content: string, fileName?: string) => {
       try {
         const newDiagram = parseSchemaFile(content, fileName);
+        newDiagramRef.current = newDiagram;
         const result = diffSchemas(currentDiagram, newDiagram);
         setDiff(result);
+        setAiAnalysis("");
         toast.success(result.summary);
       } catch (err) {
         toast.error("Failed to parse schema for comparison", {
@@ -108,6 +116,46 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
     },
     [currentDiagram]
   );
+
+  const handleAIAnalysis = useCallback(async () => {
+    if (!diff || !newDiagramRef.current) return;
+    const settings = loadAISettings();
+    if (!settings || (!settings.apiKey && !settings.customEndpoint)) {
+      toast.error("No AI configured", {
+        description: "Go to Settings to configure an API key.",
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAiAnalysis("");
+
+    const diffSummary = [
+      diff.summary,
+      diff.addedTables.length > 0 ? `Added tables: ${diff.addedTables.join(", ")}` : "",
+      diff.removedTables.length > 0 ? `Removed tables: ${diff.removedTables.join(", ")}` : "",
+      ...diff.modifiedTables.map((t) => {
+        const parts = [`Modified ${t.tableName}:`];
+        if (t.addedFields.length > 0) parts.push(`  added fields: ${t.addedFields.join(", ")}`);
+        if (t.removedFields.length > 0) parts.push(`  removed fields: ${t.removedFields.join(", ")}`);
+        if (t.modifiedFields.length > 0) parts.push(`  changed fields: ${t.modifiedFields.map((f) => f.fieldName).join(", ")}`);
+        return parts.join("\n");
+      }),
+    ].filter(Boolean).join("\n");
+
+    try {
+      await querySchema(
+        settings,
+        currentDiagram,
+        `I'm comparing two versions of my schema. Here is the diff:\n\n${diffSummary}\n\nPlease:\n1. Evaluate if this migration is safe\n2. Identify potential data loss risks\n3. Suggest the migration order\n4. Flag any breaking changes`,
+        (chunk) => setAiAnalysis((prev) => prev + chunk),
+        () => setIsAnalyzing(false),
+      );
+    } catch {
+      setIsAnalyzing(false);
+      toast.error("AI analysis failed");
+    }
+  }, [diff, currentDiagram]);
 
   const handleFile = useCallback(
     (file: File) => {
@@ -279,8 +327,31 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
                   </div>
                 )}
 
+                {!aiAnalysis && !isAnalyzing && !noChanges && (
+                  <button
+                    onClick={handleAIAnalysis}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
+                  >
+                    <Brain className="h-4 w-4" />
+                    Analyze with AI
+                  </button>
+                )}
+
+                {isAnalyzing && (
+                  <div className="flex items-center gap-2 rounded-xl border border-border bg-accent/50 px-4 py-3 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-indigo-400" />
+                    Analyzing migration...
+                  </div>
+                )}
+
+                {(aiAnalysis || isAnalyzing) && (
+                  <div className="rounded-xl border border-border bg-accent/30 p-4 text-sm text-foreground">
+                    <MarkdownContent content={aiAnalysis || "..."} />
+                  </div>
+                )}
+
                 <button
-                  onClick={() => setDiff(null)}
+                  onClick={() => { setDiff(null); setAiAnalysis(""); }}
                   className="w-full rounded-xl border border-border py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent"
                 >
                   Compare another schema
