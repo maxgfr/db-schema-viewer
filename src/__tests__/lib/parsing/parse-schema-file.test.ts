@@ -1,9 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
+import { parseSchemaFile, detectFormat } from "@/lib/parsing/parse-schema-file";
 import { parsePrismaSchema } from "@/lib/prisma/prisma-parser";
 import { parseDBMLSchema } from "@/lib/dbml/dbml-parser";
 import { parseTypeORMSchema } from "@/lib/typeorm/typeorm-parser";
 import { parseDrizzleSchema } from "@/lib/drizzle/drizzle-parser";
+import { parseSequelizeSchema } from "@/lib/sequelize/sequelize-parser";
+import { parseMikroORMSchema } from "@/lib/mikroorm/mikroorm-parser";
+import { parseKyselySchema } from "@/lib/kysely/kysely-parser";
 
 // Mock the individual parsers so we can verify routing without depending
 // on their full implementations (the SQL parser is still used for the
@@ -81,6 +84,69 @@ vi.mock("@/lib/drizzle/drizzle-parser", () => ({
         id: "t1",
         name: "users",
         fields: [{ id: "f1", name: "id", type: "serial", primaryKey: true, unique: false, nullable: false, isForeignKey: false }],
+        indexes: [],
+        x: 0,
+        y: 0,
+        isView: false,
+      },
+    ],
+    relationships: [],
+    createdAt: new Date().toISOString(),
+  })),
+}));
+
+vi.mock("@/lib/sequelize/sequelize-parser", () => ({
+  parseSequelizeSchema: vi.fn((_content: string, name?: string) => ({
+    id: "sequelize-id",
+    name: name ?? "Sequelize Schema",
+    databaseType: "postgresql",
+    tables: [
+      {
+        id: "t1",
+        name: "User",
+        fields: [{ id: "f1", name: "id", type: "INTEGER", primaryKey: true, unique: false, nullable: false, isForeignKey: false }],
+        indexes: [],
+        x: 0,
+        y: 0,
+        isView: false,
+      },
+    ],
+    relationships: [],
+    createdAt: new Date().toISOString(),
+  })),
+}));
+
+vi.mock("@/lib/mikroorm/mikroorm-parser", () => ({
+  parseMikroORMSchema: vi.fn((_content: string, name?: string) => ({
+    id: "mikroorm-id",
+    name: name ?? "MikroORM Schema",
+    databaseType: "postgresql",
+    tables: [
+      {
+        id: "t1",
+        name: "User",
+        fields: [{ id: "f1", name: "id", type: "INTEGER", primaryKey: true, unique: false, nullable: false, isForeignKey: false }],
+        indexes: [],
+        x: 0,
+        y: 0,
+        isView: false,
+      },
+    ],
+    relationships: [],
+    createdAt: new Date().toISOString(),
+  })),
+}));
+
+vi.mock("@/lib/kysely/kysely-parser", () => ({
+  parseKyselySchema: vi.fn((_content: string, name?: string) => ({
+    id: "kysely-id",
+    name: name ?? "Kysely Schema",
+    databaseType: "postgresql",
+    tables: [
+      {
+        id: "t1",
+        name: "users",
+        fields: [{ id: "f1", name: "id", type: "INTEGER", primaryKey: true, unique: false, nullable: false, isForeignKey: false }],
         indexes: [],
         x: 0,
         y: 0,
@@ -256,5 +322,103 @@ describe("parseSchemaFile", () => {
     );
     expect(diagram.tables.length).toBe(2);
     expect(hasPositionedTable).toBe(true);
+  });
+
+  it("detects Sequelize from .ts with sequelize.define()", () => {
+    const content = `
+      const User = sequelize.define('User', {
+        id: { type: DataTypes.INTEGER, primaryKey: true },
+        name: DataTypes.STRING,
+      });
+    `;
+    const diagram = parseSchemaFile(content, "models.ts");
+    expect(parseSequelizeSchema).toHaveBeenCalledWith(content, "models");
+    expect(diagram.id).toBe("sequelize-id");
+  });
+
+  it("detects MikroORM from .ts with @Entity + @Property", () => {
+    const content = `
+      @Entity()
+      export class User {
+        @PrimaryKey()
+        id!: number;
+
+        @Property()
+        name!: string;
+      }
+    `;
+    const diagram = parseSchemaFile(content, "entities.ts");
+    expect(parseMikroORMSchema).toHaveBeenCalledWith(content, "entities");
+    expect(diagram.id).toBe("mikroorm-id");
+  });
+
+  it("detects Kysely from .ts with interface Database + Generated<>", () => {
+    const content = `
+      interface Database {
+        users: UsersTable;
+      }
+      interface UsersTable {
+        id: Generated<number>;
+        name: string;
+      }
+    `;
+    const diagram = parseSchemaFile(content, "database.ts");
+    expect(parseKyselySchema).toHaveBeenCalledWith(content, "database");
+    expect(diagram.id).toBe("kysely-id");
+  });
+
+  it("auto-detects Sequelize from content (no filename)", () => {
+    const content = `
+      const User = sequelize.define('User', {
+        id: { type: DataTypes.INTEGER, primaryKey: true },
+      });
+    `;
+    const diagram = parseSchemaFile(content);
+    expect(parseSequelizeSchema).toHaveBeenCalledWith(content, undefined);
+    expect(diagram.id).toBe("sequelize-id");
+  });
+
+  it("auto-detects MikroORM from content (no filename)", () => {
+    const content = `
+      @Entity()
+      export class User {
+        @PrimaryKey()
+        id!: number;
+        @Property()
+        name!: string;
+      }
+    `;
+    const diagram = parseSchemaFile(content);
+    expect(parseMikroORMSchema).toHaveBeenCalledWith(content, undefined);
+    expect(diagram.id).toBe("mikroorm-id");
+  });
+
+  it("auto-detects Kysely from content (no filename)", () => {
+    const content = `
+      interface Database {
+        users: UsersTable;
+      }
+      interface UsersTable {
+        id: Generated<number>;
+        name: string;
+      }
+    `;
+    const diagram = parseSchemaFile(content);
+    expect(parseKyselySchema).toHaveBeenCalledWith(content, undefined);
+    expect(diagram.id).toBe("kysely-id");
+  });
+});
+
+describe("detectFormat", () => {
+  it("returns sequelize for content with sequelize.define()", () => {
+    expect(detectFormat(`sequelize.define('User', { id: DataTypes.INTEGER });`)).toBe("sequelize");
+  });
+
+  it("returns mikroorm for content with @Entity + @Property", () => {
+    expect(detectFormat(`@Entity()\nclass User {\n@Property()\nname!: string;\n}`)).toBe("mikroorm");
+  });
+
+  it("returns kysely for content with interface Database + Generated", () => {
+    expect(detectFormat(`interface Database {\nusers: UsersTable;\n}\ninterface UsersTable {\nid: Generated<number>;\n}`)).toBe("kysely");
   });
 });

@@ -524,3 +524,102 @@ describe("analyzeSchema", () => {
     expect(analysis.qualityScore.breakdown).toHaveLength(4);
   });
 });
+
+describe("normalization validation", () => {
+  it("detects 1NF violation: multi-value column names", () => {
+    const table: DBTable = {
+      id: generateId(),
+      name: "users",
+      fields: [
+        { id: generateId(), name: "id", type: "SERIAL", primaryKey: true, unique: false, nullable: false, isForeignKey: false },
+        { id: generateId(), name: "tags", type: "TEXT", primaryKey: false, unique: false, nullable: true, isForeignKey: false },
+      ],
+      indexes: [],
+      x: 0,
+      y: 0,
+      isView: false,
+    };
+    const diagram = makeDiagram([table], []);
+    const patterns = detectAntiPatterns(diagram);
+    expect(patterns.some((p) => p.description.includes("1NF") && p.field === "tags")).toBe(true);
+  });
+
+  it("detects 1NF violation: JSON/array column types", () => {
+    const table: DBTable = {
+      id: generateId(),
+      name: "events",
+      fields: [
+        { id: generateId(), name: "id", type: "SERIAL", primaryKey: true, unique: false, nullable: false, isForeignKey: false },
+        { id: generateId(), name: "metadata", type: "JSONB", primaryKey: false, unique: false, nullable: true, isForeignKey: false },
+      ],
+      indexes: [],
+      x: 0,
+      y: 0,
+      isView: false,
+    };
+    const diagram = makeDiagram([table], []);
+    const patterns = detectAntiPatterns(diagram);
+    expect(patterns.some((p) => p.description.includes("1NF") && p.field === "metadata")).toBe(true);
+  });
+
+  it("detects 2NF hint: composite PK with non-key fields", () => {
+    const table: DBTable = {
+      id: generateId(),
+      name: "order_items",
+      fields: [
+        { id: generateId(), name: "order_id", type: "INT", primaryKey: true, unique: false, nullable: false, isForeignKey: true },
+        { id: generateId(), name: "product_id", type: "INT", primaryKey: true, unique: false, nullable: false, isForeignKey: true },
+        { id: generateId(), name: "quantity", type: "INT", primaryKey: false, unique: false, nullable: false, isForeignKey: false },
+        { id: generateId(), name: "price", type: "DECIMAL", primaryKey: false, unique: false, nullable: false, isForeignKey: false },
+      ],
+      indexes: [],
+      x: 0,
+      y: 0,
+      isView: false,
+    };
+    const diagram = makeDiagram([table], []);
+    const patterns = detectAntiPatterns(diagram);
+    expect(patterns.some((p) => p.description.includes("2NF") || p.description.includes("composite primary key"))).toBe(true);
+  });
+
+  it("detects 3NF hint: multiple FKs with many data columns", () => {
+    const table: DBTable = {
+      id: generateId(),
+      name: "orders",
+      fields: [
+        { id: generateId(), name: "id", type: "SERIAL", primaryKey: true, unique: false, nullable: false, isForeignKey: false },
+        { id: generateId(), name: "user_id", type: "INT", primaryKey: false, unique: false, nullable: false, isForeignKey: true },
+        { id: generateId(), name: "product_id", type: "INT", primaryKey: false, unique: false, nullable: false, isForeignKey: true },
+        { id: generateId(), name: "total", type: "DECIMAL", primaryKey: false, unique: false, nullable: false, isForeignKey: false },
+        { id: generateId(), name: "status", type: "VARCHAR", primaryKey: false, unique: false, nullable: false, isForeignKey: false },
+        { id: generateId(), name: "notes", type: "TEXT", primaryKey: false, unique: false, nullable: true, isForeignKey: false },
+      ],
+      indexes: [],
+      x: 0,
+      y: 0,
+      isView: false,
+    };
+    const diagram = makeDiagram([table], []);
+    const patterns = detectAntiPatterns(diagram);
+    expect(patterns.some((p) => p.description.includes("3NF") || p.description.includes("transitive"))).toBe(true);
+  });
+
+  it("does not flag 1NF for normal column names", () => {
+    const table: DBTable = {
+      id: generateId(),
+      name: "users",
+      fields: [
+        { id: generateId(), name: "id", type: "SERIAL", primaryKey: true, unique: false, nullable: false, isForeignKey: false },
+        { id: generateId(), name: "email", type: "VARCHAR", primaryKey: false, unique: false, nullable: false, isForeignKey: false },
+        { id: generateId(), name: "name", type: "VARCHAR", primaryKey: false, unique: false, nullable: true, isForeignKey: false },
+      ],
+      indexes: [],
+      x: 0,
+      y: 0,
+      isView: false,
+    };
+    const diagram = makeDiagram([table], []);
+    const patterns = detectAntiPatterns(diagram);
+    expect(patterns.some((p) => p.description.includes("1NF"))).toBe(false);
+  });
+});

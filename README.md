@@ -3,7 +3,7 @@
 [![CI](https://github.com/maxgfr/db-schema-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/maxgfr/db-schema-viewer/actions/workflows/ci.yml)
 [![Deploy](https://github.com/maxgfr/db-schema-viewer/actions/workflows/deploy.yml/badge.svg)](https://github.com/maxgfr/db-schema-viewer/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-531%20passing-brightgreen)](https://github.com/maxgfr/db-schema-viewer/actions)
+[![Tests](https://img.shields.io/badge/tests-554%20passing-brightgreen)](https://github.com/maxgfr/db-schema-viewer/actions)
 
 > **100% client-side** database schema visualizer. Upload SQL, Drizzle, Prisma, TypeORM, Sequelize, MikroORM, Kysely, or DBML schemas, visualize interactive ER diagrams, analyze with AI, and export to 10 formats. Your data never leaves your browser.
 
@@ -139,7 +139,7 @@ Weighted pattern matching detects the database type from SQL syntax:
 | Charts | Recharts 3 |
 | Sharing | lz-string |
 | Export | html-to-image + jsPDF |
-| Testing | Vitest + happy-dom (531 tests) |
+| Testing | Vitest + happy-dom (554 tests) |
 | CI/CD | GitHub Actions → GitHub Pages |
 | Package Manager | pnpm 10 |
 
@@ -195,7 +195,7 @@ pnpm build:export  # Static build for GitHub Pages
 ## Test Coverage
 
 ```
-47 test files — 531 tests passing
+47 test files — 554 tests passing
 
 src/__tests__/lib/
 ├── ai/              ai-prompts.test.ts              (6 tests)  — Prompt context builder
@@ -296,7 +296,7 @@ src/
 │   ├── use-theme.ts            # Dark/Light toggle + localStorage
 │   └── use-keyboard-shortcuts.ts
 ├── components/ui/              # Radix UI wrappers (Button, Tooltip)
-└── __tests__/                  # 47 test files, 531 tests
+└── __tests__/                  # 47 test files, 554 tests
 ```
 
 ---

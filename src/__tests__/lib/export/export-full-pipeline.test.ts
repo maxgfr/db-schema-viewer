@@ -4,6 +4,8 @@ import { exportDiagramToMarkdown } from "@/lib/export/markdown-export";
 import { exportDiagramToMermaid } from "@/lib/export/mermaid-export";
 import { exportDiagramToPrisma } from "@/lib/export/prisma-export";
 import { exportDiagramToDrizzle } from "@/lib/export/drizzle-export";
+import { exportDiagramToDBML } from "@/lib/export/dbml-export";
+import { exportDiagramToPlantUML } from "@/lib/export/plantuml-export";
 import type { Diagram, DatabaseType } from "@/lib/domain";
 import { generateId } from "@/lib/utils";
 
@@ -592,13 +594,15 @@ describe("Drizzle full pipeline", () => {
 // ─── Cross-format consistency ───────────────────────────────────────
 
 describe("Cross-format consistency", () => {
-  it("fullBlogDiagram — all 5 formats mention the same table names", () => {
+  it("fullBlogDiagram — all 7 formats mention the same table names", () => {
     const tableNames = ["users", "posts", "comments", "tags"];
     const sql = exportDiagramToSQL(fullBlogDiagram);
     const md = exportDiagramToMarkdown(fullBlogDiagram);
     const mermaid = exportDiagramToMermaid(fullBlogDiagram);
     const prisma = exportDiagramToPrisma(fullBlogDiagram);
     const drizzle = exportDiagramToDrizzle(fullBlogDiagram);
+    const dbml = exportDiagramToDBML(fullBlogDiagram);
+    const plantuml = exportDiagramToPlantUML(fullBlogDiagram);
 
     for (const name of tableNames) {
       expect(sql).toContain(name);
@@ -608,6 +612,22 @@ describe("Cross-format consistency", () => {
       expect(prisma).toContain(name);
       // Drizzle uses camelCase variable names, but table string literal preserves original
       expect(drizzle).toContain(`"${name}"`);
+      expect(dbml).toContain(name);
+      expect(plantuml).toContain(name);
     }
+  });
+
+  it("DBML export contains Table blocks and Ref lines", () => {
+    const dbml = exportDiagramToDBML(fullBlogDiagram);
+    expect(dbml).toContain("Table users {");
+    expect(dbml).toContain("Table posts {");
+    expect(dbml).toContain("Ref:");
+  });
+
+  it("PlantUML export has @startuml/@enduml and entity blocks", () => {
+    const puml = exportDiagramToPlantUML(fullBlogDiagram);
+    expect(puml).toContain("@startuml");
+    expect(puml).toContain("@enduml");
+    expect(puml).toContain("entity");
   });
 });
