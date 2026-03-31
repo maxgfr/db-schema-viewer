@@ -123,8 +123,27 @@ function SchemaCanvasInner({
     [diagram.relationships, notation]
   );
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+
+  // Sync annotation changes into React Flow nodes (useNodesState only uses initialNodes on mount)
+  useEffect(() => {
+    setNodes((currentNodes) => {
+      const tableNodes = currentNodes.filter((n) => n.type !== "stickyNote");
+      const noteNodes: Node[] = annotations.map((note) => ({
+        id: note.id,
+        type: "stickyNote",
+        position: { x: note.x, y: note.y },
+        data: {
+          text: note.text,
+          color: note.color,
+          onTextChange: handleNoteTextChange,
+          onDelete: handleNoteDelete,
+        },
+      }));
+      return [...tableNodes, ...noteNodes];
+    });
+  }, [annotations, setNodes, handleNoteTextChange, handleNoteDelete]);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {

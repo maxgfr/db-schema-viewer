@@ -32,6 +32,7 @@ import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
 import type { Theme, ThemeMode } from "@/hooks/use-theme";
 import { SchemaUpload } from "../schema/SchemaUpload";
 import { useTranslation } from "@/lib/i18n/context";
+import { LanguageToggle } from "../I18nWrapper";
 
 interface LandingProps {
   onDiagramCreated: (diagram: Diagram) => void;
@@ -139,8 +140,11 @@ export function Landing({ onDiagramCreated, theme, themeMode, onToggleTheme }: L
 
   return (
     <div className="min-h-screen">
-      {/* Theme toggle */}
-      <div className="absolute right-4 top-4 z-10">
+      {/* Theme + Language toggle */}
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+        <div className="rounded-lg border border-border bg-card">
+          <LanguageToggle />
+        </div>
         <button
           onClick={onToggleTheme}
           className="rounded-lg border border-border bg-card p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
