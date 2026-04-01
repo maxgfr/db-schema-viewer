@@ -193,6 +193,8 @@ export const en: Record<string, string> = {
   "export.drizzleCopied": "Drizzle schema copied to clipboard",
   "export.dbmlCopied": "DBML copied to clipboard",
   "export.plantumlCopied": "PlantUML copied to clipboard",
+  "export.markdownCopied": "Markdown copied to clipboard",
+  "export.downloadMmd": "Download .mmd",
 
   "ai.title": "AI Assistant",
   "ai.closePanel": "Close AI panel",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { X, Image, FileText, Code, Download, Copy, Braces, Database, Layers, Loader2, Globe } from "lucide-react";
@@ -25,6 +25,8 @@ interface ExportDialogProps {
 
 type ExportTab = "image" | "pdf" | "sql" | "markdown" | "mermaid" | "dbml" | "plantuml" | "prisma" | "drizzle" | "embed";
 
+const TEXT_TABS: Set<ExportTab> = new Set(["sql", "markdown", "mermaid", "dbml", "plantuml", "prisma", "drizzle"]);
+
 export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<ExportTab>("image");
@@ -33,8 +35,66 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   const [transparent, setTransparent] = useState(false);
   const [targetDb, setTargetDb] = useState<DatabaseType>(diagram.databaseType);
   const [isExporting, setIsExporting] = useState(false);
-  const [mermaidOutput, setMermaidOutput] = useState("");
   const [embedSnippet, setEmbedSnippet] = useState("");
+
+  // Generate text output for the active text tab
+  const textOutput = useMemo(() => {
+    switch (tab) {
+      case "sql": return exportDiagramToSQL(diagram, targetDb);
+      case "markdown": return exportDiagramToMarkdown(diagram);
+      case "mermaid": return exportDiagramToMermaid(diagram);
+      case "dbml": return exportDiagramToDBML(diagram);
+      case "plantuml": return exportDiagramToPlantUML(diagram);
+      case "prisma": return exportDiagramToPrisma(diagram);
+      case "drizzle": return exportDiagramToDrizzle(diagram);
+      default: return "";
+    }
+  }, [tab, diagram, targetDb]);
+
+  const handleCopyText = useCallback(() => {
+    if (!textOutput) return;
+    navigator.clipboard.writeText(textOutput).then(() => {
+      const msg: Partial<Record<ExportTab, string>> = {
+        sql: t("export.sqlCopied"),
+        markdown: t("export.markdownCopied"),
+        mermaid: t("export.mermaidCopied"),
+        dbml: t("export.dbmlCopied"),
+        plantuml: t("export.plantumlCopied"),
+        prisma: t("export.prismaCopied"),
+        drizzle: t("export.drizzleCopied"),
+      };
+      toast.success(msg[tab] ?? t("export.copyToClipboard"));
+    });
+  }, [textOutput, tab, t]);
+
+  const handleTextDownload = useCallback(() => {
+    if (!textOutput) return;
+    const configs: Partial<Record<ExportTab, { ext: string; mime: string }>> = {
+      sql: { ext: "sql", mime: "text/sql" },
+      markdown: { ext: "md", mime: "text/markdown" },
+      mermaid: { ext: "mmd", mime: "text/plain" },
+      dbml: { ext: "dbml", mime: "text/plain" },
+      plantuml: { ext: "puml", mime: "text/plain" },
+      prisma: { ext: "prisma", mime: "text/plain" },
+      drizzle: { ext: "ts", mime: "text/typescript" },
+    };
+    const c = configs[tab];
+    if (!c) return;
+    const blob = new Blob([textOutput], { type: c.mime });
+    const url = URL.createObjectURL(blob);
+    downloadDataUrl(url, `${diagram.name}.${c.ext}`);
+    URL.revokeObjectURL(url);
+    const successMsg: Partial<Record<ExportTab, string>> = {
+      sql: t("export.exportedAs", { format: DATABASE_TYPE_LABELS[targetDb] + " SQL" }),
+      markdown: t("export.exportedAsMarkdown"),
+      mermaid: t("export.exportedAs", { format: "Mermaid" }),
+      dbml: t("export.exportedAsDbml"),
+      plantuml: t("export.exportedAsPlantuml"),
+      prisma: t("export.exportedAsPrisma"),
+      drizzle: t("export.exportedAsDrizzle"),
+    };
+    toast.success(successMsg[tab] ?? t("export.exportedAs", { format: tab }));
+  }, [textOutput, tab, diagram.name, targetDb, t]);
 
   const handleImageExport = useCallback(async () => {
     setIsExporting(true);
@@ -75,107 +135,6 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     }
   }, [diagram, t]);
 
-  const handleSQLExport = useCallback(() => {
-    const sql = exportDiagramToSQL(diagram, targetDb);
-    const blob = new Blob([sql], { type: "text/sql" });
-    const url = URL.createObjectURL(blob);
-    downloadDataUrl(url, `${diagram.name}.sql`);
-    URL.revokeObjectURL(url);
-    toast.success(t("export.exportedAs", { format: DATABASE_TYPE_LABELS[targetDb] + " SQL" }));
-  }, [diagram, targetDb, t]);
-
-  const handleSQLCopy = useCallback(() => {
-    const sql = exportDiagramToSQL(diagram, targetDb);
-    navigator.clipboard.writeText(sql).then(() => {
-      toast.success(t("export.sqlCopied"));
-    });
-  }, [diagram, targetDb, t]);
-
-  const handleMarkdownExport = useCallback(() => {
-    const md = exportDiagramToMarkdown(diagram);
-    const blob = new Blob([md], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    downloadDataUrl(url, `${diagram.name}.md`);
-    URL.revokeObjectURL(url);
-    toast.success(t("export.exportedAsMarkdown"));
-  }, [diagram, t]);
-
-  const handleGenerateMermaid = useCallback(() => {
-    const mermaid = exportDiagramToMermaid(diagram);
-    setMermaidOutput(mermaid);
-  }, [diagram]);
-
-  const handleMermaidCopy = useCallback(() => {
-    if (!mermaidOutput) return;
-    navigator.clipboard.writeText(mermaidOutput).then(() => {
-      toast.success(t("export.mermaidCopied"));
-    });
-  }, [mermaidOutput, t]);
-
-  const handlePrismaExport = useCallback(() => {
-    const prisma = exportDiagramToPrisma(diagram);
-    const blob = new Blob([prisma], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    downloadDataUrl(url, `${diagram.name}.prisma`);
-    URL.revokeObjectURL(url);
-      toast.success(t("export.exportedAsPrisma"));
-  }, [diagram, t]);
-
-  const handlePrismaCopy = useCallback(() => {
-    const prisma = exportDiagramToPrisma(diagram);
-    navigator.clipboard.writeText(prisma).then(() => {
-      toast.success(t("export.prismaCopied"));
-    });
-  }, [diagram, t]);
-
-  const handleDrizzleExport = useCallback(() => {
-    const drizzle = exportDiagramToDrizzle(diagram);
-    const blob = new Blob([drizzle], { type: "text/typescript" });
-    const url = URL.createObjectURL(blob);
-    downloadDataUrl(url, `${diagram.name}.ts`);
-    URL.revokeObjectURL(url);
-      toast.success(t("export.exportedAsDrizzle"));
-  }, [diagram, t]);
-
-  const handleDBMLExport = useCallback(() => {
-    const dbml = exportDiagramToDBML(diagram);
-    const blob = new Blob([dbml], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    downloadDataUrl(url, `${diagram.name}.dbml`);
-    URL.revokeObjectURL(url);
-      toast.success(t("export.exportedAsDbml"));
-  }, [diagram, t]);
-
-  const handleDBMLCopy = useCallback(() => {
-    const dbml = exportDiagramToDBML(diagram);
-    navigator.clipboard.writeText(dbml).then(() => {
-      toast.success(t("export.dbmlCopied"));
-    });
-  }, [diagram, t]);
-
-  const handlePlantUMLExport = useCallback(() => {
-    const puml = exportDiagramToPlantUML(diagram);
-    const blob = new Blob([puml], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    downloadDataUrl(url, `${diagram.name}.puml`);
-    URL.revokeObjectURL(url);
-      toast.success(t("export.exportedAsPlantuml"));
-  }, [diagram, t]);
-
-  const handlePlantUMLCopy = useCallback(() => {
-    const puml = exportDiagramToPlantUML(diagram);
-    navigator.clipboard.writeText(puml).then(() => {
-      toast.success(t("export.plantumlCopied"));
-    });
-  }, [diagram, t]);
-
-  const handleDrizzleCopy = useCallback(() => {
-    const drizzle = exportDiagramToDrizzle(diagram);
-    navigator.clipboard.writeText(drizzle).then(() => {
-      toast.success(t("export.drizzleCopied"));
-    });
-  }, [diagram, t]);
-
   const TAB_ITEMS: Array<{ id: ExportTab; labelKey: string; icon: typeof Image }> = [
     { id: "image", labelKey: "export.tab.image", icon: Image },
     { id: "pdf", labelKey: "export.tab.pdf", icon: FileText },
@@ -189,6 +148,25 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     { id: "embed", labelKey: "export.tab.embed", icon: Globe },
   ];
 
+  const textTabDescriptions: Partial<Record<ExportTab, string>> = {
+    markdown: t("export.markdownDescription"),
+    mermaid: t("export.mermaidDescription"),
+    dbml: t("export.dbmlDescription"),
+    plantuml: t("export.plantumlDescription"),
+    prisma: t("export.prismaDescription"),
+    drizzle: t("export.drizzleDescription"),
+  };
+
+  const downloadLabels: Partial<Record<ExportTab, string>> = {
+    sql: t("export.downloadSql"),
+    markdown: t("export.downloadMd"),
+    mermaid: t("export.downloadMmd"),
+    dbml: t("export.downloadDbml"),
+    plantuml: t("export.downloadPuml"),
+    prisma: t("export.downloadPrisma"),
+    drizzle: t("export.downloadTs"),
+  };
+
   const modalContent = (
     <>
       <div
@@ -197,11 +175,11 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
       />
       <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="animate-scale-in pointer-events-auto w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl"
+          className="animate-scale-in pointer-events-auto flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-card shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
             <h2 className="text-lg font-bold text-foreground">{t("export.title")}</h2>
             <button onClick={onClose} className="rounded-lg p-2 hover:bg-accent" aria-label={t("export.closeDialog")}>
               <X className="h-5 w-5 text-muted-foreground" />
@@ -209,7 +187,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
           </div>
 
           {/* Tabs */}
-          <div className="flex overflow-x-auto border-b border-border">
+          <div className="flex shrink-0 overflow-x-auto border-b border-border">
             {TAB_ITEMS.map(({ id, labelKey, icon: Icon }) => (
               <button
                 key={id}
@@ -227,7 +205,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
           </div>
 
           {/* Content */}
-          <div className="space-y-4 p-6">
+          <div className="space-y-4 overflow-y-auto p-6">
             {tab === "image" && (
               <>
                 <div>
@@ -302,185 +280,54 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
               </button>
             )}
 
-            {tab === "sql" && (
+            {TEXT_TABS.has(tab) && (
               <>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-foreground">
-                    {t("export.targetDatabase")}
-                  </label>
-                  <select
-                    value={targetDb}
-                    onChange={(e) => setTargetDb(e.target.value as DatabaseType)}
-                    className="w-full rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground focus:border-indigo-500 focus:outline-none"
-                  >
-                    {Object.entries(DATABASE_TYPE_LABELS).map(([key, label]) => (
-                      <option key={key} value={key}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSQLExport}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
-                  >
-                    <Download className="h-4 w-4" />
-                    {t("export.downloadSql")}
-                  </button>
-                  <button
-                    onClick={handleSQLCopy}
-                    className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
-                    aria-label={t("export.copySqlToClipboard")}
-                    title={t("export.copySqlToClipboard")}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                </div>
-              </>
-            )}
-
-            {tab === "markdown" && (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  {t("export.markdownDescription")}
-                </p>
-                <button
-                  onClick={handleMarkdownExport}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
-                >
-                  <Download className="h-4 w-4" />
-                  {t("export.downloadMd")}
-                </button>
-              </>
-            )}
-
-            {tab === "mermaid" && (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  {t("export.mermaidDescription")}
-                </p>
-                {!mermaidOutput ? (
-                  <button
-                    onClick={handleGenerateMermaid}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
-                  >
-                    <Code className="h-4 w-4" />
-                    {t("export.generateMermaid")}
-                  </button>
-                ) : (
-                  <>
-                    <textarea
-                      readOnly
-                      value={mermaidOutput}
-                      className="h-48 w-full rounded-lg border border-border bg-accent p-3 font-mono text-xs text-foreground focus:outline-none"
-                    />
-                    <button
-                      onClick={handleMermaidCopy}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 font-semibold text-foreground hover:bg-accent"
+                {/* SQL-specific: database selector */}
+                {tab === "sql" && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-foreground">
+                      {t("export.targetDatabase")}
+                    </label>
+                    <select
+                      value={targetDb}
+                      onChange={(e) => setTargetDb(e.target.value as DatabaseType)}
+                      className="w-full rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground focus:border-indigo-500 focus:outline-none"
                     >
-                      <Copy className="h-4 w-4" />
-                      {t("export.copyToClipboard")}
-                    </button>
-                  </>
+                      {Object.entries(DATABASE_TYPE_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
-              </>
-            )}
 
-            {tab === "dbml" && (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  {t("export.dbmlDescription")}
-                </p>
+                {/* Description */}
+                {textTabDescriptions[tab] && (
+                  <p className="text-sm text-muted-foreground">{textTabDescriptions[tab]}</p>
+                )}
+
+                {/* Preview */}
+                <textarea
+                  readOnly
+                  value={textOutput}
+                  className="h-48 w-full rounded-lg border border-border bg-accent p-3 font-mono text-xs text-foreground focus:outline-none"
+                />
+
+                {/* Download + Copy */}
                 <div className="flex gap-2">
                   <button
-                    onClick={handleDBMLExport}
+                    onClick={handleTextDownload}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
                   >
                     <Download className="h-4 w-4" />
-                    {t("export.downloadDbml")}
+                    {downloadLabels[tab]}
                   </button>
                   <button
-                    onClick={handleDBMLCopy}
+                    onClick={handleCopyText}
                     className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
-                    aria-label={t("export.copyDbmlToClipboard")}
-                    title={t("export.copyDbmlToClipboard")}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                </div>
-              </>
-            )}
-
-            {tab === "plantuml" && (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  {t("export.plantumlDescription")}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handlePlantUMLExport}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
-                  >
-                    <Download className="h-4 w-4" />
-                    {t("export.downloadPuml")}
-                  </button>
-                  <button
-                    onClick={handlePlantUMLCopy}
-                    className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
-                    aria-label={t("export.copyPlantumlToClipboard")}
-                    title={t("export.copyPlantumlToClipboard")}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                </div>
-              </>
-            )}
-
-            {tab === "prisma" && (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  {t("export.prismaDescription")}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handlePrismaExport}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
-                  >
-                    <Download className="h-4 w-4" />
-                    {t("export.downloadPrisma")}
-                  </button>
-                  <button
-                    onClick={handlePrismaCopy}
-                    className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
-                    aria-label={t("export.copyPrismaToClipboard")}
-                    title={t("export.copyPrismaToClipboard")}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                </div>
-              </>
-            )}
-
-            {tab === "drizzle" && (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  {t("export.drizzleDescription")}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleDrizzleExport}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-500"
-                  >
-                    <Download className="h-4 w-4" />
-                    {t("export.downloadTs")}
-                  </button>
-                  <button
-                    onClick={handleDrizzleCopy}
-                    className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 font-semibold text-muted-foreground hover:bg-accent"
-                    aria-label={t("export.copyDrizzleToClipboard")}
-                    title={t("export.copyDrizzleToClipboard")}
+                    aria-label={t("export.copyToClipboard")}
+                    title={t("export.copyToClipboard")}
                   >
                     <Copy className="h-4 w-4" />
                   </button>

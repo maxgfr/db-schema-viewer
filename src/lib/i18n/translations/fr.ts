@@ -192,7 +192,9 @@ export const fr: Record<string, string> = {
   "export.prismaCopied": "Sch\u00e9ma Prisma copi\u00e9 dans le presse-papiers",
   "export.drizzleCopied": "Sch\u00e9ma Drizzle copi\u00e9 dans le presse-papiers",
   "export.dbmlCopied": "DBML copi\u00e9 dans le presse-papiers",
-  "export.plantumlCopied": "PlantUML copi\u00e9 dans le presse-papiers",
+  "export.plantumlCopied": "PlantUML copié dans le presse-papiers",
+  "export.markdownCopied": "Markdown copié dans le presse-papiers",
+  "export.downloadMmd": "Télécharger .mmd",
 
   "ai.title": "Assistant IA",
   "ai.closePanel": "Fermer le panneau IA",
