@@ -84,6 +84,8 @@ export const en: Record<string, string> = {
   "editor.urlLargeDesc": "URL is ~{size}KB. Extremely large URLs may not work in all browsers.",
   "editor.shareUrlCopied": "Share URL copied to clipboard!",
   "editor.toggleNotation": "Toggle ERD notation",
+  "editor.coloredEdges": "Toggle multi-color relationships",
+  "editor.shuffleLayout": "Shuffle layout",
   "common.loadedTables": "Loaded {tables} tables, {rels} relationships",
 
   "tableNode.view": "VIEW",

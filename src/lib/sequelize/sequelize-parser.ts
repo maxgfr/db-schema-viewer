@@ -2,6 +2,7 @@ import type { Diagram, Cardinality } from "@/lib/domain";
 import type { ParsedColumn, ParsedRelationship } from "@/lib/parsing/types";
 import { buildDiagram } from "@/lib/parsing/build-diagram";
 import { extractBraceBlock } from "@/lib/parsing/extract-brace-block";
+import { inlineObjectSpreads } from "@/lib/parsing/inline-helpers";
 
 interface SequelizeModel {
   /** The variable/class name used in code (e.g., `User`, `Post`) */
@@ -24,7 +25,10 @@ interface SequelizeModel {
  */
 export function parseSequelizeSchema(content: string, name?: string): Diagram {
   // Strip comments to avoid false matches
-  const cleaned = stripComments(content);
+  let cleaned = stripComments(content);
+
+  // Inline constant object spreads (e.g., const baseColumns = {...}; ...baseColumns)
+  cleaned = inlineObjectSpreads(cleaned);
 
   const models: SequelizeModel[] = [];
   const relationships: ParsedRelationship[] = [];

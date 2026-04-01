@@ -2,6 +2,7 @@ import type { Diagram, DatabaseType } from "@/lib/domain";
 import type { ParsedColumn, ParsedRelationship } from "@/lib/parsing/types";
 import { buildDiagram } from "@/lib/parsing/build-diagram";
 import { extractBraceBlock } from "@/lib/parsing/extract-brace-block";
+import { inlineHelperFunctions } from "@/lib/parsing/inline-helpers";
 
 interface DrizzleTable {
   variableName: string;
@@ -32,6 +33,10 @@ export function parseDrizzleSchema(content: string, name?: string): Diagram {
 
   // Strip imports and TypeScript-only syntax that can interfere with regex parsing
   content = stripTypeScriptImports(content);
+
+  // Inline helper functions (e.g., shared column definitions) so their columns
+  // are visible directly in table definitions for regex-based parsing
+  content = inlineHelperFunctions(content);
 
   // Extract enum definitions (for callback-syntax type resolution)
   const enumMap = extractPgEnums(content);

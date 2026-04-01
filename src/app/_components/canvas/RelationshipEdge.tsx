@@ -14,6 +14,7 @@ export type ERDNotation = "crowsfoot" | "uml" | "chen";
 interface RelationshipEdgeData {
   relationship: DBRelationship;
   notation?: ERDNotation;
+  edgeColor?: string;
 }
 
 function RelationshipEdgeComponent({
@@ -26,7 +27,7 @@ function RelationshipEdgeComponent({
   targetPosition,
   data,
 }: EdgeProps) {
-  const { relationship, notation = "crowsfoot" } = (data ?? {}) as Partial<RelationshipEdgeData>;
+  const { relationship, notation = "crowsfoot", edgeColor } = (data ?? {}) as Partial<RelationshipEdgeData>;
   const cardinality = relationship?.cardinality ?? "one-to-many";
 
   const [edgePath] = getSmoothStepPath({
@@ -55,9 +56,12 @@ function RelationshipEdgeComponent({
   }
 
   const isCrowsfoot = notation === "crowsfoot";
-  const strokeColor = notation === "uml" ? "#8b5cf6" : notation === "chen" ? "#f59e0b" : "#6366f1";
-  const sourceMarker = isCrowsfoot ? (cardinality === "one-to-one" ? "url(#cf-one)" : "url(#cf-many)") : undefined;
-  const targetMarker = isCrowsfoot ? (cardinality === "one-to-one" ? "url(#cf-one)" : cardinality === "many-to-many" ? "url(#cf-many)" : "url(#cf-one)") : undefined;
+  const defaultStrokeColor = notation === "uml" ? "#8b5cf6" : notation === "chen" ? "#f59e0b" : "#6366f1";
+  const strokeColor = edgeColor ?? defaultStrokeColor;
+  // Use color-specific marker IDs so each colored edge has its own markers
+  const markerSuffix = edgeColor ? `-${edgeColor.replace("#", "")}` : "";
+  const sourceMarker = isCrowsfoot ? (cardinality === "one-to-one" ? `url(#cf-one${markerSuffix})` : `url(#cf-many${markerSuffix})`) : undefined;
+  const targetMarker = isCrowsfoot ? (cardinality === "one-to-one" ? `url(#cf-one${markerSuffix})` : cardinality === "many-to-many" ? `url(#cf-many${markerSuffix})` : `url(#cf-one${markerSuffix})`) : undefined;
 
   // Source handle is always Position.Right → label offset to the right
   // Target handle is always Position.Left → label offset to the left
@@ -65,9 +69,12 @@ function RelationshipEdgeComponent({
   const isChen = notation === "chen";
   const midX = (sourceX + targetX) / 2;
   const midY = (sourceY + targetY) / 2;
-  const labelColor = isChen
-    ? "text-amber-600 dark:text-amber-300"
-    : "text-indigo-600 dark:text-indigo-300";
+  const labelColor = edgeColor
+    ? ""
+    : isChen
+      ? "text-amber-600 dark:text-amber-300"
+      : "text-indigo-600 dark:text-indigo-300";
+  const labelStyle = edgeColor ? { color: edgeColor } : undefined;
 
   return (
     <>
@@ -86,6 +93,7 @@ function RelationshipEdgeComponent({
         <div
           className={`nodrag nopan pointer-events-none absolute rounded bg-card px-1 py-0.5 text-[10px] font-semibold ${labelColor}`}
           style={{
+            ...labelStyle,
             transform: `translate(-50%, -50%) translate(${sourceX + labelOffset}px, ${sourceY}px)`,
           }}
         >
@@ -94,6 +102,7 @@ function RelationshipEdgeComponent({
         <div
           className={`nodrag nopan pointer-events-none absolute rounded bg-card px-1 py-0.5 text-[10px] font-semibold ${labelColor}`}
           style={{
+            ...labelStyle,
             transform: `translate(-50%, -50%) translate(${targetX - labelOffset}px, ${targetY}px)`,
           }}
         >

@@ -363,6 +363,103 @@ export const postsRelations = relations(posts, ({ one }) => ({
     expect(diagram.relationships.length).toBe(1);
   });
 
+  it("parses tables using helper function (direct call)", () => {
+    const content = `
+import { pgTableCreator, index } from "drizzle-orm/pg-core";
+export const createTable = pgTableCreator((name) => \`app_\${name}\`);
+
+function sharedColumns(d) {
+    return {
+        id: d.varchar({ length: 255 }).notNull().primaryKey(),
+        createdAt: d.timestamp({ withTimezone: true }),
+    };
+}
+
+export const files = createTable(
+    "file",
+    (d) => sharedColumns(d),
+    (t) => [index("file_idx").on(t.id)],
+);
+    `;
+    const diagram = parseDrizzleSchema(content);
+    expect(diagram.tables).toHaveLength(1);
+    const table = diagram.tables[0]!;
+    expect(table.name).toBe("file");
+    expect(table.fields.find((f) => f.name === "id")).toBeDefined();
+    expect(table.fields.find((f) => f.name === "id")?.primaryKey).toBe(true);
+    expect(table.fields.find((f) => f.name === "createdAt")).toBeDefined();
+  });
+
+  it("parses tables using helper function (spread)", () => {
+    const content = `
+import { pgTableCreator } from "drizzle-orm/pg-core";
+export const createTable = pgTableCreator((name) => \`app_\${name}\`);
+
+function sharedColumns(d) {
+    return {
+        id: d.varchar({ length: 255 }).notNull().primaryKey(),
+        createdAt: d.timestamp({ withTimezone: true }),
+    };
+}
+
+export const users = createTable("user", (d) => ({
+    ...sharedColumns(d),
+    name: d.varchar({ length: 255 }),
+    email: d.varchar({ length: 255 }).notNull(),
+}));
+    `;
+    const diagram = parseDrizzleSchema(content);
+    expect(diagram.tables).toHaveLength(1);
+    const table = diagram.tables[0]!;
+    expect(table.name).toBe("user");
+    expect(table.fields.find((f) => f.name === "id")).toBeDefined();
+    expect(table.fields.find((f) => f.name === "createdAt")).toBeDefined();
+    expect(table.fields.find((f) => f.name === "name")).toBeDefined();
+    expect(table.fields.find((f) => f.name === "email")).toBeDefined();
+  });
+
+  it("parses helper function with .references() inside", () => {
+    const content = `
+import { pgTableCreator } from "drizzle-orm/pg-core";
+export const createTable = pgTableCreator((name) => \`app_\${name}\`);
+
+export const declarations = createTable("declaration", (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+}));
+
+function declarationFileColumns(d) {
+    return {
+        id: d.varchar({ length: 255 }).notNull().primaryKey(),
+        declarationId: d.varchar({ length: 255 }).notNull().references(() => declarations.id),
+        fileName: d.varchar({ length: 255 }).notNull(),
+    };
+}
+
+export const cseFiles = createTable("cse_file", (d) => declarationFileColumns(d));
+export const evalFiles = createTable("eval_file", (d) => ({
+    ...declarationFileColumns(d),
+    extra: d.text(),
+}));
+    `;
+    const diagram = parseDrizzleSchema(content);
+    expect(diagram.tables).toHaveLength(3);
+
+    const cse = diagram.tables.find((t) => t.name === "cse_file")!;
+    expect(cse.fields.find((f) => f.name === "id")).toBeDefined();
+    expect(cse.fields.find((f) => f.name === "declarationId")).toBeDefined();
+    expect(cse.fields.find((f) => f.name === "fileName")).toBeDefined();
+
+    const evalT = diagram.tables.find((t) => t.name === "eval_file")!;
+    expect(evalT.fields.find((f) => f.name === "extra")).toBeDefined();
+    expect(evalT.fields.find((f) => f.name === "declarationId")).toBeDefined();
+
+    // References should create relationships
+    const cseRels = diagram.relationships.filter(
+      (r) => r.sourceTableId === cse.id || r.targetTableId === cse.id,
+    );
+    expect(cseRels.length).toBeGreaterThanOrEqual(1);
+  });
+
   it("maps Drizzle types to SQL types", () => {
     const content = `
 import { pgTable, serial, text, boolean, jsonb, uuid, timestamp } from 'drizzle-orm/pg-core';

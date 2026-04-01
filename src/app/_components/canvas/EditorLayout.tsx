@@ -17,6 +17,8 @@ import {
   Github,
   FileCode,
   StickyNote,
+  Palette,
+  Shuffle,
 } from "lucide-react";
 import type { Diagram } from "@/lib/domain";
 import { DATABASE_TYPE_LABELS } from "@/lib/domain";
@@ -34,6 +36,7 @@ import { APIKeySettings } from "../settings/APIKeySettings";
 import { SchemaDiffPanel } from "../analysis/SchemaDiffPanel";
 import { SourceViewer } from "../source/SourceViewer";
 import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
+import { shuffleLayout } from "@/lib/layout/auto-layout";
 import { useTranslation } from "@/lib/i18n/context";
 import { LanguageToggle } from "../I18nWrapper";
 
@@ -68,6 +71,7 @@ export function EditorLayout({
   const [showDiff, setShowDiff] = useState(false);
   const [showSource, setShowSource] = useState(false);
   const [erdNotation, setErdNotation] = useState<ERDNotation>("crowsfoot");
+  const [coloredEdges, setColoredEdges] = useState(false);
   const [zoomTarget, setZoomTarget] = useState<{ id: string; key: number } | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations);
   const zoomCounter = useRef(0);
@@ -78,6 +82,11 @@ export function EditorLayout({
     zoomCounter.current++;
     setZoomTarget({ id: tableId, key: zoomCounter.current });
   }, []);
+
+  const handleShuffle = useCallback(() => {
+    const shuffled = shuffleLayout(diagram.tables);
+    onDiagramUpdate({ ...diagram, tables: shuffled });
+  }, [diagram, onDiagramUpdate]);
 
   const handleAddAnnotation = useCallback(() => {
     annotationCounter.current++;
@@ -273,6 +282,24 @@ export function EditorLayout({
             {t(`editor.notation.${erdNotation}`)}
           </button>
 
+          <button
+            onClick={() => setColoredEdges((v) => !v)}
+            className={`rounded-lg p-2 transition-colors ${coloredEdges ? "bg-indigo-500/20 text-indigo-600 dark:text-indigo-300" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+            title={t("editor.coloredEdges")}
+            aria-label={t("editor.coloredEdges")}
+          >
+            <Palette className="h-4 w-4" />
+          </button>
+
+          <button
+            onClick={handleShuffle}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title={t("editor.shuffleLayout")}
+            aria-label={t("editor.shuffleLayout")}
+          >
+            <Shuffle className="h-4 w-4" />
+          </button>
+
           <div className="mx-1 h-6 w-px bg-border" />
 
           <LanguageToggle />
@@ -316,12 +343,13 @@ export function EditorLayout({
         />
         <div className="flex-1" ref={(el) => { canvasRef.current = el; }}>
           <SchemaCanvas
-            key={`${diagram.id}-${erdNotation}`}
+            key={`${diagram.id}-${erdNotation}-${coloredEdges}`}
             diagram={diagram}
             selectedTableId={selectedTableId}
             onTableSelect={setSelectedTableId}
             onTablePositionUpdate={handleTablePositionUpdate}
             notation={erdNotation}
+            coloredEdges={coloredEdges}
             zoomTarget={zoomTarget}
             annotations={annotations}
             onAnnotationUpdate={handleAnnotationUpdate}

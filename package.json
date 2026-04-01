@@ -36,6 +36,7 @@
 		"lz-string": "^1.5.0",
 		"next": "^16.0.10",
 		"node-sql-parser": "^5.3.6",
+		"oxc-parser": "^0.123.0",
 		"react": "^19.2.1",
 		"react-dom": "^19.2.1",
 		"react-markdown": "^10.1.0",

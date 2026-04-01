@@ -35,6 +35,7 @@ interface SchemaCanvasProps {
   onTableSelect: (tableId: string) => void;
   onTablePositionUpdate: (tableId: string, x: number, y: number) => void;
   notation?: ERDNotation;
+  coloredEdges?: boolean;
   zoomTarget?: { id: string; key: number } | null;
   annotations?: Annotation[];
   onAnnotationUpdate?: (id: string, patch: Partial<Annotation>) => void;
@@ -43,6 +44,24 @@ interface SchemaCanvasProps {
 
 const nodeTypes = { table: TableNode, stickyNote: StickyNoteNode };
 const edgeTypes = { relationship: RelationshipEdge };
+
+const EDGE_COLOR_PALETTE = [
+  "#6366f1", // indigo
+  "#ec4899", // pink
+  "#f59e0b", // amber
+  "#10b981", // emerald
+  "#3b82f6", // blue
+  "#ef4444", // red
+  "#8b5cf6", // violet
+  "#14b8a6", // teal
+  "#f97316", // orange
+  "#06b6d4", // cyan
+  "#84cc16", // lime
+  "#a855f7", // purple
+  "#e11d48", // rose
+  "#0ea5e9", // sky
+  "#d946ef", // fuchsia
+];
 
 function FitViewHandler({ zoomTarget }: { zoomTarget?: { id: string; key: number } | null }) {
   const { fitView } = useReactFlow();
@@ -64,6 +83,7 @@ function SchemaCanvasInner({
   onTableSelect,
   onTablePositionUpdate,
   notation = "crowsfoot",
+  coloredEdges = false,
   zoomTarget,
   annotations = [],
   onAnnotationUpdate,
@@ -117,16 +137,20 @@ function SchemaCanvasInner({
 
   const initialEdges: Edge[] = useMemo(
     () =>
-      diagram.relationships.map((rel) => ({
+      diagram.relationships.map((rel, index) => ({
         id: rel.id,
         type: "relationship",
         source: rel.sourceTableId,
         target: rel.targetTableId,
         sourceHandle: `${rel.sourceFieldId}-right`,
         targetHandle: `${rel.targetFieldId}-left`,
-        data: { relationship: rel, notation },
+        data: {
+          relationship: rel,
+          notation,
+          edgeColor: coloredEdges ? EDGE_COLOR_PALETTE[index % EDGE_COLOR_PALETTE.length] : undefined,
+        },
       })),
-    [diagram.relationships, notation]
+    [diagram.relationships, notation, coloredEdges]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -217,15 +241,25 @@ export function SchemaCanvas(props: SchemaCanvasProps) {
 }
 
 function MarkerDefinitions() {
+  const colors = ["#6366f1", ...EDGE_COLOR_PALETTE];
+  // Deduplicate
+  const uniqueColors = [...new Set(colors)];
   return (
     <svg style={{ position: "absolute", top: 0, left: 0 }}>
       <defs>
-        <marker id="cf-one" viewBox="0 0 12 12" refX="6" refY="6" markerWidth="8" markerHeight="8" orient="auto">
-          <line x1="6" y1="1" x2="6" y2="11" stroke="#6366f1" strokeWidth="2" />
-        </marker>
-        <marker id="cf-many" viewBox="0 0 12 12" refX="1" refY="6" markerWidth="10" markerHeight="10" orient="auto">
-          <path d="M10,1 L1,6 L10,11" stroke="#6366f1" strokeWidth="1.5" fill="none" />
-        </marker>
+        {uniqueColors.map((color) => {
+          const suffix = color === "#6366f1" ? "" : `-${color.replace("#", "")}`;
+          return (
+            <g key={color}>
+              <marker id={`cf-one${suffix}`} viewBox="0 0 12 12" refX="6" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+                <line x1="6" y1="1" x2="6" y2="11" stroke={color} strokeWidth="2" />
+              </marker>
+              <marker id={`cf-many${suffix}`} viewBox="0 0 12 12" refX="1" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+                <path d="M10,1 L1,6 L10,11" stroke={color} strokeWidth="1.5" fill="none" />
+              </marker>
+            </g>
+          );
+        })}
       </defs>
     </svg>
   );

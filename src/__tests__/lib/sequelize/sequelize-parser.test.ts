@@ -514,4 +514,35 @@ describe("parseSequelizeSchema", () => {
     const code = item.fields.find((f) => f.name === "code")!;
     expect(code.type).toBe("VARCHAR(50)");
   });
+
+  it("inlines constant object spreads into model definitions", () => {
+    const content = `
+      const { Sequelize, DataTypes } = require('sequelize');
+      const sequelize = new Sequelize('sqlite::memory:');
+
+      const baseColumns = {
+        id: {
+          type: DataTypes.UUID,
+          primaryKey: true,
+        },
+        createdAt: DataTypes.DATE,
+      };
+
+      const User = sequelize.define('User', {
+        ...baseColumns,
+        name: {
+          type: DataTypes.STRING,
+          allowNull: false,
+        },
+      });
+    `;
+    const diagram = parseSequelizeSchema(content);
+
+    expect(diagram.tables).toHaveLength(1);
+    const user = diagram.tables[0]!;
+    expect(user.fields.find((f) => f.name === "id")).toBeDefined();
+    expect(user.fields.find((f) => f.name === "id")!.primaryKey).toBe(true);
+    expect(user.fields.find((f) => f.name === "createdAt")).toBeDefined();
+    expect(user.fields.find((f) => f.name === "name")).toBeDefined();
+  });
 });

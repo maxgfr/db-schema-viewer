@@ -83,6 +83,8 @@ export const fr: Record<string, string> = {
   "editor.urlLargeDesc": "L\u2019URL fait ~{size}\u202fKo. Les URL tr\u00e8s volumineuses peuvent ne pas fonctionner dans tous les navigateurs.",
   "editor.shareUrlCopied": "URL de partage copi\u00e9e\u00a0!",
   "editor.toggleNotation": "Changer la notation ERD",
+  "editor.coloredEdges": "Activer/désactiver les relations multicolores",
+  "editor.shuffleLayout": "Mélanger la disposition",
   "common.loadedTables": "{tables} tables et {rels} relations charg\u00e9es",
 
   "tableNode.view": "VUE",

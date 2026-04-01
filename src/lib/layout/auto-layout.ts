@@ -188,6 +188,30 @@ export function autoLayout(
 }
 
 /**
+ * Shuffle table positions into a random layout.
+ * Spreads tables across a grid with random offsets for variety.
+ */
+export function shuffleLayout(tables: DBTable[]): DBTable[] {
+  if (tables.length === 0) return tables;
+
+  const cols = Math.max(2, Math.ceil(Math.sqrt(tables.length)));
+  // Shuffle the table order randomly
+  const shuffled = [...tables].sort(() => Math.random() - 0.5);
+
+  return shuffled.map((table, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const jitterX = (Math.random() - 0.5) * 80;
+    const jitterY = (Math.random() - 0.5) * 60;
+    return {
+      ...table,
+      x: col * (TABLE_WIDTH + GAP_X) + jitterX,
+      y: row * (estimateTableHeight(table) + GAP_Y) + jitterY,
+    };
+  });
+}
+
+/**
  * Compute the average position index of a node's parents in the previous layer.
  * Used to sort nodes within a layer to reduce edge crossings.
  */

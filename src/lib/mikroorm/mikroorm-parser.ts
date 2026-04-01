@@ -2,6 +2,7 @@ import type { Diagram, Cardinality } from "@/lib/domain";
 import type { ParsedColumn, ParsedRelationship } from "@/lib/parsing/types";
 import { buildDiagram } from "@/lib/parsing/build-diagram";
 import { extractBraceBlock } from "@/lib/parsing/extract-brace-block";
+import { resolveClassInheritance } from "@/lib/parsing/inline-helpers";
 
 interface MikroORMEntity {
   className: string;
@@ -90,14 +91,18 @@ export function parseMikroORMSchema(content: string, name?: string): Diagram {
 function extractEntities(content: string): MikroORMEntity[] {
   const entities: MikroORMEntity[] = [];
 
+  // Extract all class bodies for inheritance resolution (AST-based when available)
+  const classBodies = resolveClassInheritance(content);
+
   // Match @Entity() or @Entity({ tableName: '...' }) followed by class Name
   const entityRegex =
-    /@Entity\s*\(\s*(\{[^}]*\})?\s*\)\s*(?:export\s+)?class\s+(\w+)/g;
+    /@Entity\s*\(\s*(\{[^}]*\})?\s*\)\s*(?:export\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?/g;
 
   let match;
   while ((match = entityRegex.exec(content)) !== null) {
     const entityOpts = match[1];
     const className = match[2]!;
+    const parentClassName = match[3];
 
     let tableName = className;
     if (entityOpts) {
@@ -119,8 +124,16 @@ function extractEntities(content: string): MikroORMEntity[] {
     }
     if (braceStart === -1) continue;
 
-    const body = extractBraceBlock(content, braceStart);
+    let body = extractBraceBlock(content, braceStart);
     if (!body) continue;
+
+    // Merge parent class columns if this entity extends another class
+    if (parentClassName) {
+      const parentBody = classBodies.get(parentClassName);
+      if (parentBody) {
+        body = parentBody + "\n" + body;
+      }
+    }
 
     const columns = parseEntityColumns(body);
     const indexes = parseEntityIndexes(body);
@@ -130,6 +143,7 @@ function extractEntities(content: string): MikroORMEntity[] {
 
   return entities;
 }
+
 
 // -- Column parsing -----------------------------------------------------------
 

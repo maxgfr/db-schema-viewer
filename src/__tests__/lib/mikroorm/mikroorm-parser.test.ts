@@ -475,4 +475,48 @@ describe("parseMikroORMSchema", () => {
     const uniqueIds = new Set(allIds);
     expect(uniqueIds.size).toBe(allIds.length);
   });
+
+  it("inherits columns from a base class without @Entity", () => {
+    const content = `
+      import { Entity, PrimaryKey, Property } from "@mikro-orm/core";
+
+      class BaseEntity {
+        @PrimaryKey()
+        id!: number;
+
+        @Property()
+        createdAt!: Date;
+      }
+
+      @Entity()
+      export class User extends BaseEntity {
+        @Property()
+        name!: string;
+
+        @Property()
+        email!: string;
+      }
+
+      @Entity()
+      export class Post extends BaseEntity {
+        @Property()
+        title!: string;
+      }
+    `;
+    const diagram = parseMikroORMSchema(content);
+
+    expect(diagram.tables).toHaveLength(2);
+
+    const user = diagram.tables.find((t) => t.name === "User")!;
+    expect(user.fields.find((f) => f.name === "id")).toBeDefined();
+    expect(user.fields.find((f) => f.name === "id")!.primaryKey).toBe(true);
+    expect(user.fields.find((f) => f.name === "createdAt")).toBeDefined();
+    expect(user.fields.find((f) => f.name === "name")).toBeDefined();
+    expect(user.fields.find((f) => f.name === "email")).toBeDefined();
+
+    const post = diagram.tables.find((t) => t.name === "Post")!;
+    expect(post.fields.find((f) => f.name === "id")).toBeDefined();
+    expect(post.fields.find((f) => f.name === "title")).toBeDefined();
+    expect(post.fields.find((f) => f.name === "createdAt")).toBeDefined();
+  });
 });

@@ -2,6 +2,7 @@ import type { Diagram, Cardinality } from "@/lib/domain";
 import type { ParsedColumn, ParsedRelationship } from "@/lib/parsing/types";
 import { buildDiagram } from "@/lib/parsing/build-diagram";
 import { extractBraceBlock } from "@/lib/parsing/extract-brace-block";
+import { resolveClassInheritance } from "@/lib/parsing/inline-helpers";
 
 interface TypeORMEntity {
   className: string;
@@ -83,14 +84,18 @@ export function parseTypeORMSchema(content: string, name?: string): Diagram {
 function extractEntities(content: string): TypeORMEntity[] {
   const entities: TypeORMEntity[] = [];
 
+  // Extract all class bodies for inheritance resolution (AST-based when available)
+  const classBodies = resolveClassInheritance(content);
+
   const entityRegex =
-    /@Entity\s*\(\s*(?:["'`](\w+)["'`]|(\{[^}]*\}))?\s*\)\s*(?:export\s+)?class\s+(\w+)/g;
+    /@Entity\s*\(\s*(?:["'`](\w+)["'`]|(\{[^}]*\}))?\s*\)\s*(?:export\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?/g;
 
   let match;
   while ((match = entityRegex.exec(content)) !== null) {
     const entityDecoTableName = match[1];
     const entityOpts = match[2];
     const className = match[3]!;
+    const parentClassName = match[4];
 
     let tableName = className;
     if (entityDecoTableName) {
@@ -112,8 +117,16 @@ function extractEntities(content: string): TypeORMEntity[] {
     }
     if (braceStart === -1) continue;
 
-    const body = extractBraceBlock(content, braceStart);
+    let body = extractBraceBlock(content, braceStart);
     if (!body) continue;
+
+    // Merge parent class columns if this entity extends another class
+    if (parentClassName) {
+      const parentBody = classBodies.get(parentClassName);
+      if (parentBody) {
+        body = parentBody + "\n" + body;
+      }
+    }
 
     const columns = parseEntityColumns(body);
     const indexes = parseEntityIndexes(content, match.index);
@@ -123,6 +136,7 @@ function extractEntities(content: string): TypeORMEntity[] {
 
   return entities;
 }
+
 
 // ── Column parsing ─────────────────────────────────────────────────
 
