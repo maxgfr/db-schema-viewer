@@ -78,13 +78,14 @@ export function EditorLayout({
   const [coloredEdges, setColoredEdges] = useState(initialViewSettings.coloredEdges ?? false);
   const [zoomTarget, setZoomTarget] = useState<{ id: string; key: number } | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations);
+  const [viewport, setViewport] = useState<{ x: number; y: number; zoom: number } | undefined>(initialViewSettings.viewport);
   const zoomCounter = useRef(0);
   const annotationCounter = useRef(0);
 
   // Emit view settings changes to parent for URL persistence
   useEffect(() => {
-    onViewSettingsChange?.({ erdNotation, coloredEdges });
-  }, [erdNotation, coloredEdges, onViewSettingsChange]);
+    onViewSettingsChange?.({ erdNotation, coloredEdges, viewport });
+  }, [erdNotation, coloredEdges, viewport, onViewSettingsChange]);
 
   const handleZoomToTable = useCallback((tableId: string) => {
     zoomCounter.current++;
@@ -135,7 +136,7 @@ export function EditorLayout({
         description: t("editor.urlLargeDesc", { size: Math.round(size / 1024) }),
       });
     }
-    const viewSettings: SharedViewSettings = { erdNotation, coloredEdges };
+    const viewSettings: SharedViewSettings = { erdNotation, coloredEdges, viewport };
     const url = generateShareUrl(
       diagram,
       annotations.length > 0 ? annotations : undefined,
@@ -144,7 +145,7 @@ export function EditorLayout({
     navigator.clipboard.writeText(url).then(() => {
       toast.success(t("editor.shareUrlCopied"));
     });
-  }, [diagram, annotations, erdNotation, coloredEdges, t]);
+  }, [diagram, annotations, erdNotation, coloredEdges, viewport, t]);
 
   const shortcutHandlers = useMemo(
     () => ({
@@ -356,7 +357,7 @@ export function EditorLayout({
         />
         <div className="flex-1">
           <SchemaCanvas
-            key={`${diagram.id}-${erdNotation}-${coloredEdges}`}
+            key={`${diagram.id}-${erdNotation}`}
             diagram={diagram}
             selectedTableId={selectedTableId}
             onTableSelect={setSelectedTableId}
@@ -367,6 +368,8 @@ export function EditorLayout({
             annotations={annotations}
             onAnnotationUpdate={handleAnnotationUpdate}
             onAnnotationDelete={handleAnnotationDelete}
+            initialViewport={initialViewSettings.viewport}
+            onViewportChange={setViewport}
           />
         </div>
       </div>

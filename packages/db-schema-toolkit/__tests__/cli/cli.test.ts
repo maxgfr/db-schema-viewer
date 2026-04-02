@@ -109,7 +109,7 @@ afterAll(() => {
 
 // ── Tests ────────────────────────────────────────────────────────
 
-describe("CLI", () => {
+describe("CLI", { timeout: 30000 }, () => {
   describe("help", () => {
     it("prints help with no args", () => {
       const { stdout } = run([]);
@@ -128,6 +128,33 @@ describe("CLI", () => {
     it("prints help with help command", () => {
       const { stdout } = run(["help"]);
       expect(stdout).toContain("EXPORT FORMATS");
+    });
+
+    it("prints LLM help with help --llm", () => {
+      const { stdout } = run(["help", "--llm"]);
+      expect(stdout).toContain("# db-schema-toolkit");
+      expect(stdout).toContain("## Commands");
+      expect(stdout).toContain("## JSON Output Schemas");
+      expect(stdout).toContain("## Common Recipes");
+      // LLM help should be plain text (no ANSI escape codes)
+      expect(stdout).not.toContain("\x1b[");
+    });
+  });
+
+  describe("version", () => {
+    it("prints version with version command", () => {
+      const { stdout } = run(["version"]);
+      expect(stdout).toMatch(/^db-schema-toolkit \d+\.\d+\.\d+/);
+    });
+
+    it("prints version with --version", () => {
+      const { stdout } = run(["--version"]);
+      expect(stdout).toMatch(/^db-schema-toolkit \d+\.\d+\.\d+/);
+    });
+
+    it("prints version with -V", () => {
+      const { stdout } = run(["-V"]);
+      expect(stdout).toMatch(/^db-schema-toolkit \d+\.\d+\.\d+/);
     });
   });
 
@@ -158,6 +185,44 @@ describe("CLI", () => {
       });
       expect(exitCode).not.toBe(0);
       expect(stderr).toContain("Unknown format");
+    });
+
+    it("fails on unknown db-type", () => {
+      const { exitCode, stderr } = run(["export", sqlFile, "-f", "sql", "--db-type", "oracle"], {
+        expectError: true,
+      });
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("Unknown database type");
+    });
+
+    it("fails when export file is missing", () => {
+      const { exitCode, stderr } = run(["export"], { expectError: true });
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("Missing input file");
+    });
+
+    it("fails when analyze file is missing", () => {
+      const { exitCode, stderr } = run(["analyze"], { expectError: true });
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("Missing input file");
+    });
+
+    it("fails when parse file is missing", () => {
+      const { exitCode, stderr } = run(["parse"], { expectError: true });
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("Missing input file");
+    });
+
+    it("fails when info file is missing", () => {
+      const { exitCode, stderr } = run(["info"], { expectError: true });
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("Missing input file");
+    });
+
+    it("fails when diff has only one file", () => {
+      const { exitCode, stderr } = run(["diff", sqlFile], { expectError: true });
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("Missing input files");
     });
   });
 
@@ -196,6 +261,14 @@ describe("CLI", () => {
       const users = diagram.tables.find((t: { name: string }) => t.name === "users");
       expect(users).toBeDefined();
       expect(users.fields.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it("writes to file with --output", () => {
+      const outFile = join(tmpDir, "parsed.json");
+      run(["parse", sqlFile, "-o", outFile]);
+      const content = require("node:fs").readFileSync(outFile, "utf-8");
+      const diagram = JSON.parse(content);
+      expect(diagram.tables).toHaveLength(3);
     });
   });
 
@@ -293,6 +366,14 @@ describe("CLI", () => {
       expect(analysis.metrics.tableCount).toBe(3);
       expect(analysis.qualityScore.overall).toBeGreaterThanOrEqual(0);
     });
+
+    it("writes JSON to file with --output", () => {
+      const outFile = join(tmpDir, "analysis.json");
+      run(["analyze", sqlFile, "--json", "-o", outFile]);
+      const content = require("node:fs").readFileSync(outFile, "utf-8");
+      const analysis = JSON.parse(content);
+      expect(analysis.metrics.tableCount).toBe(3);
+    });
   });
 
   describe("diff", () => {
@@ -318,10 +399,12 @@ describe("CLI", () => {
       expect(diff.removedTables).toContain("comments");
     });
 
-    it("fails when file2 is missing", () => {
-      const { exitCode, stderr } = run(["diff", sqlFile], { expectError: true });
-      expect(exitCode).not.toBe(0);
-      expect(stderr).toContain("Missing input files");
+    it("writes JSON to file with --output", () => {
+      const outFile = join(tmpDir, "diff.json");
+      run(["diff", sqlFile, sqlFileV2, "--json", "-o", outFile]);
+      const content = require("node:fs").readFileSync(outFile, "utf-8");
+      const diff = JSON.parse(content);
+      expect(diff.removedTables).toContain("comments");
     });
   });
 });

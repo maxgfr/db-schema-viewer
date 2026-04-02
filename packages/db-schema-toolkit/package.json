@@ -56,13 +56,15 @@
     }
   },
   "bin": {
-    "db-schema": "./dist/cli.js"
+    "db-schema-toolkit": "./dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "llms.txt",
+    "PROMPT.md"
   ],
   "scripts": {
     "build": "tsup",

@@ -1,0 +1,173 @@
+# db-schema-toolkit
+
+> Parse, analyze, export, and AI-review database schemas from the command line or as a library.
+
+## CLI Usage
+
+The CLI binary is `db-schema-toolkit`. Install globally or use via `npx`:
+
+```bash
+npx db-schema-toolkit <command> [options]
+```
+
+## Commands
+
+### export — Convert a schema to another format
+
+```bash
+db-schema-toolkit export <file> --format <format> [--output <file>] [--db-type <type>]
+```
+
+**Formats:** sql, markdown, mermaid, prisma, drizzle, dbml, plantuml, json
+
+**Database types (for SQL export):** postgresql, mysql, mariadb, sqlite, supabase, cockroachdb, clickhouse, bigquery, snowflake
+
+Examples:
+```bash
+# Drizzle ORM schema → Markdown documentation
+db-schema-toolkit export src/db/schema.ts -f markdown -o docs/schema.md
+
+# Prisma → Mermaid ERD
+db-schema-toolkit export prisma/schema.prisma -f mermaid
+
+# SQL → Drizzle ORM TypeScript
+db-schema-toolkit export schema.sql -f drizzle -o schema.ts
+
+# SQL → SQL with different dialect
+db-schema-toolkit export schema.sql -f sql --db-type mysql -o schema-mysql.sql
+
+# Any format → JSON (machine-readable intermediate representation)
+db-schema-toolkit export schema.prisma -f json | jq '.tables[].name'
+```
+
+### analyze — Schema quality analysis
+
+```bash
+db-schema-toolkit analyze <file> [--json] [--output <file>]
+```
+
+Returns a quality score (0-100), metrics (table count, field count, relational density, orphan tables), and anti-patterns (missing primary keys, naming issues, missing indexes).
+
+Examples:
+```bash
+# Human-readable report
+db-schema-toolkit analyze schema.sql
+
+# Machine-readable JSON
+db-schema-toolkit analyze schema.sql --json
+```
+
+### diff — Compare two schemas
+
+```bash
+db-schema-toolkit diff <file1> <file2> [--json] [--output <file>]
+```
+
+Shows added/removed tables, added/removed/modified fields, added/removed indexes, and relationship changes.
+
+Examples:
+```bash
+# Human-readable diff
+db-schema-toolkit diff old-schema.sql new-schema.sql
+
+# Machine-readable JSON
+db-schema-toolkit diff v1/schema.prisma v2/schema.prisma --json
+```
+
+### parse — Output parsed diagram as JSON
+
+```bash
+db-schema-toolkit parse <file> [--output <file>]
+```
+
+Parses any supported schema format and outputs the full `Diagram` object as JSON. Useful for piping into other tools.
+
+### info — Schema summary
+
+```bash
+db-schema-toolkit info <file>
+```
+
+Displays a quick overview: table names, field names with types, primary keys, foreign keys, unique constraints.
+
+### help
+
+```bash
+db-schema-toolkit help
+```
+
+## Supported Input Formats
+
+| Format | File extension | Detection |
+|--------|---------------|-----------|
+| SQL (PostgreSQL, MySQL, SQLite, MariaDB, Supabase, CockroachDB, ClickHouse, BigQuery, Snowflake) | `.sql` | Extension |
+| Drizzle ORM | `.ts` | `drizzle-orm` imports |
+| Prisma | `.prisma` | Extension |
+| DBML | `.dbml` | Extension |
+| TypeORM | `.ts` | `@Entity` decorator |
+| MikroORM | `.ts` | `@mikro-orm` imports |
+| Sequelize | `.ts`, `.js` | `sequelize.define` |
+| Kysely | `.ts` | `kysely` imports |
+
+Format is auto-detected from the file extension and content heuristics.
+
+## Output Formats
+
+| Format | Description |
+|--------|-------------|
+| `markdown` | Documentation with tables, columns, types, constraints, FK relationships, and embedded Mermaid ERD |
+| `mermaid` | Mermaid ERD syntax (renderable in GitHub, GitLab, Notion, etc.) |
+| `sql` | DDL statements (CREATE TABLE, ALTER TABLE for FKs) for any supported dialect |
+| `prisma` | Prisma schema file |
+| `drizzle` | Drizzle ORM TypeScript |
+| `dbml` | DBML (Database Markup Language) |
+| `plantuml` | PlantUML entity diagram |
+| `json` | Full Diagram object (tables, fields, relationships, metadata) |
+
+## Flags Reference
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--format` | `-f` | Output format for export command |
+| `--output` | `-o` | Write output to file instead of stdout |
+| `--db-type` | `-d` | Target database dialect for SQL export |
+| `--json` | | Output as JSON for analyze/diff commands |
+
+## GitHub Actions Usage
+
+```yaml
+- name: Generate schema documentation
+  run: |
+    npx db-schema-toolkit export src/db/schema.ts -f markdown -o docs/DATABASE.md
+
+- name: Schema quality gate
+  run: |
+    SCORE=$(npx db-schema-toolkit analyze src/db/schema.ts --json | jq '.qualityScore.overall')
+    if [ "$SCORE" -lt 70 ]; then
+      echo "Schema quality score $SCORE is below threshold (70)"
+      exit 1
+    fi
+
+- name: Schema diff on PR
+  run: |
+    npx db-schema-toolkit diff main-schema.sql pr-schema.sql --json > diff.json
+```
+
+## Library Usage (Node.js)
+
+```ts
+import { parseSchemaFile } from "db-schema-toolkit";
+import { exportDiagramToMarkdown } from "db-schema-toolkit/export";
+import { analyzeSchema, diffSchemas } from "db-schema-toolkit/analysis";
+
+const diagram = parseSchemaFile(schemaContent, "schema.ts");
+const markdown = exportDiagramToMarkdown(diagram);
+const analysis = analyzeSchema(diagram);
+const diff = diffSchemas(oldDiagram, newDiagram);
+```
+
+## Links
+
+- npm: https://www.npmjs.com/package/db-schema-toolkit
+- GitHub: https://github.com/maxgfr/db-schema-viewer/tree/main/packages/db-schema-toolkit
+- Web app: https://maxgfr.github.io/db-schema-viewer

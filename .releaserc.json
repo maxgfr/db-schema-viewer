@@ -6,7 +6,7 @@
     "@semantic-release/changelog",
     ["@semantic-release/npm", { "npmPublish": false }],
     ["@semantic-release/exec", {
-      "prepareCmd": "cd packages/db-schema-toolkit && pnpm build && tar -czf ../../db-schema-cli-${nextRelease.version}.tar.gz -C dist cli.js"
+      "prepareCmd": "cd packages/db-schema-toolkit && pnpm build && tar -czf ../../db-schema-toolkit-cli-${nextRelease.version}.tar.gz -C dist cli.js"
     }],
     ["@semantic-release/npm", { "pkgRoot": "packages/db-schema-toolkit" }],
     ["@semantic-release/git", {
@@ -16,8 +16,8 @@
     ["@semantic-release/github", {
       "assets": [
         {
-          "path": "db-schema-cli-${nextRelease.version}.tar.gz",
-          "name": "db-schema-cli-${nextRelease.version}.tar.gz",
+          "path": "db-schema-toolkit-cli-${nextRelease.version}.tar.gz",
+          "name": "db-schema-toolkit-cli-${nextRelease.version}.tar.gz",
           "label": "CLI (Node.js)"
         }
       ]

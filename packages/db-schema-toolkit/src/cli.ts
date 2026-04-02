@@ -13,6 +13,9 @@ import { exportDiagramToPlantUML } from "./export/plantuml-export";
 import type { Diagram } from "./domain/index";
 import type { DatabaseType } from "./domain/index";
 
+declare const __PKG_VERSION__: string;
+const VERSION = typeof __PKG_VERSION__ !== "undefined" ? __PKG_VERSION__ : "0.0.0-dev";
+
 const EXPORT_FORMATS = [
   "sql",
   "markdown",
@@ -100,7 +103,7 @@ function parseArgs(args: string[]): { positional: string[]; flags: Record<string
     if (arg.startsWith("--")) {
       const key = arg.slice(2);
       const next = args[i + 1];
-      if (next && !next.startsWith("--")) {
+      if (next && !next.startsWith("-")) {
         flags[key] = next;
         i += 2;
       } else {
@@ -127,12 +130,16 @@ function parseArgs(args: string[]): { positional: string[]; flags: Record<string
 
 // ── Commands ─────────────────────────────────────────────────────
 
+function printVersion() {
+  console.log(`db-schema-toolkit ${VERSION}`);
+}
+
 function printHelp() {
   console.log(`
-${bold("db-schema-toolkit")} — Parse, export, and analyze database schemas from the CLI.
+${bold("db-schema-toolkit")} ${dim(`v${VERSION}`)} — Parse, export, and analyze database schemas from the CLI.
 
 ${bold("USAGE")}
-  ${cyan("db-schema")} <command> [options]
+  ${cyan("db-schema-toolkit")} <command> [options]
 
 ${bold("COMMANDS")}
   ${green("export")} <file> ${dim("--format <fmt>")}   Convert schema to another format
@@ -140,7 +147,9 @@ ${bold("COMMANDS")}
   ${green("diff")} <file1> <file2>          Compare two schemas
   ${green("parse")} <file>                  Parse and output diagram as JSON
   ${green("info")} <file>                   Show schema summary
+  ${green("version")}                       Show version
   ${green("help")}                          Show this help message
+  ${green("help")} ${dim("--llm")}                    Show help optimized for AI/LLM agents
 
 ${bold("EXPORT FORMATS")}
   sql, markdown, mermaid, prisma, drizzle, dbml, plantuml, json
@@ -155,22 +164,22 @@ ${bold("OPTIONS")}
 
 ${bold("EXAMPLES")}
   ${dim("# Convert a SQL schema to Mermaid ERD")}
-  db-schema export schema.sql --format mermaid
+  db-schema-toolkit export schema.sql --format mermaid
 
   ${dim("# Convert Prisma schema to Markdown documentation")}
-  db-schema export schema.prisma -f markdown -o docs.md
+  db-schema-toolkit export schema.prisma -f markdown -o docs.md
 
   ${dim("# Convert Drizzle schema to PostgreSQL DDL")}
-  db-schema export schema.ts -f sql --db-type postgresql
+  db-schema-toolkit export schema.ts -f sql --db-type postgresql
 
   ${dim("# Analyze schema quality")}
-  db-schema analyze schema.sql
+  db-schema-toolkit analyze schema.sql
 
   ${dim("# Compare two schema versions")}
-  db-schema diff old-schema.sql new-schema.sql
+  db-schema-toolkit diff old-schema.sql new-schema.sql
 
   ${dim("# Parse and output as JSON for piping")}
-  db-schema parse schema.prisma | jq '.tables[].name'
+  db-schema-toolkit parse schema.prisma | jq '.tables[].name'
 
 ${bold("SUPPORTED INPUT FORMATS")}
   SQL (PostgreSQL, MySQL, SQLite, MariaDB, Supabase, CockroachDB,
@@ -180,10 +189,92 @@ ${bold("SUPPORTED INPUT FORMATS")}
 `);
 }
 
+function printLLMHelp() {
+  process.stdout.write(`# db-schema-toolkit v${VERSION}
+
+CLI tool to parse, export, analyze, and diff database schemas.
+
+## Commands
+
+### export <file> --format <format> [--output <file>] [--db-type <type>]
+Convert a schema file to another format.
+- Formats: sql, markdown, mermaid, prisma, drizzle, dbml, plantuml, json
+- DB types (only for --format sql): postgresql, mysql, mariadb, sqlite, supabase, cockroachdb, clickhouse, bigquery, snowflake
+- Output goes to stdout by default. Use --output (-o) to write to a file.
+- Short flags: -f (format), -o (output), -d (db-type)
+
+### analyze <file> [--json] [--output <file>]
+Analyze schema quality. Returns quality score (0-100), metrics, and anti-patterns.
+- Default output is human-readable. Use --json for machine-readable output.
+
+### diff <file1> <file2> [--json] [--output <file>]
+Compare two schema files. Shows added/removed/modified tables, fields, indexes, relationships.
+- Default output is human-readable. Use --json for machine-readable output.
+
+### parse <file> [--output <file>]
+Parse any supported schema and output the full Diagram object as JSON.
+
+### info <file>
+Show a quick summary: tables, fields, types, constraints.
+
+### version / --version / -V
+Print the version number.
+
+## Supported Input Formats
+
+| Extension | Format | Detection |
+|-----------|--------|-----------|
+| .sql | SQL (PostgreSQL, MySQL, SQLite, MariaDB, Supabase, CockroachDB, ClickHouse, BigQuery, Snowflake) | Extension, dialect auto-detected from content |
+| .prisma | Prisma | Extension |
+| .dbml | DBML | Extension |
+| .ts | Drizzle ORM | Contains drizzle-orm imports |
+| .ts | TypeORM | Contains @Entity decorator |
+| .ts | MikroORM | Contains @mikro-orm imports |
+| .ts/.js | Sequelize | Contains sequelize.define |
+| .ts | Kysely | Contains kysely imports |
+
+## JSON Output Schemas
+
+### Diagram (parse / export --format json)
+\`\`\`
+{ id, name, databaseType, tables: [{ id, name, fields: [{ id, name, type, primaryKey, nullable, unique, isForeignKey, default, comment }], indexes, x, y, isView }], relationships: [{ id, sourceTableId, sourceFieldId, targetTableId, targetFieldId, cardinality }], createdAt, sourceContent? }
+\`\`\`
+
+### Analysis (analyze --json)
+\`\`\`
+{ metrics: { tableCount, viewCount, fieldCount, relationshipCount, avgFieldsPerTable, relationalDensity, maxDepth, orphanTables }, antiPatterns: [{ type, severity, description, suggestion, table?, field? }], qualityScore: { overall, naming, normalization, relationships, indexing } }
+\`\`\`
+
+### Diff (diff --json)
+\`\`\`
+{ addedTables, removedTables, modifiedTables: [{ tableName, addedFields, removedFields, modifiedFields: [{ fieldName, changes: [{ property, oldValue, newValue }] }], addedIndexes, removedIndexes }], addedRelationships, removedRelationships, summary }
+\`\`\`
+
+## Common Recipes
+
+\`\`\`bash
+# Drizzle schema to Markdown docs
+db-schema export src/db/schema.ts -f markdown -o docs/schema.md
+
+# Get quality score as a number
+db-schema analyze schema.sql --json | jq '.qualityScore.overall'
+
+# List all table names
+db-schema parse schema.prisma | jq -r '.tables[].name'
+
+# Find critical anti-patterns
+db-schema analyze schema.sql --json | jq '.antiPatterns[] | select(.severity == "critical")'
+
+# Schema diff as JSON for CI
+db-schema diff base.sql head.sql --json > diff.json
+\`\`\`
+`);
+}
+
 function cmdExport(args: string[]) {
   const { positional, flags } = parseArgs(args);
   const filePath = positional[0];
-  if (!filePath) die("Missing input file. Usage: db-schema export <file> --format <fmt>");
+  if (!filePath) die("Missing input file. Usage: db-schema-toolkit export <file> --format <fmt>");
 
   const format = (flags["format"] || flags["f"]) as string | undefined;
   if (!format) die("Missing --format. Available: " + EXPORT_FORMATS.join(", "));
@@ -236,7 +327,7 @@ function cmdExport(args: string[]) {
 function cmdAnalyze(args: string[]) {
   const { positional, flags } = parseArgs(args);
   const filePath = positional[0];
-  if (!filePath) die("Missing input file. Usage: db-schema analyze <file>");
+  if (!filePath) die("Missing input file. Usage: db-schema-toolkit analyze <file>");
 
   const diagram = parseDiagram(filePath);
   const analysis = analyzeSchema(diagram);
@@ -290,7 +381,7 @@ function cmdDiff(args: string[]) {
   const { positional, flags } = parseArgs(args);
   const file1 = positional[0];
   const file2 = positional[1];
-  if (!file1 || !file2) die("Missing input files. Usage: db-schema diff <file1> <file2>");
+  if (!file1 || !file2) die("Missing input files. Usage: db-schema-toolkit diff <file1> <file2>");
 
   const diagram1 = parseDiagram(file1);
   const diagram2 = parseDiagram(file2);
@@ -338,7 +429,7 @@ function cmdDiff(args: string[]) {
 function cmdParse(args: string[]) {
   const { positional, flags } = parseArgs(args);
   const filePath = positional[0];
-  if (!filePath) die("Missing input file. Usage: db-schema parse <file>");
+  if (!filePath) die("Missing input file. Usage: db-schema-toolkit parse <file>");
 
   const diagram = parseDiagram(filePath);
   output(
@@ -350,7 +441,7 @@ function cmdParse(args: string[]) {
 function cmdInfo(args: string[]) {
   const { positional } = parseArgs(args);
   const filePath = positional[0];
-  if (!filePath) die("Missing input file. Usage: db-schema info <file>");
+  if (!filePath) die("Missing input file. Usage: db-schema-toolkit info <file>");
 
   const diagram = parseDiagram(filePath);
 
@@ -400,12 +491,23 @@ switch (command) {
   case "info":
     cmdInfo(rest);
     break;
+  case "version":
+  case "--version":
+  case "-V":
+    printVersion();
+    break;
   case "help":
   case "--help":
   case "-h":
+    if (rest.includes("--llm")) {
+      printLLMHelp();
+    } else {
+      printHelp();
+    }
+    break;
   case undefined:
     printHelp();
     break;
   default:
-    die(`Unknown command "${command}". Run "db-schema help" for usage.`);
+    die(`Unknown command "${command}". Run "db-schema-toolkit help" for usage.`);
 }

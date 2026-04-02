@@ -9,6 +9,7 @@ export type { SharedAnnotation };
 export interface SharedViewSettings {
   erdNotation?: "crowsfoot" | "uml" | "chen";
   coloredEdges?: boolean;
+  viewport?: { x: number; y: number; zoom: number };
 }
 
 /**
@@ -31,7 +32,7 @@ export function generateShareUrl(
     const notesCompressed = lzString.compressToEncodedURIComponent(notesJson);
     url += `&n=${notesCompressed}`;
   }
-  if (viewSettings && (viewSettings.erdNotation !== "crowsfoot" || viewSettings.coloredEdges)) {
+  if (viewSettings && (viewSettings.erdNotation !== "crowsfoot" || viewSettings.coloredEdges || viewSettings.viewport)) {
     const viewJson = JSON.stringify(viewSettings);
     const viewCompressed = lzString.compressToEncodedURIComponent(viewJson);
     url += `&v=${viewCompressed}`;

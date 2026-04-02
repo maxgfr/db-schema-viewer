@@ -40,6 +40,8 @@ interface SchemaCanvasProps {
   annotations?: Annotation[];
   onAnnotationUpdate?: (id: string, patch: Partial<Annotation>) => void;
   onAnnotationDelete?: (id: string) => void;
+  initialViewport?: { x: number; y: number; zoom: number };
+  onViewportChange?: (viewport: { x: number; y: number; zoom: number }) => void;
 }
 
 const nodeTypes = { table: TableNode, stickyNote: StickyNoteNode };
@@ -88,6 +90,8 @@ function SchemaCanvasInner({
   annotations = [],
   onAnnotationUpdate,
   onAnnotationDelete,
+  initialViewport,
+  onViewportChange,
 }: SchemaCanvasProps) {
   const handleNoteTextChange = useCallback(
     (id: string, text: string) => onAnnotationUpdate?.(id, { text }),
@@ -239,6 +243,13 @@ function SchemaCanvasInner({
     [onTableSelect]
   );
 
+  const handleMoveEnd = useCallback(
+    (_: unknown, viewport: { x: number; y: number; zoom: number }) => {
+      onViewportChange?.(viewport);
+    },
+    [onViewportChange],
+  );
+
   return (
     <div className="h-full w-full">
       <ReactFlow
@@ -249,10 +260,11 @@ function SchemaCanvasInner({
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        fitView
+        fitView={!initialViewport}
         minZoom={0.1}
         maxZoom={2}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        defaultViewport={initialViewport ?? { x: 0, y: 0, zoom: 0.8 }}
+        onMoveEnd={handleMoveEnd}
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} className="!text-border" />
