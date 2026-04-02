@@ -80,9 +80,6 @@
     "lz-string": "^1.5.0",
     "@faker-js/faker": "^10.3.0"
   },
-  "optionalDependencies": {
-    "oxc-parser": "^0.123.0"
-  },
   "peerDependencies": {
     "ai": "^5.0.0",
     "@ai-sdk/openai": "^2.0.0",
@@ -108,6 +105,7 @@
     }
   },
   "devDependencies": {
+    "oxc-parser": "^0.123.0",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.1"
