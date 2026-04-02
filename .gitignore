@@ -1,5 +1,5 @@
 # dependencies
-/node_modules
+node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -17,6 +17,9 @@
 
 # production
 /build
+
+# package build output
+packages/*/dist
 
 # misc
 .DS_Store

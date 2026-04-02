@@ -10,8 +10,8 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import type { ParsedDumpTable } from "@/lib/dump/dump-parser";
-import type { ChartSuggestion } from "@/lib/ai/ai-service";
+import type { ParsedDumpTable } from "db-schema-toolkit/data";
+import type { ChartSuggestion } from "db-schema-toolkit/ai";
 
 /* ---------- Shared types ---------- */
 

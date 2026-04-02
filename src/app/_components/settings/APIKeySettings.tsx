@@ -11,7 +11,7 @@ import {
   clearAISettings,
   type AISettings,
 } from "@/lib/storage/cookie-storage";
-import { querySchema } from "@/lib/ai/ai-service";
+import { querySchema } from "db-schema-toolkit/ai";
 
 /* ---------- Catalog types ---------- */
 

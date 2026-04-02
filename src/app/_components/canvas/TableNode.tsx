@@ -3,7 +3,7 @@
 import { memo, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { KeyRound, Link, ChevronDown, ChevronUp } from "lucide-react";
-import type { DBTable, DBRelationship } from "@/lib/domain";
+import type { DBTable, DBRelationship } from "db-schema-toolkit";
 import { useTranslation } from "@/lib/i18n/context";
 
 interface TableNodeData {

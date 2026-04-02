@@ -2,7 +2,8 @@
 FROM node:22-alpine AS deps
 RUN corepack enable && corepack prepare pnpm@10.30.0 --activate
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/db-schema-toolkit/package.json ./packages/db-schema-toolkit/
 RUN pnpm install --frozen-lockfile
 
 # ── Stage 2: Build ────────────────────────────────────────────────────────────

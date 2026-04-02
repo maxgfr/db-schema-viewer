@@ -3,9 +3,9 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { Send, Square, MessageSquare, Copy, RotateCcw } from "lucide-react";
-import type { ParsedDumpTable } from "@/lib/dump/dump-parser";
+import type { ParsedDumpTable } from "db-schema-toolkit/data";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
-import { queryData } from "@/lib/ai/ai-service";
+import { queryData } from "db-schema-toolkit/ai";
 import { MarkdownContent } from "../shared/MarkdownContent";
 import { useTranslation } from "@/lib/i18n/context";
 

@@ -10,14 +10,14 @@ import {
   Download,
   Filter,
 } from "lucide-react";
-import type { Diagram } from "@/lib/domain";
+import type { Diagram } from "db-schema-toolkit";
 import { downloadBlob } from "@/lib/export/image-export";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
 import {
   challengeSchema,
   type SchemaIssue,
   type ChallengeResponse,
-} from "@/lib/ai/ai-service";
+} from "db-schema-toolkit/ai";
 
 type SeverityFilter = "all" | "critical" | "warning" | "info";
 type CategoryFilter =

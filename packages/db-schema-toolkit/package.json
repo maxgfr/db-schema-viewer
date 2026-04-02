@@ -1,0 +1,109 @@
+{
+  "name": "db-schema-toolkit",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Parse, analyze, export, and AI-review database schemas. Supports SQL (PostgreSQL, MySQL, SQLite, and more), Drizzle, Prisma, DBML, TypeORM, MikroORM, Sequelize, and Kysely.",
+  "license": "MIT",
+  "author": "maxgfr",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maxgfr/db-schema-viewer.git",
+    "directory": "packages/db-schema-toolkit"
+  },
+  "homepage": "https://github.com/maxgfr/db-schema-viewer/tree/main/packages/db-schema-toolkit#readme",
+  "keywords": [
+    "database",
+    "schema",
+    "parser",
+    "sql",
+    "postgresql",
+    "mysql",
+    "sqlite",
+    "drizzle",
+    "prisma",
+    "dbml",
+    "typeorm",
+    "mikroorm",
+    "sequelize",
+    "kysely",
+    "export",
+    "mermaid",
+    "plantuml",
+    "analysis",
+    "ai"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./export": {
+      "import": "./dist/export.js",
+      "types": "./dist/export.d.ts"
+    },
+    "./analysis": {
+      "import": "./dist/analysis.js",
+      "types": "./dist/analysis.d.ts"
+    },
+    "./ai": {
+      "import": "./dist/ai.js",
+      "types": "./dist/ai.d.ts"
+    },
+    "./data": {
+      "import": "./dist/data.js",
+      "types": "./dist/data.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest",
+    "test:ci": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.1.13",
+    "node-sql-parser": "^5.3.6",
+    "lz-string": "^1.5.0",
+    "@faker-js/faker": "^10.3.0"
+  },
+  "optionalDependencies": {
+    "oxc-parser": "^0.123.0"
+  },
+  "peerDependencies": {
+    "ai": "^5.0.0",
+    "@ai-sdk/openai": "^2.0.0",
+    "@ai-sdk/anthropic": "^2.0.0",
+    "@ai-sdk/google": "^2.0.0",
+    "@ai-sdk/mistral": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ai": {
+      "optional": true
+    },
+    "@ai-sdk/openai": {
+      "optional": true
+    },
+    "@ai-sdk/anthropic": {
+      "optional": true
+    },
+    "@ai-sdk/google": {
+      "optional": true
+    },
+    "@ai-sdk/mistral": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.1"
+  }
+}

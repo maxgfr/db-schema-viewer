@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { saveDiagram, loadDiagram, listDiagrams, deleteDiagram } from "@/lib/storage/local-storage";
-import type { Diagram } from "@/lib/domain";
+import type { Diagram } from "db-schema-toolkit";
 
 const testDiagram: Diagram = {
   id: "test-1",

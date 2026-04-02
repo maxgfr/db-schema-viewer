@@ -34,14 +34,14 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import type { ParsedDumpTable } from "@/lib/dump/dump-parser";
-import { inferColumnTypes } from "@/lib/dump/data-types";
+import type { ParsedDumpTable } from "db-schema-toolkit/data";
+import { inferColumnTypes } from "db-schema-toolkit/data";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
 import {
   suggestCharts,
   generateCustomChart,
   type ChartSuggestion,
-} from "@/lib/ai/ai-service";
+} from "db-schema-toolkit/ai";
 import { useDataExplorer, type ChartType, type Aggregation } from "./DataExplorerContext";
 
 interface DataChartsProps {

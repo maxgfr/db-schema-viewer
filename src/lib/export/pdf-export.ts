@@ -1,7 +1,7 @@
 import type { jsPDF as JsPDFType } from "jspdf";
 import { exportFullDiagramToPng } from "./image-export";
-import type { Diagram, DBTable, DBField } from "@/lib/domain";
-import { DATABASE_TYPE_LABELS } from "@/lib/domain";
+import type { Diagram, DBTable, DBField } from "db-schema-toolkit";
+import { DATABASE_TYPE_LABELS } from "db-schema-toolkit";
 import { t } from "@/lib/i18n/context";
 
 async function createPDF(options: { orientation: string; unit: string; format: string }): Promise<JsPDFType> {

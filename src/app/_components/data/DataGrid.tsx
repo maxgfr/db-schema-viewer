@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { Download, Search, ChevronUp, ChevronDown } from "lucide-react";
-import type { ParsedDumpTable } from "@/lib/dump/dump-parser";
+import type { ParsedDumpTable } from "db-schema-toolkit/data";
 import { downloadBlob } from "@/lib/export/image-export";
 
 interface DataGridProps {

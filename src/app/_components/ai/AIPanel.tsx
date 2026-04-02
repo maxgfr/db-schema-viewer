@@ -21,14 +21,14 @@ import {
   TrendingDown,
   Minus,
 } from "lucide-react";
-import type { Diagram } from "@/lib/domain";
+import type { Diagram } from "db-schema-toolkit";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
 import {
   querySchema,
   challengeSchema,
   type SchemaIssue,
   type ChallengeResponse,
-} from "@/lib/ai/ai-service";
+} from "db-schema-toolkit/ai";
 import { MarkdownContent } from "../shared/MarkdownContent";
 import { useTranslation } from "@/lib/i18n/context";
 

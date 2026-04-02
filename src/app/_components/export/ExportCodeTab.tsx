@@ -3,13 +3,16 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Download, Copy, Code } from "lucide-react";
-import type { Diagram, DatabaseType } from "@/lib/domain";
-import { DATABASE_TYPE_LABELS } from "@/lib/domain";
-import { exportDiagramToSQL } from "@/lib/sql-export";
-import { exportDiagramToMarkdown } from "@/lib/export/markdown-export";
-import { exportDiagramToMermaid } from "@/lib/export/mermaid-export";
-import { exportDiagramToPrisma } from "@/lib/export/prisma-export";
-import { exportDiagramToDrizzle } from "@/lib/export/drizzle-export";
+import type { Diagram, DatabaseType } from "db-schema-toolkit";
+import { DATABASE_TYPE_LABELS } from "db-schema-toolkit";
+import {
+  exportDiagramToSQL,
+  exportDiagramToMarkdown,
+  exportDiagramToMermaid,
+  exportDiagramToPrisma,
+  exportDiagramToDrizzle,
+} from "db-schema-toolkit/export";
+import { t } from "@/lib/i18n/context";
 import { downloadBlob } from "@/lib/export/image-export";
 
 type CodeTab = "sql" | "markdown" | "mermaid" | "prisma" | "drizzle";
@@ -37,7 +40,25 @@ export function ExportCodeTab({ diagram, tab }: ExportCodeTabProps) {
   }, [diagram, targetDb]);
 
   const handleMarkdownExport = useCallback(() => {
-    const md = exportDiagramToMarkdown(diagram);
+    const md = exportDiagramToMarkdown(diagram, {
+      database: t("exportFile.database"),
+      tables: t("exportFile.tables"),
+      generated: t("exportFile.generated"),
+      view: t("exportFile.view"),
+      table: t("exportFile.table"),
+      column: t("exportFile.column"),
+      type: t("exportFile.type"),
+      nullable: t("exportFile.nullable"),
+      pk: t("exportFile.pk"),
+      unique: t("exportFile.unique"),
+      default: t("exportFile.default"),
+      yes: t("exportFile.yes"),
+      no: t("exportFile.no"),
+      indexes: t("exportFile.indexes"),
+      foreignKeys: t("exportFile.foreignKeys"),
+      entityRelationshipDiagram: t("exportFile.entityRelationshipDiagram"),
+      relationships: t("exportFile.relationships"),
+    });
     downloadBlob(md, `${diagram.name}.md`, "text/markdown");
     toast.success("Exported as Markdown");
   }, [diagram]);

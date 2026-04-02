@@ -24,10 +24,10 @@ import {
 	Trash2,
 	MessageSquare,
 } from "lucide-react";
-import { parseSQLDump, type ParsedDumpTable } from "@/lib/dump/dump-parser";
-import { generateFakeData } from "@/lib/dump/fake-data-generator";
-import { inferColumnTypes, type InferredType } from "@/lib/dump/data-types";
-import type { Diagram } from "@/lib/domain";
+import { parseSQLDump, type ParsedDumpTable } from "db-schema-toolkit/data";
+import { generateFakeData } from "db-schema-toolkit/data";
+import { inferColumnTypes, type InferredType } from "db-schema-toolkit/data";
+import type { Diagram } from "db-schema-toolkit";
 import { DataCharts } from "./DataCharts";
 import { DataChat } from "./DataChat";
 import {

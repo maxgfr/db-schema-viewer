@@ -7,7 +7,7 @@ import {
   type EdgeProps,
   BaseEdge,
 } from "@xyflow/react";
-import type { DBRelationship } from "@/lib/domain";
+import type { DBRelationship } from "db-schema-toolkit";
 
 export type ERDNotation = "crowsfoot" | "uml" | "chen";
 

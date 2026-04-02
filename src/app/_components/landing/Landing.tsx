@@ -24,11 +24,11 @@ import {
   GitCompareArrows,
   Monitor,
 } from "lucide-react";
-import type { Diagram } from "@/lib/domain";
-import { SAMPLE_SCHEMAS } from "@/lib/sql/sample-schemas";
-import { SCHEMA_TEMPLATES } from "@/lib/sql/schema-templates";
-import { EXAMPLE_SCHEMAS } from "@/lib/examples/example-schemas";
-import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
+import type { Diagram } from "db-schema-toolkit";
+import { SAMPLE_SCHEMAS } from "db-schema-toolkit";
+import { SCHEMA_TEMPLATES } from "db-schema-toolkit";
+import { EXAMPLE_SCHEMAS } from "db-schema-toolkit";
+import { parseSchemaFile } from "db-schema-toolkit";
 import type { Theme, ThemeMode } from "@/hooks/use-theme";
 import { SchemaUpload } from "../schema/SchemaUpload";
 import { useTranslation } from "@/lib/i18n/context";

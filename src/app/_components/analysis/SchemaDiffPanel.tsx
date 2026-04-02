@@ -5,11 +5,11 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { X, Upload, Plus, Minus, RefreshCw, ArrowRight, Brain, Loader2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/context";
-import type { Diagram } from "@/lib/domain";
-import { diffSchemas, type SchemaDiff, type TableDiff, type FieldDiff } from "@/lib/analysis/schema-diff";
-import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
+import type { Diagram } from "db-schema-toolkit";
+import { diffSchemas, type SchemaDiff, type TableDiff, type FieldDiff } from "db-schema-toolkit/analysis";
+import { parseSchemaFile } from "db-schema-toolkit";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
-import { querySchema } from "@/lib/ai/ai-service";
+import { querySchema } from "db-schema-toolkit/ai";
 import { MarkdownContent } from "../shared/MarkdownContent";
 
 interface SchemaDiffPanelProps {

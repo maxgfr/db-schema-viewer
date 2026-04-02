@@ -5,17 +5,20 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { X, Image, FileText, Code, Download, Copy, Braces, Database, Layers, Loader2, Globe } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/context";
-import type { Diagram, DatabaseType } from "@/lib/domain";
-import { DATABASE_TYPE_LABELS } from "@/lib/domain";
+import type { Diagram, DatabaseType } from "db-schema-toolkit";
+import { DATABASE_TYPE_LABELS } from "db-schema-toolkit";
+
 import { exportFullDiagramToPng, exportToSvg, downloadDataUrl } from "@/lib/export/image-export";
 import { exportToPdf } from "@/lib/export/pdf-export";
-import { exportDiagramToSQL } from "@/lib/sql-export";
-import { exportDiagramToMarkdown } from "@/lib/export/markdown-export";
-import { exportDiagramToMermaid } from "@/lib/export/mermaid-export";
-import { exportDiagramToPrisma } from "@/lib/export/prisma-export";
-import { exportDiagramToDrizzle } from "@/lib/export/drizzle-export";
-import { exportDiagramToDBML } from "@/lib/export/dbml-export";
-import { exportDiagramToPlantUML } from "@/lib/export/plantuml-export";
+import {
+  exportDiagramToSQL,
+  exportDiagramToMarkdown,
+  exportDiagramToMermaid,
+  exportDiagramToPrisma,
+  exportDiagramToDrizzle,
+  exportDiagramToDBML,
+  exportDiagramToPlantUML,
+} from "db-schema-toolkit/export";
 import { generateShareUrl } from "@/lib/sharing/encode-state";
 
 interface ExportDialogProps {
@@ -41,7 +44,25 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   const textOutput = useMemo(() => {
     switch (tab) {
       case "sql": return exportDiagramToSQL(diagram, targetDb);
-      case "markdown": return exportDiagramToMarkdown(diagram);
+      case "markdown": return exportDiagramToMarkdown(diagram, {
+        database: t("exportFile.database"),
+        tables: t("exportFile.tables"),
+        generated: t("exportFile.generated"),
+        view: t("exportFile.view"),
+        table: t("exportFile.table"),
+        column: t("exportFile.column"),
+        type: t("exportFile.type"),
+        nullable: t("exportFile.nullable"),
+        pk: t("exportFile.pk"),
+        unique: t("exportFile.unique"),
+        default: t("exportFile.default"),
+        yes: t("exportFile.yes"),
+        no: t("exportFile.no"),
+        indexes: t("exportFile.indexes"),
+        foreignKeys: t("exportFile.foreignKeys"),
+        entityRelationshipDiagram: t("exportFile.entityRelationshipDiagram"),
+        relationships: t("exportFile.relationships"),
+      });
       case "mermaid": return exportDiagramToMermaid(diagram);
       case "dbml": return exportDiagramToDBML(diagram);
       case "plantuml": return exportDiagramToPlantUML(diagram);

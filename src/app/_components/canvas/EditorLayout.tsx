@@ -20,9 +20,9 @@ import {
   Palette,
   Shuffle,
 } from "lucide-react";
-import type { Diagram } from "@/lib/domain";
-import { DATABASE_TYPE_LABELS } from "@/lib/domain";
-import { generateShareUrl, estimateUrlSize } from "@/lib/sharing/encode-state";
+import type { Diagram } from "db-schema-toolkit";
+import { DATABASE_TYPE_LABELS } from "db-schema-toolkit";
+import { generateShareUrl, estimateUrlSize, type SharedViewSettings } from "@/lib/sharing/encode-state";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import type { Theme, ThemeMode } from "@/hooks/use-theme";
 import { SchemaCanvas, type Annotation } from "./SchemaCanvas";
@@ -35,8 +35,8 @@ import { DataExplorer } from "../data/DataExplorer";
 import { APIKeySettings } from "../settings/APIKeySettings";
 import { SchemaDiffPanel } from "../analysis/SchemaDiffPanel";
 import { SourceViewer } from "../source/SourceViewer";
-import { parseSchemaFile } from "@/lib/parsing/parse-schema-file";
-import { shuffleLayout } from "@/lib/layout/auto-layout";
+import { parseSchemaFile } from "db-schema-toolkit";
+import { shuffleLayout } from "db-schema-toolkit";
 import { useTranslation } from "@/lib/i18n/context";
 import { LanguageToggle } from "../I18nWrapper";
 
@@ -49,6 +49,8 @@ interface EditorLayoutProps {
   onToggleTheme: () => void;
   initialAnnotations?: Annotation[];
   onAnnotationsChange?: (annotations: Annotation[]) => void;
+  initialViewSettings?: SharedViewSettings;
+  onViewSettingsChange?: (settings: SharedViewSettings) => void;
 }
 
 export function EditorLayout({
@@ -60,6 +62,8 @@ export function EditorLayout({
   onToggleTheme,
   initialAnnotations = [],
   onAnnotationsChange,
+  initialViewSettings = {},
+  onViewSettingsChange,
 }: EditorLayoutProps) {
   const { t } = useTranslation();
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
@@ -70,13 +74,18 @@ export function EditorLayout({
   const [showSettings, setShowSettings] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
   const [showSource, setShowSource] = useState(false);
-  const [erdNotation, setErdNotation] = useState<ERDNotation>("crowsfoot");
-  const [coloredEdges, setColoredEdges] = useState(false);
+  const [erdNotation, setErdNotation] = useState<ERDNotation>(initialViewSettings.erdNotation ?? "crowsfoot");
+  const [coloredEdges, setColoredEdges] = useState(initialViewSettings.coloredEdges ?? false);
   const [zoomTarget, setZoomTarget] = useState<{ id: string; key: number } | null>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations);
   const zoomCounter = useRef(0);
   const annotationCounter = useRef(0);
   const canvasRef = { current: null as HTMLDivElement | null };
+
+  // Emit view settings changes to parent for URL persistence
+  useEffect(() => {
+    onViewSettingsChange?.({ erdNotation, coloredEdges });
+  }, [erdNotation, coloredEdges, onViewSettingsChange]);
 
   const handleZoomToTable = useCallback((tableId: string) => {
     zoomCounter.current++;

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { Search, Table, Eye, ChevronDown, ChevronRight, KeyRound, Link, SearchX, ChevronsUpDown, ChevronsDownUp, Hash, FolderOpen } from "lucide-react";
-import type { Diagram } from "@/lib/domain";
+import type { Diagram } from "db-schema-toolkit";
 import { useTranslation } from "@/lib/i18n/context";
 
 interface SchemaSidebarProps {

@@ -43,6 +43,7 @@
     "node_modules",
     "out",
     ".next",
-    "examples"
+    "examples",
+    "packages"
   ]
 }

@@ -1,15 +1,7 @@
 import Cookies from "js-cookie";
+import type { AISettings } from "db-schema-toolkit/ai";
 
-export interface AISettings {
-  apiKey: string;
-  model: string;
-  providerId: string;
-  providerName?: string;
-  providerNpm?: string;
-  providerApi?: string;
-  customEndpoint?: string;
-  customModel?: string;
-}
+export type { AISettings } from "db-schema-toolkit/ai";
 
 const PREFIX = "db-sv-";
 const isLocalhost =

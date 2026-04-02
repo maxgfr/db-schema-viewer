@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { encodeState, decodeState, estimateUrlSize, generateShareUrl, getStateFromUrl } from "@/lib/sharing/encode-state";
-import type { Diagram } from "@/lib/domain";
+import type { Diagram } from "db-schema-toolkit";
 
 const sampleDiagram: Diagram = {
   id: "test-123",
@@ -91,6 +91,7 @@ describe("getStateFromUrl", () => {
     expect(result!.diagram.id).toBe(sampleDiagram.id);
     expect(result!.diagram.name).toBe(sampleDiagram.name);
     expect(result!.annotations).toEqual([]);
+    expect(result!.viewSettings).toEqual({});
   });
 
   it("returns null when no hash is present", () => {
@@ -101,5 +102,25 @@ describe("getStateFromUrl", () => {
   it("returns null for corrupted hash data", () => {
     window.location.hash = "#d=garbage-data";
     expect(getStateFromUrl()).toBeNull();
+  });
+});
+
+describe("view settings in shared URL", () => {
+  it("round-trips erdNotation and coloredEdges", () => {
+    const url = generateShareUrl(sampleDiagram, undefined, { erdNotation: "uml", coloredEdges: true });
+    expect(url).toContain("&v=");
+
+    // Parse the hash to simulate getStateFromUrl
+    const hash = url.substring(url.indexOf("#"));
+    window.location.hash = hash;
+    const result = getStateFromUrl();
+    expect(result).not.toBeNull();
+    expect(result!.viewSettings.erdNotation).toBe("uml");
+    expect(result!.viewSettings.coloredEdges).toBe(true);
+  });
+
+  it("omits &v= when using default settings", () => {
+    const url = generateShareUrl(sampleDiagram, undefined, { erdNotation: "crowsfoot", coloredEdges: false });
+    expect(url).not.toContain("&v=");
   });
 });

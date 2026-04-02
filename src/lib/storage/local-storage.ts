@@ -1,4 +1,4 @@
-import type { Diagram } from "@/lib/domain";
+import type { Diagram } from "db-schema-toolkit";
 
 const PREFIX = "db-schema-viewer-";
 const DIAGRAMS_KEY = `${PREFIX}diagrams`;

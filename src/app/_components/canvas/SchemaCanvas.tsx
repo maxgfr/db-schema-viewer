@@ -16,7 +16,7 @@ import {
   BackgroundVariant,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { Diagram } from "@/lib/domain";
+import type { Diagram } from "db-schema-toolkit";
 import { TableNode } from "./TableNode";
 import { RelationshipEdge, type ERDNotation } from "./RelationshipEdge";
 import { StickyNoteNode } from "./StickyNoteNode";
@@ -156,13 +156,32 @@ function SchemaCanvasInner({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, , onEdgesChange] = useEdgesState(initialEdges);
 
-  // Sync annotation changes into React Flow nodes (useNodesState only uses initialNodes on mount)
+  // Sync table + annotation changes into React Flow nodes (useNodesState only uses initialNodes on mount)
   useEffect(() => {
     setNodes((currentNodes) => {
-      const tableNodes = currentNodes.filter((n) => n.type !== "stickyNote");
+      const tableNodes: Node[] = diagram.tables.map((table) => {
+        const existing = currentNodes.find((n) => n.id === table.id);
+        return {
+          id: table.id,
+          type: "table" as const,
+          position: { x: table.x, y: table.y },
+          data: {
+            table,
+            isSelected: table.id === selectedTableId,
+            relationships: diagram.relationships.filter(
+              (r) => r.sourceTableId === table.id || r.targetTableId === table.id
+            ),
+          },
+          selected: table.id === selectedTableId,
+          // Preserve drag state if the node already exists and position hasn't changed externally
+          ...(existing && existing.position.x === table.x && existing.position.y === table.y
+            ? { position: existing.position }
+            : {}),
+        };
+      });
       const noteNodes: Node[] = annotations.map((note) => ({
         id: note.id,
-        type: "stickyNote",
+        type: "stickyNote" as const,
         position: { x: note.x, y: note.y },
         data: {
           text: note.text,
@@ -174,7 +193,7 @@ function SchemaCanvasInner({
       }));
       return [...tableNodes, ...noteNodes];
     });
-  }, [annotations, setNodes, handleNoteTextChange, handleNoteDelete, handleNoteColorChange]);
+  }, [diagram.tables, diagram.relationships, selectedTableId, annotations, setNodes, handleNoteTextChange, handleNoteDelete, handleNoteColorChange]);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
