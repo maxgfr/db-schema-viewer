@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/maxgfr/db-schema-viewer/compare/v1.0.0...v1.1.0) (2026-04-02)
+
+
+### Features
+
+* add CLI to db-schema-toolkit and improve editor UX ([506f73d](https://github.com/maxgfr/db-schema-viewer/commit/506f73dda589201a235ce4cc1334999557d39fbd))
+
 # 1.0.0 (2026-04-02)
 
 
