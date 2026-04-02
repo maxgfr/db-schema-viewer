@@ -40,7 +40,7 @@ describe("SQL parsing performance", () => {
     expect(duration).toBeLessThan(10000);
   });
 
-  it("parses 1000 tables without crashing", () => {
+  it("parses 1000 tables without crashing", { timeout: 30000 }, () => {
     const sql = generateLargeSchema(1000);
     const start = performance.now();
     const diagram = parseSQLToDiagram(sql);

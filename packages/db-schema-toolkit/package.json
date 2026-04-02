@@ -30,7 +30,8 @@
     "mermaid",
     "plantuml",
     "analysis",
-    "ai"
+    "ai",
+    "cli"
   ],
   "exports": {
     ".": {
@@ -53,6 +54,9 @@
       "import": "./dist/data.js",
       "types": "./dist/data.d.ts"
     }
+  },
+  "bin": {
+    "db-schema": "./dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

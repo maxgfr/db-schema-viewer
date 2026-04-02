@@ -80,7 +80,6 @@ export function EditorLayout({
   const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations);
   const zoomCounter = useRef(0);
   const annotationCounter = useRef(0);
-  const canvasRef = { current: null as HTMLDivElement | null };
 
   // Emit view settings changes to parent for URL persistence
   useEffect(() => {
@@ -136,11 +135,16 @@ export function EditorLayout({
         description: t("editor.urlLargeDesc", { size: Math.round(size / 1024) }),
       });
     }
-    const url = generateShareUrl(diagram, annotations);
+    const viewSettings: SharedViewSettings = { erdNotation, coloredEdges };
+    const url = generateShareUrl(
+      diagram,
+      annotations.length > 0 ? annotations : undefined,
+      viewSettings,
+    );
     navigator.clipboard.writeText(url).then(() => {
       toast.success(t("editor.shareUrlCopied"));
     });
-  }, [diagram, t]);
+  }, [diagram, annotations, erdNotation, coloredEdges, t]);
 
   const shortcutHandlers = useMemo(
     () => ({
@@ -350,7 +354,7 @@ export function EditorLayout({
           onTableSelect={setSelectedTableId}
           onTableZoom={handleZoomToTable}
         />
-        <div className="flex-1" ref={(el) => { canvasRef.current = el; }}>
+        <div className="flex-1">
           <SchemaCanvas
             key={`${diagram.id}-${erdNotation}-${coloredEdges}`}
             diagram={diagram}

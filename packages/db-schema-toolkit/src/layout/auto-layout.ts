@@ -188,6 +188,18 @@ export function autoLayout(
 }
 
 /**
+ * Fisher-Yates shuffle: returns a new array with elements in random order.
+ */
+function fisherYatesShuffle<T>(arr: readonly T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j]!, result[i]!];
+  }
+  return result;
+}
+
+/**
  * Shuffle table positions into a random layout.
  * Spreads tables across a grid with random offsets for variety.
  */
@@ -195,8 +207,7 @@ export function shuffleLayout(tables: DBTable[]): DBTable[] {
   if (tables.length === 0) return tables;
 
   const cols = Math.max(2, Math.ceil(Math.sqrt(tables.length)));
-  // Shuffle the table order randomly
-  const shuffled = [...tables].sort(() => Math.random() - 0.5);
+  const shuffled = fisherYatesShuffle(tables);
 
   return shuffled.map((table, i) => {
     const col = i % cols;

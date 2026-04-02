@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { autoLayout } from "../../src/layout/auto-layout";
+import { autoLayout, shuffleLayout } from "../../src/layout/auto-layout";
 import type { DBTable, DBRelationship } from "../../src/domain";
 
 function makeTable(id: string, fieldCount = 3): DBTable {
@@ -269,5 +269,72 @@ describe("autoLayout", () => {
       expect(result[0]!.fields).toHaveLength(5);
       expect(result[0]!.id).toBe("test");
     });
+  });
+});
+
+describe("shuffleLayout", () => {
+  it("returns empty array for no tables", () => {
+    expect(shuffleLayout([])).toEqual([]);
+  });
+
+  it("assigns new positions to all tables", () => {
+    const tables = Array.from({ length: 6 }, (_, i) => makeTable(String(i)));
+    const result = shuffleLayout(tables);
+
+    expect(result).toHaveLength(6);
+    for (const table of result) {
+      expect(typeof table.x).toBe("number");
+      expect(typeof table.y).toBe("number");
+      expect(isFinite(table.x)).toBe(true);
+      expect(isFinite(table.y)).toBe(true);
+    }
+  });
+
+  it("produces different positions on successive calls", () => {
+    const tables = Array.from({ length: 8 }, (_, i) => makeTable(String(i)));
+
+    // Run shuffle multiple times — at least one should differ
+    const results = Array.from({ length: 5 }, () => shuffleLayout(tables));
+    const positionStrings = results.map((r) =>
+      r.map((t) => `${t.id}:${Math.round(t.x)},${Math.round(t.y)}`).join("|")
+    );
+
+    const unique = new Set(positionStrings);
+    // With 8 tables and 5 runs, we should get at least 2 distinct layouts
+    expect(unique.size).toBeGreaterThanOrEqual(2);
+  });
+
+  it("preserves table data (only x/y change)", () => {
+    const tables = [makeTable("a", 5), makeTable("b", 3)];
+    const result = shuffleLayout(tables);
+
+    for (const original of tables) {
+      const shuffled = result.find((t) => t.id === original.id)!;
+      expect(shuffled).toBeDefined();
+      expect(shuffled.name).toBe(original.name);
+      expect(shuffled.fields).toHaveLength(original.fields.length);
+    }
+  });
+
+  it("does not mutate the original array", () => {
+    const tables = [makeTable("a"), makeTable("b"), makeTable("c")];
+    const originalIds = tables.map((t) => t.id);
+    const originalPositions = tables.map((t) => ({ x: t.x, y: t.y }));
+
+    shuffleLayout(tables);
+
+    // Original array should be unchanged
+    expect(tables.map((t) => t.id)).toEqual(originalIds);
+    for (let i = 0; i < tables.length; i++) {
+      expect(tables[i]!.x).toBe(originalPositions[i]!.x);
+      expect(tables[i]!.y).toBe(originalPositions[i]!.y);
+    }
+  });
+
+  it("handles single table", () => {
+    const tables = [makeTable("only")];
+    const result = shuffleLayout(tables);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.id).toBe("only");
   });
 });

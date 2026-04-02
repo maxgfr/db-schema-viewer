@@ -106,6 +106,10 @@ describe("getStateFromUrl", () => {
 });
 
 describe("view settings in shared URL", () => {
+  beforeEach(() => {
+    window.location.hash = "";
+  });
+
   it("round-trips erdNotation and coloredEdges", () => {
     const url = generateShareUrl(sampleDiagram, undefined, { erdNotation: "uml", coloredEdges: true });
     expect(url).toContain("&v=");
@@ -122,5 +126,112 @@ describe("view settings in shared URL", () => {
   it("omits &v= when using default settings", () => {
     const url = generateShareUrl(sampleDiagram, undefined, { erdNotation: "crowsfoot", coloredEdges: false });
     expect(url).not.toContain("&v=");
+  });
+
+  it("includes &v= when only coloredEdges is true", () => {
+    const url = generateShareUrl(sampleDiagram, undefined, { erdNotation: "crowsfoot", coloredEdges: true });
+    expect(url).toContain("&v=");
+
+    const hash = url.substring(url.indexOf("#"));
+    window.location.hash = hash;
+    const result = getStateFromUrl();
+    expect(result).not.toBeNull();
+    expect(result!.viewSettings.coloredEdges).toBe(true);
+  });
+
+  it("includes &v= when erdNotation is chen", () => {
+    const url = generateShareUrl(sampleDiagram, undefined, { erdNotation: "chen", coloredEdges: false });
+    expect(url).toContain("&v=");
+
+    const hash = url.substring(url.indexOf("#"));
+    window.location.hash = hash;
+    const result = getStateFromUrl();
+    expect(result).not.toBeNull();
+    expect(result!.viewSettings.erdNotation).toBe("chen");
+  });
+});
+
+describe("annotations in shared URL", () => {
+  beforeEach(() => {
+    window.location.hash = "";
+  });
+
+  it("round-trips annotations", () => {
+    const annotations = [
+      { id: "n1", text: "Important table", x: 100, y: 200, color: "0" },
+      { id: "n2", text: "TODO: add index", x: 300, y: 400, color: "2" },
+    ];
+    const url = generateShareUrl(sampleDiagram, annotations);
+    expect(url).toContain("&n=");
+
+    const hash = url.substring(url.indexOf("#"));
+    window.location.hash = hash;
+    const result = getStateFromUrl();
+    expect(result).not.toBeNull();
+    expect(result!.annotations).toHaveLength(2);
+    expect(result!.annotations[0]!.text).toBe("Important table");
+    expect(result!.annotations[0]!.x).toBe(100);
+    expect(result!.annotations[0]!.y).toBe(200);
+    expect(result!.annotations[1]!.color).toBe("2");
+  });
+
+  it("omits &n= when no annotations", () => {
+    const url = generateShareUrl(sampleDiagram, []);
+    expect(url).not.toContain("&n=");
+  });
+
+  it("omits &n= when annotations is undefined", () => {
+    const url = generateShareUrl(sampleDiagram, undefined);
+    expect(url).not.toContain("&n=");
+  });
+
+  it("round-trips all three: diagram + annotations + viewSettings", () => {
+    const annotations = [
+      { id: "n1", text: "Note", x: 50, y: 75, color: "1" },
+    ];
+    const viewSettings = { erdNotation: "chen" as const, coloredEdges: true };
+    const url = generateShareUrl(sampleDiagram, annotations, viewSettings);
+    expect(url).toContain("#d=");
+    expect(url).toContain("&n=");
+    expect(url).toContain("&v=");
+
+    const hash = url.substring(url.indexOf("#"));
+    window.location.hash = hash;
+    const result = getStateFromUrl();
+    expect(result).not.toBeNull();
+    expect(result!.diagram.id).toBe(sampleDiagram.id);
+    expect(result!.annotations).toHaveLength(1);
+    expect(result!.annotations[0]!.text).toBe("Note");
+    expect(result!.viewSettings.erdNotation).toBe("chen");
+    expect(result!.viewSettings.coloredEdges).toBe(true);
+  });
+});
+
+describe("table positions in shared URL", () => {
+  it("preserves custom table positions after drag", () => {
+    const diagramWithPositions: Diagram = {
+      ...sampleDiagram,
+      tables: sampleDiagram.tables.map((t) => ({ ...t, x: 500, y: 300 })),
+    };
+    const url = generateShareUrl(diagramWithPositions);
+    const hash = url.substring(url.indexOf("#"));
+    const match = hash.match(/^#d=(.+)/);
+    const decoded = decodeState(decodeURIComponent(match![1]!));
+    expect(decoded).not.toBeNull();
+    expect(decoded!.tables[0]!.x).toBe(500);
+    expect(decoded!.tables[0]!.y).toBe(300);
+  });
+
+  it("preserves table colors in shared URL", () => {
+    const diagramWithColors: Diagram = {
+      ...sampleDiagram,
+      tables: sampleDiagram.tables.map((t) => ({ ...t, color: "#ec4899" })),
+    };
+    const url = generateShareUrl(diagramWithColors);
+    const hash = url.substring(url.indexOf("#"));
+    const match = hash.match(/^#d=(.+)/);
+    const decoded = decodeState(decodeURIComponent(match![1]!));
+    expect(decoded).not.toBeNull();
+    expect(decoded!.tables[0]!.color).toBe("#ec4899");
   });
 });

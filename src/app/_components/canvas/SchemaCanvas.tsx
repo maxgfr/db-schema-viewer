@@ -154,7 +154,26 @@ function SchemaCanvasInner({
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Sync edge changes when relationships/notation/colors change (useEdgesState only uses initialEdges on mount)
+  useEffect(() => {
+    setEdges(
+      diagram.relationships.map((rel, index) => ({
+        id: rel.id,
+        type: "relationship",
+        source: rel.sourceTableId,
+        target: rel.targetTableId,
+        sourceHandle: `${rel.sourceFieldId}-right`,
+        targetHandle: `${rel.targetFieldId}-left`,
+        data: {
+          relationship: rel,
+          notation,
+          edgeColor: coloredEdges ? EDGE_COLOR_PALETTE[index % EDGE_COLOR_PALETTE.length] : undefined,
+        },
+      }))
+    );
+  }, [diagram.relationships, notation, coloredEdges, setEdges]);
 
   // Sync table + annotation changes into React Flow nodes (useNodesState only uses initialNodes on mount)
   useEffect(() => {

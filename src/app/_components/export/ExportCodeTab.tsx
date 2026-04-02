@@ -12,7 +12,7 @@ import {
   exportDiagramToPrisma,
   exportDiagramToDrizzle,
 } from "db-schema-toolkit/export";
-import { t } from "@/lib/i18n/context";
+import { useTranslation } from "@/lib/i18n/context";
 import { downloadBlob } from "@/lib/export/image-export";
 
 type CodeTab = "sql" | "markdown" | "mermaid" | "prisma" | "drizzle";
@@ -23,6 +23,7 @@ interface ExportCodeTabProps {
 }
 
 export function ExportCodeTab({ diagram, tab }: ExportCodeTabProps) {
+  const { t } = useTranslation();
   const [targetDb, setTargetDb] = useState<DatabaseType>(diagram.databaseType);
   const [mermaidOutput, setMermaidOutput] = useState("");
 
@@ -61,7 +62,7 @@ export function ExportCodeTab({ diagram, tab }: ExportCodeTabProps) {
     });
     downloadBlob(md, `${diagram.name}.md`, "text/markdown");
     toast.success("Exported as Markdown");
-  }, [diagram]);
+  }, [diagram, t]);
 
   const handleGenerateMermaid = useCallback(() => {
     const mermaid = exportDiagramToMermaid(diagram);
