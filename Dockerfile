@@ -11,6 +11,7 @@ FROM node:22-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@10.30.0 --activate
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/db-schema-toolkit/node_modules ./packages/db-schema-toolkit/node_modules
 COPY . .
 ENV NEXT_OUTPUT_MODE=standalone
 ENV NEXT_TELEMETRY_DISABLED=1
