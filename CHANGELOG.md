@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.0...v1.1.1) (2026-04-02)
+
+
+### Bug Fixes
+
+* move oxc-parser from optionalDependencies to devDependencies ([5329690](https://github.com/maxgfr/db-schema-viewer/commit/5329690cb47d5a1474f7408c728e928511afdba9))
+
 # [1.1.0](https://github.com/maxgfr/db-schema-viewer/compare/v1.0.0...v1.1.0) (2026-04-02)
 
 
