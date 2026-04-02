@@ -14,7 +14,8 @@
 		"test": "vitest",
 		"test:ci": "pnpm --filter db-schema-toolkit test:ci && vitest run",
 		"test:coverage": "vitest run --coverage",
-		"fetch-models": "node scripts/fetch-models.mjs"
+		"fetch-models": "node scripts/fetch-models.mjs",
+		"release": "semantic-release"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^2.0.53",
