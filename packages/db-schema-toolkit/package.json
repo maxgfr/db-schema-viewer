@@ -1,6 +1,6 @@
 {
   "name": "db-schema-toolkit",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "description": "Parse, analyze, export, and AI-review database schemas. Supports SQL (PostgreSQL, MySQL, SQLite, and more), Drizzle, Prisma, DBML, TypeORM, MikroORM, Sequelize, and Kysely.",
   "license": "MIT",

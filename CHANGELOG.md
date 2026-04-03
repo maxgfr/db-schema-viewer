@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.1...v1.1.2) (2026-04-03)
+
+
+### Bug Fixes
+
+* improve CLI with missing features and doc fixes ([88daefc](https://github.com/maxgfr/db-schema-viewer/commit/88daefcaa6e1a2b62ae3b9e7c0df197e1c96b873))
+
 ## [1.1.1](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.0...v1.1.1) (2026-04-02)
 
 
