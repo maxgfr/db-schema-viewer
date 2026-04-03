@@ -154,3 +154,12 @@ pnpm build            # Production build — must succeed
 - Multi-stage Dockerfile (deps → builder → runner) with non-root user
 - `docker-compose.yml` with optional Ollama service for local AI
 - Uses standalone Next.js output mode in Docker
+
+## Package documentation (`packages/db-schema-toolkit/`)
+
+When adding or modifying CLI commands, exported functions, or supported formats in the package, keep these files in sync:
+
+- `packages/db-schema-toolkit/README.md` — full library + CLI docs (published to npm)
+- `packages/db-schema-toolkit/llms.txt` — concise CLI reference for AI agents
+- `packages/db-schema-toolkit/PROMPT.md` — copy-pasteable prompt for AI assistants
+- Root `README.md` — CLI section must mirror the package's command list

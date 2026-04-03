@@ -173,10 +173,12 @@ brew install maxgfr/tap/db-schema-toolkit
 | Command | Description |
 |---------|-------------|
 | `export <file> -f <fmt>` | Convert schema to sql, markdown, mermaid, prisma, drizzle, dbml, plantuml, or json |
-| `analyze <file>` | Quality score (0–100), metrics, anti-patterns |
+| `analyze <file>` | Quality score (0–100), metrics, anti-patterns. `--fail-under <score>` for CI gates |
 | `diff <file1> <file2>` | Compare two schemas — added/removed/modified tables, fields, indexes |
 | `parse <file>` | Output full Diagram as JSON |
 | `info <file>` | Quick summary: tables, fields, types, constraints |
+| `generate <file>` | Generate fake data from a schema (`--rows <n>`, `--seed <n>`) |
+| `share <file>` | Generate a shareable URL that opens in the web viewer |
 
 ### Examples
 
