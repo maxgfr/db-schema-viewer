@@ -10,6 +10,8 @@ import { exportDiagramToPrisma } from "./export/prisma-export";
 import { exportDiagramToDrizzle } from "./export/drizzle-export";
 import { exportDiagramToDBML } from "./export/dbml-export";
 import { exportDiagramToPlantUML } from "./export/plantuml-export";
+import { generateFakeData } from "./dump/fake-data-generator";
+import { encodeState } from "./sharing/encode-state";
 import type { Diagram } from "./domain/index";
 import type { DatabaseType } from "./domain/index";
 
@@ -40,25 +42,32 @@ const DB_TYPES = [
   "snowflake",
 ] as const;
 
+// ── Color support ────────────────────────────────────────────────
+
+const NO_COLOR =
+  process.argv.includes("--no-color") ||
+  "NO_COLOR" in process.env ||
+  !process.stdout.isTTY;
+
 // ── Helpers ──────────────────────────────────────────────────────
 
 function bold(s: string) {
-  return `\x1b[1m${s}\x1b[0m`;
+  return NO_COLOR ? s : `\x1b[1m${s}\x1b[0m`;
 }
 function dim(s: string) {
-  return `\x1b[2m${s}\x1b[0m`;
+  return NO_COLOR ? s : `\x1b[2m${s}\x1b[0m`;
 }
 function green(s: string) {
-  return `\x1b[32m${s}\x1b[0m`;
+  return NO_COLOR ? s : `\x1b[32m${s}\x1b[0m`;
 }
 function yellow(s: string) {
-  return `\x1b[33m${s}\x1b[0m`;
+  return NO_COLOR ? s : `\x1b[33m${s}\x1b[0m`;
 }
 function red(s: string) {
-  return `\x1b[31m${s}\x1b[0m`;
+  return NO_COLOR ? s : `\x1b[31m${s}\x1b[0m`;
 }
 function cyan(s: string) {
-  return `\x1b[36m${s}\x1b[0m`;
+  return NO_COLOR ? s : `\x1b[36m${s}\x1b[0m`;
 }
 
 function die(message: string): never {
@@ -66,7 +75,11 @@ function die(message: string): never {
   process.exit(1);
 }
 
-function readSchemaFile(filePath: string): { content: string; fileName: string } {
+function readSchemaFile(filePath: string, stdinFileName?: string): { content: string; fileName: string } {
+  if (filePath === "-") {
+    const content = readFileSync(0, "utf-8");
+    return { content, fileName: stdinFileName || "stdin.sql" };
+  }
   const resolved = resolve(filePath);
   if (!existsSync(resolved)) {
     die(`File not found: ${filePath}`);
@@ -76,8 +89,8 @@ function readSchemaFile(filePath: string): { content: string; fileName: string }
   return { content, fileName };
 }
 
-function parseDiagram(filePath: string): Diagram {
-  const { content, fileName } = readSchemaFile(filePath);
+function parseDiagram(filePath: string, stdinFileName?: string): Diagram {
+  const { content, fileName } = readSchemaFile(filePath, stdinFileName);
   try {
     return parseSchemaFile(content, fileName);
   } catch (err) {
@@ -140,6 +153,7 @@ ${bold("db-schema-toolkit")} ${dim(`v${VERSION}`)} — Parse, export, and analyz
 
 ${bold("USAGE")}
   ${cyan("db-schema-toolkit")} <command> [options]
+  ${dim("Use - as filename to read from stdin (e.g. cat schema.sql | db-schema-toolkit parse -)")}
 
 ${bold("COMMANDS")}
   ${green("export")} <file> ${dim("--format <fmt>")}   Convert schema to another format
@@ -147,6 +161,8 @@ ${bold("COMMANDS")}
   ${green("diff")} <file1> <file2>          Compare two schemas
   ${green("parse")} <file>                  Parse and output diagram as JSON
   ${green("info")} <file>                   Show schema summary
+  ${green("generate")} <file>               Generate fake data from schema
+  ${green("share")} <file>                  Generate a shareable URL
   ${green("version")}                       Show version
   ${green("help")}                          Show this help message
   ${green("help")} ${dim("--llm")}                    Show help optimized for AI/LLM agents
@@ -160,7 +176,12 @@ ${bold("OPTIONS")}
   ${dim("--db-type, -d")}    Target database type for SQL export
                    ${dim("(postgresql, mysql, mariadb, sqlite, supabase,")}
                    ${dim(" cockroachdb, clickhouse, bigquery, snowflake)")}
-  ${dim("--json")}           Output as JSON (for analyze/diff commands)
+  ${dim("--json")}           Output as JSON (for analyze/diff/info commands)
+  ${dim("--fail-under")}     Exit code 1 if quality score is below threshold (analyze)
+  ${dim("--rows, -r")}       Number of rows to generate (generate, default: 30)
+  ${dim("--seed, -s")}       Seed for reproducible data generation (generate, default: 42)
+  ${dim("--filename")}       Hint filename for format detection when reading from stdin
+  ${dim("--no-color")}       Disable colored output (also respects NO_COLOR env var)
 
 ${bold("EXAMPLES")}
   ${dim("# Convert a SQL schema to Mermaid ERD")}
@@ -172,14 +193,20 @@ ${bold("EXAMPLES")}
   ${dim("# Convert Drizzle schema to PostgreSQL DDL")}
   db-schema-toolkit export schema.ts -f sql --db-type postgresql
 
-  ${dim("# Analyze schema quality")}
-  db-schema-toolkit analyze schema.sql
+  ${dim("# Analyze schema quality (fail CI if score < 70)")}
+  db-schema-toolkit analyze schema.sql --fail-under 70
 
   ${dim("# Compare two schema versions")}
   db-schema-toolkit diff old-schema.sql new-schema.sql
 
-  ${dim("# Parse and output as JSON for piping")}
-  db-schema-toolkit parse schema.prisma | jq '.tables[].name'
+  ${dim("# Parse from stdin")}
+  cat schema.sql | db-schema-toolkit parse - | jq '.tables[].name'
+
+  ${dim("# Generate fake data")}
+  db-schema-toolkit generate schema.sql --rows 50
+
+  ${dim("# Get a shareable URL")}
+  db-schema-toolkit share schema.prisma
 
 ${bold("SUPPORTED INPUT FORMATS")}
   SQL (PostgreSQL, MySQL, SQLite, MariaDB, Supabase, CockroachDB,
@@ -203,9 +230,10 @@ Convert a schema file to another format.
 - Output goes to stdout by default. Use --output (-o) to write to a file.
 - Short flags: -f (format), -o (output), -d (db-type)
 
-### analyze <file> [--json] [--output <file>]
+### analyze <file> [--json] [--output <file>] [--fail-under <score>]
 Analyze schema quality. Returns quality score (0-100), metrics, and anti-patterns.
 - Default output is human-readable. Use --json for machine-readable output.
+- --fail-under <score>: exit code 1 if quality score is below threshold.
 
 ### diff <file1> <file2> [--json] [--output <file>]
 Compare two schema files. Shows added/removed/modified tables, fields, indexes, relationships.
@@ -214,11 +242,28 @@ Compare two schema files. Shows added/removed/modified tables, fields, indexes, 
 ### parse <file> [--output <file>]
 Parse any supported schema and output the full Diagram object as JSON.
 
-### info <file>
+### info <file> [--json]
 Show a quick summary: tables, fields, types, constraints.
+- Use --json for machine-readable output.
+
+### generate <file> [--rows <n>] [--seed <n>] [--output <file>]
+Generate fake data from a schema.
+- --rows (-r): number of rows per table (default: 30)
+- --seed (-s): seed for reproducible results (default: 42)
+- Output is JSON array of tables with columns and rows.
+
+### share <file>
+Generate a shareable URL that opens the schema in the web viewer.
 
 ### version / --version / -V
 Print the version number.
+
+## Stdin
+
+Use - as filename to read from stdin. Use --filename to hint the format:
+\`\`\`bash
+cat schema.prisma | db-schema-toolkit parse - --filename schema.prisma
+\`\`\`
 
 ## Supported Input Formats
 
@@ -254,21 +299,38 @@ Print the version number.
 
 \`\`\`bash
 # Drizzle schema to Markdown docs
-db-schema export src/db/schema.ts -f markdown -o docs/schema.md
+db-schema-toolkit export src/db/schema.ts -f markdown -o docs/schema.md
 
 # Get quality score as a number
-db-schema analyze schema.sql --json | jq '.qualityScore.overall'
+db-schema-toolkit analyze schema.sql --json | jq '.qualityScore.overall'
+
+# Quality gate in CI (exit 1 if score < 70)
+db-schema-toolkit analyze schema.sql --fail-under 70
 
 # List all table names
-db-schema parse schema.prisma | jq -r '.tables[].name'
+db-schema-toolkit parse schema.prisma | jq -r '.tables[].name'
 
 # Find critical anti-patterns
-db-schema analyze schema.sql --json | jq '.antiPatterns[] | select(.severity == "critical")'
+db-schema-toolkit analyze schema.sql --json | jq '.antiPatterns[] | select(.severity == "critical")'
 
 # Schema diff as JSON for CI
-db-schema diff base.sql head.sql --json > diff.json
+db-schema-toolkit diff base.sql head.sql --json > diff.json
+
+# Generate 50 rows of fake data
+db-schema-toolkit generate schema.sql --rows 50
+
+# Read from stdin
+cat schema.sql | db-schema-toolkit parse -
+
+# Get a shareable link
+db-schema-toolkit share schema.prisma
 \`\`\`
 `);
+}
+
+function getStdinFileName(flags: Record<string, string | true>): string | undefined {
+  const f = flags["filename"];
+  return typeof f === "string" ? f : undefined;
 }
 
 function cmdExport(args: string[]) {
@@ -289,7 +351,7 @@ function cmdExport(args: string[]) {
     die(`Unknown database type "${dbType}". Available: ${DB_TYPES.join(", ")}`);
   }
 
-  const diagram = parseDiagram(filePath);
+  const diagram = parseDiagram(filePath, getStdinFileName(flags));
   let result: string;
 
   switch (format as ExportFormat) {
@@ -329,12 +391,17 @@ function cmdAnalyze(args: string[]) {
   const filePath = positional[0];
   if (!filePath) die("Missing input file. Usage: db-schema-toolkit analyze <file>");
 
-  const diagram = parseDiagram(filePath);
+  const diagram = parseDiagram(filePath, getStdinFileName(flags));
   const analysis = analyzeSchema(diagram);
   const asJson = flags["json"] === true;
+  const failUnder = flags["fail-under"];
+  const threshold = typeof failUnder === "string" ? Number(failUnder) : undefined;
 
   if (asJson) {
     output(JSON.stringify(analysis, null, 2) + "\n", (flags["output"] || flags["o"]) as string | undefined);
+    if (threshold !== undefined && analysis.qualityScore.overall < threshold) {
+      process.exit(1);
+    }
     return;
   }
 
@@ -375,6 +442,11 @@ function cmdAnalyze(args: string[]) {
   }
 
   console.log();
+
+  if (threshold !== undefined && qualityScore.overall < threshold) {
+    console.error(red(`Quality score ${qualityScore.overall} is below threshold (${threshold})`));
+    process.exit(1);
+  }
 }
 
 function cmdDiff(args: string[]) {
@@ -383,8 +455,9 @@ function cmdDiff(args: string[]) {
   const file2 = positional[1];
   if (!file1 || !file2) die("Missing input files. Usage: db-schema-toolkit diff <file1> <file2>");
 
-  const diagram1 = parseDiagram(file1);
-  const diagram2 = parseDiagram(file2);
+  const stdinFileName = getStdinFileName(flags);
+  const diagram1 = parseDiagram(file1, stdinFileName);
+  const diagram2 = parseDiagram(file2, stdinFileName);
   const diff = diffSchemas(diagram1, diagram2);
   const asJson = flags["json"] === true;
 
@@ -431,7 +504,7 @@ function cmdParse(args: string[]) {
   const filePath = positional[0];
   if (!filePath) die("Missing input file. Usage: db-schema-toolkit parse <file>");
 
-  const diagram = parseDiagram(filePath);
+  const diagram = parseDiagram(filePath, getStdinFileName(flags));
   output(
     JSON.stringify(diagram, null, 2) + "\n",
     (flags["output"] || flags["o"]) as string | undefined
@@ -439,11 +512,37 @@ function cmdParse(args: string[]) {
 }
 
 function cmdInfo(args: string[]) {
-  const { positional } = parseArgs(args);
+  const { positional, flags } = parseArgs(args);
   const filePath = positional[0];
   if (!filePath) die("Missing input file. Usage: db-schema-toolkit info <file>");
 
-  const diagram = parseDiagram(filePath);
+  const diagram = parseDiagram(filePath, getStdinFileName(flags));
+  const asJson = flags["json"] === true;
+
+  if (asJson) {
+    const info = {
+      name: diagram.name || basename(filePath),
+      databaseType: diagram.databaseType,
+      tables: diagram.tables.filter((t) => !t.isView).length,
+      views: diagram.tables.filter((t) => t.isView).length,
+      fields: diagram.tables.reduce((s, t) => s + t.fields.length, 0),
+      relationships: diagram.relationships.length,
+      tableDetails: diagram.tables.map((t) => ({
+        name: t.name,
+        isView: t.isView ?? false,
+        fields: t.fields.map((f) => ({
+          name: f.name,
+          type: f.type,
+          primaryKey: f.primaryKey ?? false,
+          foreignKey: f.isForeignKey ?? false,
+          unique: f.unique ?? false,
+          nullable: f.nullable ?? true,
+        })),
+      })),
+    };
+    output(JSON.stringify(info, null, 2) + "\n", (flags["output"] || flags["o"]) as string | undefined);
+    return;
+  }
 
   console.log(`\n${bold(diagram.name || basename(filePath))}`);
   console.log(dim(`  Database: ${diagram.databaseType}`));
@@ -469,6 +568,34 @@ function cmdInfo(args: string[]) {
   }
 }
 
+function cmdGenerate(args: string[]) {
+  const { positional, flags } = parseArgs(args);
+  const filePath = positional[0];
+  if (!filePath) die("Missing input file. Usage: db-schema-toolkit generate <file> [--rows <n>]");
+
+  const diagram = parseDiagram(filePath, getStdinFileName(flags));
+  const rows = Number(flags["rows"] || flags["r"]) || 30;
+  const seed = Number(flags["seed"] || flags["s"]) || 42;
+
+  const data = generateFakeData(diagram.tables, diagram.relationships, { rowCount: rows, seed });
+  output(
+    JSON.stringify(data, null, 2) + "\n",
+    (flags["output"] || flags["o"]) as string | undefined
+  );
+}
+
+function cmdShare(args: string[]) {
+  const { positional, flags } = parseArgs(args);
+  const filePath = positional[0];
+  if (!filePath) die("Missing input file. Usage: db-schema-toolkit share <file>");
+
+  const diagram = parseDiagram(filePath, getStdinFileName(flags));
+  const encoded = encodeState(diagram);
+  const url = `https://maxgfr.github.io/db-schema-viewer/#d=${encoded}`;
+
+  console.log(url);
+}
+
 // ── Main ─────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
@@ -490,6 +617,12 @@ switch (command) {
     break;
   case "info":
     cmdInfo(rest);
+    break;
+  case "generate":
+    cmdGenerate(rest);
+    break;
+  case "share":
+    cmdShare(rest);
     break;
   case "version":
   case "--version":

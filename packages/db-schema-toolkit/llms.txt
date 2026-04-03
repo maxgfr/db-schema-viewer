@@ -43,10 +43,12 @@ db-schema-toolkit export schema.prisma -f json | jq '.tables[].name'
 ### analyze — Schema quality analysis
 
 ```bash
-db-schema-toolkit analyze <file> [--json] [--output <file>]
+db-schema-toolkit analyze <file> [--json] [--output <file>] [--fail-under <score>]
 ```
 
 Returns a quality score (0-100), metrics (table count, field count, relational density, orphan tables), and anti-patterns (missing primary keys, naming issues, missing indexes).
+
+Use `--fail-under <score>` to exit with code 1 if the quality score is below the threshold (useful in CI).
 
 Examples:
 ```bash
@@ -55,6 +57,9 @@ db-schema-toolkit analyze schema.sql
 
 # Machine-readable JSON
 db-schema-toolkit analyze schema.sql --json
+
+# CI quality gate
+db-schema-toolkit analyze schema.sql --fail-under 70
 ```
 
 ### diff — Compare two schemas
@@ -85,10 +90,29 @@ Parses any supported schema format and outputs the full `Diagram` object as JSON
 ### info — Schema summary
 
 ```bash
-db-schema-toolkit info <file>
+db-schema-toolkit info <file> [--json]
 ```
 
 Displays a quick overview: table names, field names with types, primary keys, foreign keys, unique constraints.
+Use `--json` for machine-readable output.
+
+### generate — Generate fake data
+
+```bash
+db-schema-toolkit generate <file> [--rows <n>] [--seed <n>] [--output <file>]
+```
+
+Generates fake data from a schema. Output is JSON array of tables with columns and rows.
+- `--rows` (`-r`): number of rows per table (default: 30)
+- `--seed` (`-s`): seed for reproducible results (default: 42)
+
+### share — Generate shareable URL
+
+```bash
+db-schema-toolkit share <file>
+```
+
+Outputs a URL that opens the schema in the web viewer (https://maxgfr.github.io/db-schema-viewer/).
 
 ### help
 
@@ -131,7 +155,12 @@ Format is auto-detected from the file extension and content heuristics.
 | `--format` | `-f` | Output format for export command |
 | `--output` | `-o` | Write output to file instead of stdout |
 | `--db-type` | `-d` | Target database dialect for SQL export |
-| `--json` | | Output as JSON for analyze/diff commands |
+| `--json` | | Output as JSON for analyze/diff/info commands |
+| `--fail-under` | | Exit code 1 if quality score below threshold (analyze) |
+| `--rows` | `-r` | Number of rows to generate (generate, default: 30) |
+| `--seed` | `-s` | Seed for reproducible generation (generate, default: 42) |
+| `--filename` | | Hint filename for format detection when reading from stdin |
+| `--no-color` | | Disable colored output (also respects `NO_COLOR` env var) |
 
 ## GitHub Actions Usage
 
@@ -141,12 +170,7 @@ Format is auto-detected from the file extension and content heuristics.
     npx db-schema-toolkit export src/db/schema.ts -f markdown -o docs/DATABASE.md
 
 - name: Schema quality gate
-  run: |
-    SCORE=$(npx db-schema-toolkit analyze src/db/schema.ts --json | jq '.qualityScore.overall')
-    if [ "$SCORE" -lt 70 ]; then
-      echo "Schema quality score $SCORE is below threshold (70)"
-      exit 1
-    fi
+  run: npx db-schema-toolkit analyze src/db/schema.ts --fail-under 70
 
 - name: Schema diff on PR
   run: |

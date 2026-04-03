@@ -16,11 +16,15 @@ Parses database schema files (SQL, Drizzle, Prisma, DBML, TypeORM, MikroORM, Seq
 
 ```
 db-schema-toolkit export <file> -f <format> [-o <output>] [-d <db-type>]
-db-schema-toolkit analyze <file> [--json]
+db-schema-toolkit analyze <file> [--json] [--fail-under <score>]
 db-schema-toolkit diff <file1> <file2> [--json]
 db-schema-toolkit parse <file>
-db-schema-toolkit info <file>
+db-schema-toolkit info <file> [--json]
+db-schema-toolkit generate <file> [--rows <n>] [--seed <n>]
+db-schema-toolkit share <file>
 ```
+
+Use `-` as filename to read from stdin (with `--filename` to hint format detection).
 
 ### Export formats
 
@@ -44,6 +48,18 @@ npx db-schema-toolkit export schema.sql -f drizzle -o schema.ts
 
 # Get a quality score
 npx db-schema-toolkit analyze schema.sql --json | jq '.qualityScore.overall'
+
+# Quality gate in CI (exit 1 if score < 70)
+npx db-schema-toolkit analyze schema.sql --fail-under 70
+
+# Generate fake data
+npx db-schema-toolkit generate schema.sql --rows 50
+
+# Get a shareable link
+npx db-schema-toolkit share schema.prisma
+
+# Read from stdin
+cat schema.sql | npx db-schema-toolkit parse -
 
 # Compare two versions of a schema
 npx db-schema-toolkit diff old.sql new.sql
@@ -83,10 +99,7 @@ steps:
     run: npx db-schema-toolkit export src/db/schema.ts -f markdown -o docs/DATABASE.md
 
   - name: Quality gate
-    run: |
-      SCORE=$(npx db-schema-toolkit analyze src/db/schema.ts --json | jq '.qualityScore.overall')
-      echo "Quality score: $SCORE/100"
-      [ "$SCORE" -ge 70 ] || exit 1
+    run: npx db-schema-toolkit analyze src/db/schema.ts --fail-under 70
 
   - name: Commit updated docs
     run: |
