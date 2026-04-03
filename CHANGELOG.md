@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.2...v1.1.3) (2026-04-03)
+
+
+### Bug Fixes
+
+* document CLI commands and add package documentation guide ([639939d](https://github.com/maxgfr/db-schema-viewer/commit/639939d373684235b1c9dd697d395425d93d51ce))
+
 ## [1.1.2](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.1...v1.1.2) (2026-04-03)
 
 
