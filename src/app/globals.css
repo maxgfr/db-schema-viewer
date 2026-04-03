@@ -72,6 +72,36 @@ html.light {
   background-color: var(--color-background) !important;
 }
 
+/* Dark theme controls & minimap */
+.react-flow__controls button {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+  fill: #f8fafc !important;
+}
+
+.react-flow__controls button:hover {
+  background-color: #334155 !important;
+}
+
+.react-flow__controls {
+  border-color: #334155 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
+}
+
+.react-flow__minimap {
+  background-color: #1e293b !important;
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(15, 23, 42, 0.6) !important;
+}
+
+.react-flow__minimap-node {
+  fill: #334155 !important;
+  stroke: #6366f1 !important;
+}
+
 /* Light theme specific overrides */
 html.light .react-flow__background {
   background-color: #f8fafc !important;
@@ -81,12 +111,27 @@ html.light .react-flow__minimap {
   background-color: #f1f5f9 !important;
 }
 
+html.light .react-flow__minimap-mask {
+  fill: rgba(248, 250, 252, 0.6) !important;
+}
+
+html.light .react-flow__minimap-node {
+  fill: #e2e8f0 !important;
+  stroke: #4f46e5 !important;
+}
+
+html.light .react-flow__controls {
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
 html.light .react-flow__controls button {
-  background-color: #ffffff;
-  border-color: #cbd5e1;
-  color: #334155;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+  fill: #334155 !important;
 }
 
 html.light .react-flow__controls button:hover {
-  background-color: #f1f5f9;
+  background-color: #f1f5f9 !important;
 }
