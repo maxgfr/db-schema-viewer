@@ -1,3 +1,10 @@
+## [1.1.4](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.3...v1.1.4) (2026-04-03)
+
+
+### Bug Fixes
+
+* add dark theme styles for canvas and fix release order ([3a449ca](https://github.com/maxgfr/db-schema-viewer/commit/3a449cac30a8f6208260ebc6d3a27320bcaa12ee))
+
 ## [1.1.3](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.2...v1.1.3) (2026-04-03)
 
 
