@@ -151,6 +151,53 @@ Weighted pattern matching detects the database type from SQL syntax:
 
 ---
 
+## CLI & npm Package
+
+The schema engine is also available as a standalone CLI and Node.js library: **[db-schema-toolkit](https://www.npmjs.com/package/db-schema-toolkit)**
+
+### Install
+
+```bash
+# Run directly
+npx db-schema-toolkit help
+
+# Install globally
+npm install -g db-schema-toolkit
+
+# Homebrew
+brew install maxgfr/tap/db-schema-toolkit
+```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `export <file> -f <fmt>` | Convert schema to sql, markdown, mermaid, prisma, drizzle, dbml, plantuml, or json |
+| `analyze <file>` | Quality score (0–100), metrics, anti-patterns |
+| `diff <file1> <file2>` | Compare two schemas — added/removed/modified tables, fields, indexes |
+| `parse <file>` | Output full Diagram as JSON |
+| `info <file>` | Quick summary: tables, fields, types, constraints |
+
+### Examples
+
+```bash
+# Convert Prisma to Markdown documentation
+db-schema-toolkit export schema.prisma -f markdown -o docs.md
+
+# Analyze schema quality
+db-schema-toolkit analyze schema.sql
+
+# Compare two versions
+db-schema-toolkit diff old.sql new.sql
+
+# Pipe JSON for scripting
+db-schema-toolkit parse schema.prisma | jq '.tables[].name'
+```
+
+The library can also be used programmatically with 5 entry points (`db-schema-toolkit`, `db-schema-toolkit/export`, `db-schema-toolkit/analysis`, `db-schema-toolkit/ai`, `db-schema-toolkit/data`). See the [package README](packages/db-schema-toolkit/README.md) for full API documentation.
+
+---
+
 ## Getting Started
 
 ```bash

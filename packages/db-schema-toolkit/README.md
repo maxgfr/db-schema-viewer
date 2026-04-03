@@ -7,13 +7,151 @@ Parse, analyze, export, and AI-review database schemas from code. Supports **SQL
 
 ## Install
 
+### As a library
+
 ```bash
 npm install db-schema-toolkit
 # or
 pnpm add db-schema-toolkit
 ```
 
-## Quick Start
+### As a CLI
+
+```bash
+# Run directly without installing
+npx db-schema-toolkit help
+
+# Install globally via npm
+npm install -g db-schema-toolkit
+
+# Install via Homebrew
+brew install maxgfr/tap/db-schema-toolkit
+```
+
+---
+
+## CLI
+
+`db-schema-toolkit` ships a CLI that can parse, export, analyze, and diff schemas directly from the terminal.
+
+### Commands
+
+#### `export` — Convert schema to another format
+
+```bash
+db-schema-toolkit export <file> --format <fmt> [--output <file>] [--db-type <type>]
+```
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--format` | `-f` | Output format: `sql`, `markdown`, `mermaid`, `prisma`, `drizzle`, `dbml`, `plantuml`, `json` |
+| `--output` | `-o` | Write to file instead of stdout |
+| `--db-type` | `-d` | Target DB for SQL export: `postgresql`, `mysql`, `mariadb`, `sqlite`, `supabase`, `cockroachdb`, `clickhouse`, `bigquery`, `snowflake` |
+
+```bash
+# SQL to Mermaid ERD
+db-schema-toolkit export schema.sql -f mermaid
+
+# Prisma to Markdown docs
+db-schema-toolkit export schema.prisma -f markdown -o docs.md
+
+# Drizzle to PostgreSQL DDL
+db-schema-toolkit export schema.ts -f sql --db-type postgresql
+
+# Any format to JSON (for piping)
+db-schema-toolkit export schema.prisma -f json | jq '.tables[].name'
+```
+
+#### `analyze` — Schema quality analysis
+
+```bash
+db-schema-toolkit analyze <file> [--json] [--output <file>]
+```
+
+Returns a quality score (0–100), metrics (table/field/relationship counts, relational density, FK depth), and anti-patterns (missing PKs, naming issues, orphan tables, etc.).
+
+```bash
+# Human-readable report
+db-schema-toolkit analyze schema.sql
+
+# Machine-readable JSON
+db-schema-toolkit analyze schema.sql --json
+
+# Get quality score as a number
+db-schema-toolkit analyze schema.sql --json | jq '.qualityScore.overall'
+
+# Find critical issues
+db-schema-toolkit analyze schema.sql --json | jq '.antiPatterns[] | select(.severity == "critical")'
+```
+
+#### `diff` — Compare two schemas
+
+```bash
+db-schema-toolkit diff <file1> <file2> [--json] [--output <file>]
+```
+
+Shows added/removed tables, field changes, index changes, and relationship changes.
+
+```bash
+# Human-readable diff
+db-schema-toolkit diff old-schema.sql new-schema.sql
+
+# JSON diff for CI
+db-schema-toolkit diff base.sql head.sql --json > diff.json
+```
+
+#### `parse` — Output full diagram as JSON
+
+```bash
+db-schema-toolkit parse <file> [--output <file>]
+```
+
+Parses any supported format and outputs the raw `Diagram` object as JSON.
+
+```bash
+db-schema-toolkit parse schema.prisma | jq '.tables[].name'
+```
+
+#### `info` — Quick schema summary
+
+```bash
+db-schema-toolkit info <file>
+```
+
+Prints a summary: table/view count, fields with types, PK/FK/unique constraints.
+
+#### `help` / `version`
+
+```bash
+db-schema-toolkit help          # Usage and examples
+db-schema-toolkit help --llm    # Machine-readable help for AI agents
+db-schema-toolkit version       # Print version
+```
+
+### CI/CD Usage
+
+```yaml
+# .github/workflows/schema-check.yml
+- name: Check schema quality
+  run: |
+    npx db-schema-toolkit analyze schema.sql --json > analysis.json
+    SCORE=$(jq '.qualityScore.overall' analysis.json)
+    if [ "$SCORE" -lt 70 ]; then
+      echo "Schema quality score $SCORE is below threshold (70)"
+      exit 1
+    fi
+
+- name: Schema diff on PR
+  run: |
+    git show HEAD~1:schema.sql > old.sql || true
+    npx db-schema-toolkit diff old.sql schema.sql --json > diff.json
+```
+
+---
+
+## Library API
+
+### Quick Start
 
 ```ts
 import { parseSchemaFile } from "db-schema-toolkit";
