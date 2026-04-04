@@ -73,6 +73,11 @@ function getModel(settings: AISettings): LanguageModel {
   }
 }
 
+function languageInstruction(settings: AISettings): string {
+  const lang = settings.language ?? "English";
+  return `IMPORTANT: Always respond in ${lang}.`;
+}
+
 export async function querySchema(
   settings: AISettings,
   diagram: Diagram,
@@ -92,6 +97,7 @@ export async function querySchema(
   const result = streamText({
     model,
     system: `You are a database schema expert. Analyze the following database schema and answer questions about it.
+${languageInstruction(settings)}
 
 DATABASE SCHEMA:
 ${schemaContext}`,
@@ -270,6 +276,7 @@ export async function queryData(
   const result = streamText({
     model,
     system: `${systemPrompt}
+${languageInstruction(settings)}
 
 DATASET:
 ${dataContext}`,
@@ -296,7 +303,8 @@ export async function challengeSchema(
   const { object } = await generateObject({
     model,
     schema: ChallengeResponseSchema,
-    system: `You are a senior database architect performing a thorough review of a database schema. Be constructive but honest. Look for issues in naming conventions, normalization, missing indexes, relationship design, type choices, performance concerns, and security considerations.`,
+    system: `You are a senior database architect performing a thorough review of a database schema. Be constructive but honest. Look for issues in naming conventions, normalization, missing indexes, relationship design, type choices, performance concerns, and security considerations.
+${languageInstruction(settings)}`,
     prompt: `Review this database schema and provide detailed feedback:\n\n${schemaContext}`,
     temperature: 0.5,
   });

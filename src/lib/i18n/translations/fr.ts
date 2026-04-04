@@ -397,6 +397,8 @@ export const fr: Record<string, string> = {
   "settings.enterApiKeyFirst": "Veuillez d\u2019abord saisir une cl\u00e9 API",
   "settings.fillEndpointAndModel": "Veuillez remplir l\u2019URL de l\u2019endpoint et le nom du mod\u00e8le",
   "settings.connectionFailed": "\u00c9chec de la connexion",
+  "settings.language": "Langue des réponses IA",
+  "settings.languageHint": "La langue utilisée par l'IA pour répondre dans le chat et les revues de schéma.",
 
   "source.title": "Sch\u00e9ma source",
   "source.lines": "{name} \u2014 {count} lignes",

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { X, Key, Eye, EyeOff, Server, Loader2, Zap, Check, AlertTriangle, Search } from "lucide-react";
+import { X, Key, Eye, EyeOff, Server, Loader2, Zap, Check, AlertTriangle, Search, Globe } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/context";
 import {
   loadAISettings,
@@ -62,6 +62,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
   const [useCustomEndpoint, setUseCustomEndpoint] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [language, setLanguage] = useState("English");
 
   // Catalog state
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null);
@@ -77,6 +78,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
       setCustomEndpoint(saved.customEndpoint ?? "");
       setCustomModel(saved.customModel ?? "");
       setUseCustomEndpoint(!!saved.customEndpoint);
+      setLanguage(saved.language ?? "English");
     }
   }, []);
 
@@ -169,8 +171,9 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
       providerApi: providerMeta.providerApi,
       customEndpoint: useCustomEndpoint ? customEndpoint : undefined,
       customModel: useCustomEndpoint ? customModel : undefined,
+      language,
     };
-  }, [apiKey, model, providerId, providerMeta, useCustomEndpoint, customEndpoint, customModel]);
+  }, [apiKey, model, providerId, providerMeta, useCustomEndpoint, customEndpoint, customModel, language]);
 
   const handleSave = () => {
     const settings = buildSettings();
@@ -474,6 +477,39 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {t("settings.cookieStorageInfo")}
+              </p>
+            </div>
+
+            {/* Language */}
+            <div>
+              <label className="mb-1 flex items-center gap-2 text-sm text-foreground">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                {t("settings.language")}
+              </label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full rounded-lg border border-border bg-accent px-3 py-2 text-sm text-foreground focus:outline-none"
+              >
+                <option value="English">English</option>
+                <option value="French">Français</option>
+                <option value="Spanish">Español</option>
+                <option value="German">Deutsch</option>
+                <option value="Italian">Italiano</option>
+                <option value="Portuguese">Português</option>
+                <option value="Dutch">Nederlands</option>
+                <option value="Russian">Русский</option>
+                <option value="Chinese">中文</option>
+                <option value="Japanese">日本語</option>
+                <option value="Korean">한국어</option>
+                <option value="Arabic">العربية</option>
+                <option value="Hindi">हिन्दी</option>
+                <option value="Turkish">Türkçe</option>
+                <option value="Polish">Polski</option>
+                <option value="Swedish">Svenska</option>
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("settings.languageHint")}
               </p>
             </div>
           </div>

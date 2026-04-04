@@ -33,6 +33,11 @@ export function saveAISettings(settings: AISettings): void {
   if (settings.customModel) {
     Cookies.set(`${PREFIX}custom-model`, settings.customModel, COOKIE_OPTIONS);
   }
+  if (settings.language) {
+    Cookies.set(`${PREFIX}language`, settings.language, COOKIE_OPTIONS);
+  } else {
+    Cookies.remove(`${PREFIX}language`);
+  }
 }
 
 export function loadAISettings(): AISettings | null {
@@ -48,6 +53,7 @@ export function loadAISettings(): AISettings | null {
     providerApi: Cookies.get(`${PREFIX}provider-api`),
     customEndpoint: Cookies.get(`${PREFIX}custom-endpoint`),
     customModel: Cookies.get(`${PREFIX}custom-model`),
+    language: Cookies.get(`${PREFIX}language`),
   };
 }
 
@@ -56,6 +62,7 @@ export function clearAISettings(): void {
   const keys = [
     "api-key", "model", "provider-id", "provider-name",
     "provider-npm", "provider-api", "custom-endpoint", "custom-model",
+    "language",
   ];
   for (const key of keys) {
     Cookies.remove(`${PREFIX}${key}`);

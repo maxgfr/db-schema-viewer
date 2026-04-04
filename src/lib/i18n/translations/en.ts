@@ -397,6 +397,8 @@ export const en: Record<string, string> = {
   "settings.enterApiKeyFirst": "Please enter an API key first",
   "settings.fillEndpointAndModel": "Please fill in both the endpoint URL and model name",
   "settings.connectionFailed": "Connection failed",
+  "settings.language": "AI Response Language",
+  "settings.languageHint": "The language AI will use to respond in chat and schema reviews.",
 
   "source.title": "Source Schema",
   "source.lines": "{name} \u2014 {count} lines",

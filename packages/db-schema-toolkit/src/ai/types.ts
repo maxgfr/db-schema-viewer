@@ -7,4 +7,5 @@ export interface AISettings {
   providerApi?: string;
   customEndpoint?: string;
   customModel?: string;
+  language?: string;
 }
