@@ -1,3 +1,10 @@
+## [1.1.5](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.4...v1.1.5) (2026-04-04)
+
+
+### Bug Fixes
+
+* add language setting for AI responses ([4a48ff9](https://github.com/maxgfr/db-schema-viewer/commit/4a48ff940cca3cdf66dd29dbfdcdc87456f4cbd8))
+
 ## [1.1.4](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.3...v1.1.4) (2026-04-03)
 
 
