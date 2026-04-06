@@ -1,3 +1,10 @@
+## [1.1.7](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.6...v1.1.7) (2026-04-06)
+
+
+### Bug Fixes
+
+* use Chat Completions API for custom AI endpoints ([fca5ef9](https://github.com/maxgfr/db-schema-viewer/commit/fca5ef9f3a3341ee62e7fc67a444233454385859))
+
 ## [1.1.6](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.5...v1.1.6) (2026-04-06)
 
 
