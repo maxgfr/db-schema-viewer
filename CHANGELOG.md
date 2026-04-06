@@ -1,3 +1,10 @@
+## [1.1.8](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.7...v1.1.8) (2026-04-06)
+
+
+### Bug Fixes
+
+* use querySchema for AI provider connection testing ([12c6fd6](https://github.com/maxgfr/db-schema-viewer/commit/12c6fd66aeca057c07b1b2ccdb78b6dfe9905da9))
+
 ## [1.1.7](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.6...v1.1.7) (2026-04-06)
 
 
