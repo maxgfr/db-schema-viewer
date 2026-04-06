@@ -1,3 +1,10 @@
+## [1.1.10](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.9...v1.1.10) (2026-04-06)
+
+
+### Bug Fixes
+
+* restore sourceContent from storage for shared diagram URLs ([fbb6cdf](https://github.com/maxgfr/db-schema-viewer/commit/fbb6cdf444b5b01af4d3ba37ce927a1679c46fd5))
+
 ## [1.1.9](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.8...v1.1.9) (2026-04-06)
 
 
