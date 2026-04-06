@@ -323,7 +323,7 @@ export const zh: Record<string, string> = {
   "charts.month": "月",
   "charts.year": "年",
   "charts.aiChartSuggestions": "AI 驱动的图表建议",
-  "charts.aiChartSuggestionsDesc": "点击"建议图表"让 AI 分析您的数据并推荐最佳可视化，或用自然语言描述自定义图表。",
+  "charts.aiChartSuggestionsDesc": "点击「建议图表」让 AI 分析您的数据并推荐最佳可视化，或用自然语言描述自定义图表。",
   "charts.suggestCharts": "建议图表",
   "charts.analyzingData": "正在分析数据...",
   "charts.describeChart": "描述您想要的图表，例如「以饼图展示各品类的收入」",
@@ -338,7 +338,7 @@ export const zh: Record<string, string> = {
   "charts.suggestionsGenerated": "已生成 {count} 条图表建议",
   "charts.failedToGenerateSuggestions": "生成建议失败",
   "charts.couldNotGenerate": "无法根据该请求生成图表。请尝试换一种表述方式。",
-  "charts.chartCreated": "图表"{title}"已创建",
+  "charts.chartCreated": "图表「{title}」已创建",
   "charts.applied": "已应用：{title}",
 
   "dataChat.askAnything": "向 AI 提问关于您数据的任何问题",
