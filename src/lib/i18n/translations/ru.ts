@@ -397,6 +397,7 @@ export const ru: Record<string, string> = {
   "settings.enterApiKeyFirst": "Пожалуйста, сначала введите API-ключ",
   "settings.fillEndpointAndModel": "Пожалуйста, заполните URL эндпоинта и имя модели",
   "settings.connectionFailed": "Ошибка подключения",
+  "settings.connectionFailedCors": "Убедитесь, что сервер запущен и CORS включён. Для Ollama установите OLLAMA_ORIGINS=* перед запуском.",
   "settings.language": "Язык ответов ИИ",
   "settings.languageHint": "Язык, на котором ИИ будет отвечать в чате и при анализе схем.",
 

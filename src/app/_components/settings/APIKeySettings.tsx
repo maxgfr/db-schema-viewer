@@ -11,7 +11,6 @@ import {
   clearAISettings,
   type AISettings,
 } from "@/lib/storage/cookie-storage";
-import { querySchema } from "db-schema-toolkit/ai";
 
 /* ---------- Catalog types ---------- */
 
@@ -204,36 +203,38 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
 
     setIsTesting(true);
     try {
-      const testDiagram = {
-        id: "test",
-        name: "test",
-        databaseType: "generic" as const,
-        tables: [
-          {
-            id: "t1",
-            name: "test",
-            fields: [{ id: "f1", name: "id", type: "integer", primaryKey: true, unique: false, nullable: false, isForeignKey: false }],
-            indexes: [],
-            x: 0,
-            y: 0,
-            isView: false,
-          },
-        ],
-        relationships: [],
-        createdAt: new Date().toISOString(),
-      };
+      const baseUrl = useCustomEndpoint
+        ? customEndpoint.replace(/\/+$/, "")
+        : (settings.providerApi ?? "https://api.openai.com/v1").replace(/\/+$/, "");
+      const testModel = useCustomEndpoint ? customModel : settings.model;
 
-      await querySchema(
-        settings,
-        testDiagram,
-        "Say OK",
-        () => {},
-        () => {},
-        []
-      );
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(settings.apiKey ? { Authorization: `Bearer ${settings.apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          model: testModel,
+          messages: [{ role: "user", content: "hi" }],
+          max_tokens: 1,
+          stream: false,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status}: ${body || res.statusText}`);
+      }
       toast.success(t("settings.connectionSuccessful"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("settings.connectionFailed"));
+      const message = err instanceof Error ? err.message : t("settings.connectionFailed");
+      if (message.includes("Failed to fetch")) {
+        toast.error(t("settings.connectionFailed"), {
+          description: t("settings.connectionFailedCors"),
+        });
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsTesting(false);
     }

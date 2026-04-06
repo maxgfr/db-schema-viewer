@@ -397,6 +397,7 @@ export const zh: Record<string, string> = {
   "settings.enterApiKeyFirst": "请先输入 API 密钥",
   "settings.fillEndpointAndModel": "请填写端点 URL 和模型名称",
   "settings.connectionFailed": "连接失败",
+  "settings.connectionFailedCors": "请确保服务器正在运行并已启用 CORS。对于 Ollama，请在启动前设置 OLLAMA_ORIGINS=*。",
   "settings.language": "AI 回复语言",
   "settings.languageHint": "AI 在聊天和架构审查中使用的语言。",
 

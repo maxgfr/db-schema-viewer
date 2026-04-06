@@ -397,6 +397,7 @@ export const ja: Record<string, string> = {
   "settings.enterApiKeyFirst": "先にAPIキーを入力してください",
   "settings.fillEndpointAndModel": "エンドポイントURLとモデル名の両方を入力してください",
   "settings.connectionFailed": "接続に失敗しました",
+  "settings.connectionFailedCors": "サーバーが起動していて CORS が有効であることを確認してください。Ollama の場合、起動前に OLLAMA_ORIGINS=* を設定してください。",
   "settings.language": "AI応答言語",
   "settings.languageHint": "チャットとスキーマレビューでAIが使用する言語です。",
 

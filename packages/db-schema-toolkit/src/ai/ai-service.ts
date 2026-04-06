@@ -40,11 +40,13 @@ function getModel(settings: AISettings): LanguageModel {
   const modelName = settings.customModel ?? settings.model;
 
   if (settings.customEndpoint) {
+    // Custom/local endpoints (Ollama, LM Studio) only support Chat Completions API,
+    // not the OpenAI Responses API — use .chat() explicitly.
     const openai = createOpenAI({
       apiKey: settings.apiKey || "",
       baseURL: settings.customEndpoint,
-    }) as unknown as (model: string) => LanguageModel;
-    return openai(modelName);
+    });
+    return openai.chat(modelName);
   }
 
   switch (settings.providerNpm) {
@@ -64,11 +66,13 @@ function getModel(settings: AISettings): LanguageModel {
       return mistral(modelName);
     }
     default: {
+      // Other OpenAI-compatible providers may not support the Responses API,
+      // so use .chat() (Chat Completions) which is universally supported.
       const openai = createOpenAI({
         apiKey: settings.apiKey,
         baseURL: settings.providerApi,
-      }) as unknown as (model: string) => LanguageModel;
-      return openai(modelName);
+      });
+      return openai.chat(modelName);
     }
   }
 }

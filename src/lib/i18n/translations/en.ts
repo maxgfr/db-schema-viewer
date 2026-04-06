@@ -397,6 +397,7 @@ export const en: Record<string, string> = {
   "settings.enterApiKeyFirst": "Please enter an API key first",
   "settings.fillEndpointAndModel": "Please fill in both the endpoint URL and model name",
   "settings.connectionFailed": "Connection failed",
+  "settings.connectionFailedCors": "Make sure the server is running and CORS is enabled. For Ollama, set OLLAMA_ORIGINS=* before starting.",
   "settings.language": "AI Response Language",
   "settings.languageHint": "The language AI will use to respond in chat and schema reviews.",
 
