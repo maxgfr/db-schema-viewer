@@ -11,6 +11,7 @@ import {
   clearAISettings,
   type AISettings,
 } from "@/lib/storage/cookie-storage";
+import { querySchema } from "db-schema-toolkit/ai";
 
 /* ---------- Catalog types ---------- */
 
@@ -163,7 +164,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
   const buildSettings = useCallback((): AISettings => {
     return {
       apiKey,
-      model: useCustomEndpoint ? customModel : model,
+      model,
       providerId: providerMeta.providerId,
       providerName: providerMeta.providerName,
       providerNpm: providerMeta.providerNpm,
@@ -172,7 +173,7 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
       customModel: useCustomEndpoint ? customModel : undefined,
       language,
     };
-  }, [apiKey, model, providerId, providerMeta, useCustomEndpoint, customEndpoint, customModel, language]);
+  }, [apiKey, model, providerMeta, useCustomEndpoint, customEndpoint, customModel, language]);
 
   const handleSave = () => {
     const settings = buildSettings();
@@ -203,27 +204,34 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
 
     setIsTesting(true);
     try {
-      const baseUrl = useCustomEndpoint
-        ? customEndpoint.replace(/\/+$/, "")
-        : (settings.providerApi ?? "https://api.openai.com/v1").replace(/\/+$/, "");
-      const testModel = useCustomEndpoint ? customModel : settings.model;
-
-      const res = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(settings.apiKey ? { Authorization: `Bearer ${settings.apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          model: testModel,
-          messages: [{ role: "user", content: "hi" }],
-          max_tokens: 1,
-          stream: false,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        throw new Error(`HTTP ${res.status}: ${body || res.statusText}`);
+      if (useCustomEndpoint) {
+        const res = await fetch(`${customEndpoint.replace(/\/+$/, "")}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(settings.apiKey ? { Authorization: `Bearer ${settings.apiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            model: customModel,
+            messages: [{ role: "user", content: "hi" }],
+            max_tokens: 1,
+            stream: false,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status}: ${body || res.statusText}`);
+        }
+      } else {
+        const minDiagram = {
+          id: "t", name: "t", databaseType: "generic" as const,
+          tables: [{
+            id: "t", name: "t", fields: [{ id: "f", name: "id", type: "int", primaryKey: true, unique: false, nullable: false, isForeignKey: false }],
+            indexes: [], x: 0, y: 0, isView: false,
+          }],
+          relationships: [], createdAt: "",
+        };
+        await querySchema(settings, minDiagram, "Say OK in 2 words max", () => {}, () => {}, []);
       }
       toast.success(t("settings.connectionSuccessful"));
     } catch (err) {
