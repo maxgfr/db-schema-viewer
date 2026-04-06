@@ -1,3 +1,11 @@
+## [1.1.6](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.5...v1.1.6) (2026-04-06)
+
+
+### Bug Fixes
+
+* add multilingual support and local model setup ([34d6c6a](https://github.com/maxgfr/db-schema-viewer/commit/34d6c6a31919a8a3eb48b994e7e269fbf831f157))
+* use proper Chinese quotation marks in zh translations ([a688740](https://github.com/maxgfr/db-schema-viewer/commit/a68874071928d9a1333e83952f733cf23665f8d9))
+
 ## [1.1.5](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.4...v1.1.5) (2026-04-04)
 
 
