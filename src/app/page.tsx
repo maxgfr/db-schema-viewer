@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { Diagram } from "db-schema-toolkit";
 import { getStateFromUrl, generateShareUrl, type SharedViewSettings } from "@/lib/sharing/encode-state";
 import type { Annotation } from "./_components/canvas/SchemaCanvas";
-import { saveDiagram } from "@/lib/storage/local-storage";
+import { saveDiagram, loadDiagram } from "@/lib/storage/local-storage";
 import { useTheme } from "@/hooks/use-theme";
 import { useTranslation } from "@/lib/i18n/context";
 import { Landing } from "./_components/landing/Landing";
@@ -31,6 +31,11 @@ export default function Home() {
     if (hasUrlParam) {
       const fromUrl = getStateFromUrl();
       if (fromUrl) {
+        // URL encoding strips sourceContent to save space — restore it from localStorage if available
+        const stored = loadDiagram(fromUrl.diagram.id);
+        if (stored?.sourceContent && !fromUrl.diagram.sourceContent) {
+          fromUrl.diagram.sourceContent = stored.sourceContent;
+        }
         setDiagram(fromUrl.diagram);
         if (fromUrl.annotations.length > 0) setSharedAnnotations(fromUrl.annotations);
         if (fromUrl.viewSettings) setSharedViewSettings(fromUrl.viewSettings);
