@@ -1,3 +1,10 @@
+## [1.1.13](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.12...v1.1.13) (2026-04-06)
+
+
+### Bug Fixes
+
+* remove redundant push trigger for Docker builds on main ([dc98b6c](https://github.com/maxgfr/db-schema-viewer/commit/dc98b6cf0c76675357d9dd90e9264d400fc03871))
+
 ## [1.1.12](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.11...v1.1.12) (2026-04-06)
 
 
