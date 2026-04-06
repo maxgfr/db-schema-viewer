@@ -11,7 +11,7 @@ async function main() {
     if (!resp.ok) throw new Error(`Remote returned ${resp.status} ${resp.statusText}`);
 
     const json = await resp.json();
-    await writeFile(OUT_PATH, JSON.stringify(json, null, 2), 'utf8');
+    await writeFile(OUT_PATH, JSON.stringify(json), 'utf8');
 
     console.log('[fetch-models] Wrote', OUT_PATH);
   } catch (err) {

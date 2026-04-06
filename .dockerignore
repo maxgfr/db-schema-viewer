@@ -5,8 +5,14 @@ out
 .claude
 .github
 coverage
+.turbo
+.vscode
+.idea
+*.log
 *.md
 !README.md
 Dockerfile
 docker-compose.yml
 .env*
+.DS_Store
+src/__tests__

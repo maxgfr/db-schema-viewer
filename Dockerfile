@@ -1,24 +1,26 @@
-# ── Stage 1: Install dependencies ─────────────────────────────────────────────
-FROM node:22-alpine AS deps
+# ── Stage 1: Install dependencies + build ─────────────────────────────────────
+FROM node:24-alpine AS builder
 RUN corepack enable && corepack prepare pnpm@10.30.0 --activate
 WORKDIR /app
+
+# Copy dependency manifests first (Docker layer cache: only re-installs when these change)
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/db-schema-toolkit/package.json ./packages/db-schema-toolkit/
-RUN pnpm install --frozen-lockfile
 
-# ── Stage 2: Build ────────────────────────────────────────────────────────────
-FROM node:22-alpine AS builder
-RUN corepack enable && corepack prepare pnpm@10.30.0 --activate
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/db-schema-toolkit/node_modules ./packages/db-schema-toolkit/node_modules
+# Install with BuildKit pnpm store cache — avoids re-downloading on every build
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# Copy source code
 COPY . .
+
+# Build (standalone mode for Docker, with increased memory to avoid OOM)
 ENV NEXT_OUTPUT_MODE=standalone
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm build
+RUN NODE_OPTIONS=--max-old-space-size=4096 pnpm build
 
-# ── Stage 3: Production runner ────────────────────────────────────────────────
-FROM node:22-alpine AS runner
+# ── Stage 2: Production runner ────────────────────────────────────────────────
+FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
