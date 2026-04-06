@@ -1,3 +1,10 @@
+## [1.1.12](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.11...v1.1.12) (2026-04-06)
+
+
+### Bug Fixes
+
+* prevent concurrent docker builds ([81f5075](https://github.com/maxgfr/db-schema-viewer/commit/81f50755106db17441aa13dbc7ff5084211e49c1))
+
 ## [1.1.11](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.10...v1.1.11) (2026-04-06)
 
 
