@@ -19,6 +19,12 @@ function HtmlLangUpdater() {
 const LANGUAGES: { value: Locale; label: string; flag: string }[] = [
   { value: "en", label: "English", flag: "EN" },
   { value: "fr", label: "Français", flag: "FR" },
+  { value: "de", label: "Deutsch", flag: "DE" },
+  { value: "it", label: "Italiano", flag: "IT" },
+  { value: "es", label: "Español", flag: "ES" },
+  { value: "zh", label: "中文", flag: "ZH" },
+  { value: "ja", label: "日本語", flag: "JA" },
+  { value: "ru", label: "Русский", flag: "RU" },
 ];
 
 function LanguageToggle() {

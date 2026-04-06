@@ -185,6 +185,9 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
   const handleClear = () => {
     clearAISettings();
     setApiKey("");
+    setCustomEndpoint("");
+    setCustomModel("");
+    setUseCustomEndpoint(false);
     toast.success(t("settings.cleared"));
   };
 
@@ -284,6 +287,40 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
 
             {useCustomEndpoint ? (
               <div className="space-y-3">
+                {/* Preset buttons */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomEndpoint("http://localhost:11434/v1");
+                      if (!customModel.trim()) setCustomModel("llama3.2");
+                    }}
+                    className={`flex-1 rounded-lg border p-2 text-center text-sm font-medium transition-all ${
+                      customEndpoint === "http://localhost:11434/v1"
+                        ? "border-emerald-500 bg-emerald-500/15 text-foreground"
+                        : "border-border bg-accent text-foreground hover:border-emerald-500/50"
+                    }`}
+                  >
+                    <Server className="mx-auto mb-1 h-4 w-4" />
+                    Ollama
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomEndpoint("http://localhost:1234/v1");
+                      if (!customModel.trim()) setCustomModel("lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF");
+                    }}
+                    className={`flex-1 rounded-lg border p-2 text-center text-sm font-medium transition-all ${
+                      customEndpoint === "http://localhost:1234/v1"
+                        ? "border-emerald-500 bg-emerald-500/15 text-foreground"
+                        : "border-border bg-accent text-foreground hover:border-emerald-500/50"
+                    }`}
+                  >
+                    <Server className="mx-auto mb-1 h-4 w-4" />
+                    LM Studio
+                  </button>
+                </div>
+
                 <div>
                   <label className="mb-1 block text-sm text-foreground">{t("settings.apiBaseUrl")}</label>
                   <input

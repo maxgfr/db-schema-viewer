@@ -10,12 +10,18 @@ import {
 } from "react";
 import { en } from "./translations/en";
 import { fr } from "./translations/fr";
+import { de } from "./translations/de";
+import { it } from "./translations/it";
+import { es } from "./translations/es";
+import { zh } from "./translations/zh";
+import { ja } from "./translations/ja";
+import { ru } from "./translations/ru";
 
-export type Locale = "en" | "fr";
+export type Locale = "en" | "fr" | "de" | "it" | "es" | "zh" | "ja" | "ru";
 
 const STORAGE_KEY = "db-schema-viewer-locale";
 
-const allTranslations: Record<Locale, Record<string, string>> = { en, fr };
+const allTranslations: Record<Locale, Record<string, string>> = { en, fr, de, it, es, zh, ja, ru };
 
 let globalLocale: Locale = "en";
 
@@ -23,9 +29,21 @@ function detectLocale(): Locale {
   if (typeof window === "undefined") return "en";
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "en" || stored === "fr") return stored;
+    if (
+      stored === "en" ||
+      stored === "fr" ||
+      stored === "de" ||
+      stored === "it" ||
+      stored === "es" ||
+      stored === "zh" ||
+      stored === "ja" ||
+      stored === "ru"
+    )
+      return stored;
   } catch {}
-  if (navigator.language.startsWith("fr")) return "fr";
+  const validLocales: Locale[] = ["en", "fr", "de", "it", "es", "zh", "ja", "ru"];
+  const browserLang = navigator.language.split("-")[0];
+  if (validLocales.includes(browserLang as Locale)) return browserLang as Locale;
   return "en";
 }
 

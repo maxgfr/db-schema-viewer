@@ -119,4 +119,42 @@ describe("cookie-storage", () => {
     expect(loaded!.model).toBe("gpt-4o");
     expect(loaded!.providerId).toBe("openai");
   });
+
+  it("loads settings with custom endpoint and no API key (Ollama)", () => {
+    const ollamaSettings: AISettings = {
+      apiKey: "",
+      model: "llama3.2",
+      providerId: "openai",
+      customEndpoint: "http://localhost:11434/v1",
+      customModel: "llama3.2",
+    };
+    saveAISettings(ollamaSettings);
+    const loaded = loadAISettings();
+    expect(loaded).not.toBeNull();
+    expect(loaded!.apiKey).toBe("");
+    expect(loaded!.customEndpoint).toBe("http://localhost:11434/v1");
+    expect(loaded!.customModel).toBe("llama3.2");
+  });
+
+  it("clears custom endpoint cookies when saving without custom endpoint", () => {
+    // First save with custom endpoint
+    saveAISettings({
+      apiKey: "",
+      model: "llama3.2",
+      providerId: "openai",
+      customEndpoint: "http://localhost:11434/v1",
+      customModel: "llama3.2",
+    });
+    // Then save without custom endpoint
+    saveAISettings({
+      apiKey: "sk-key",
+      model: "gpt-4o",
+      providerId: "openai",
+    });
+    expect(Cookies.remove).toHaveBeenCalledWith("db-sv-custom-endpoint");
+    expect(Cookies.remove).toHaveBeenCalledWith("db-sv-custom-model");
+    const loaded = loadAISettings();
+    expect(loaded!.customEndpoint).toBeUndefined();
+    expect(loaded!.customModel).toBeUndefined();
+  });
 });

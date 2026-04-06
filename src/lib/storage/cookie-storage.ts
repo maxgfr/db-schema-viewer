@@ -29,9 +29,13 @@ export function saveAISettings(settings: AISettings): void {
   }
   if (settings.customEndpoint) {
     Cookies.set(`${PREFIX}custom-endpoint`, settings.customEndpoint, COOKIE_OPTIONS);
+  } else {
+    Cookies.remove(`${PREFIX}custom-endpoint`);
   }
   if (settings.customModel) {
     Cookies.set(`${PREFIX}custom-model`, settings.customModel, COOKIE_OPTIONS);
+  } else {
+    Cookies.remove(`${PREFIX}custom-model`);
   }
   if (settings.language) {
     Cookies.set(`${PREFIX}language`, settings.language, COOKIE_OPTIONS);
@@ -42,8 +46,10 @@ export function saveAISettings(settings: AISettings): void {
 
 export function loadAISettings(): AISettings | null {
   if (typeof window === "undefined") return null;
-  const apiKey = Cookies.get(`${PREFIX}api-key`);
-  if (!apiKey) return null;
+  const apiKey = Cookies.get(`${PREFIX}api-key`) ?? "";
+  const customEndpoint = Cookies.get(`${PREFIX}custom-endpoint`);
+  // Settings exist if we have an API key OR a custom endpoint (local Ollama/LM Studio)
+  if (!apiKey && !customEndpoint) return null;
   return {
     apiKey,
     model: Cookies.get(`${PREFIX}model`) ?? "gpt-4o",
@@ -51,7 +57,7 @@ export function loadAISettings(): AISettings | null {
     providerName: Cookies.get(`${PREFIX}provider-name`),
     providerNpm: Cookies.get(`${PREFIX}provider-npm`),
     providerApi: Cookies.get(`${PREFIX}provider-api`),
-    customEndpoint: Cookies.get(`${PREFIX}custom-endpoint`),
+    customEndpoint,
     customModel: Cookies.get(`${PREFIX}custom-model`),
     language: Cookies.get(`${PREFIX}language`),
   };
