@@ -1,3 +1,10 @@
+## [1.1.11](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.10...v1.1.11) (2026-04-06)
+
+
+### Bug Fixes
+
+* Remove pretty-printing from JSON output in fetch-models script ([f20ce35](https://github.com/maxgfr/db-schema-viewer/commit/f20ce351a99b34d136deff7ce342963d16c1684c))
+
 ## [1.1.10](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.9...v1.1.10) (2026-04-06)
 
 

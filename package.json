@@ -1,6 +1,6 @@
 {
 	"name": "db-schema-viewer",
-	"version": "1.1.10",
+	"version": "1.1.11",
 	"private": true,
 	"type": "module",
 	"scripts": {
