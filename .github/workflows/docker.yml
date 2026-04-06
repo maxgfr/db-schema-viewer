@@ -4,6 +4,13 @@ on:
   push:
     branches: [main, master]
     tags: ["v*"]
+  workflow_run:
+    workflows: ["Update models.json daily"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -12,6 +19,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: write
