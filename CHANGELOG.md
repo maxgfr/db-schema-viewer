@@ -1,3 +1,10 @@
+## [1.1.9](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.8...v1.1.9) (2026-04-06)
+
+
+### Bug Fixes
+
+* implement network-first strategy for HTML pages in service worker ([8896890](https://github.com/maxgfr/db-schema-viewer/commit/8896890dcc5e1637d92b5cc491c4f36f2e2a93a5))
+
 ## [1.1.8](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.7...v1.1.8) (2026-04-06)
 
 
