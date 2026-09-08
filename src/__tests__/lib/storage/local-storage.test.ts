@@ -43,6 +43,17 @@ describe("local-storage", () => {
     expect(loadDiagram("nonexistent")).toBeNull();
   });
 
+  it("ignores a corrupt index and recovers diagrams from their records", () => {
+    saveDiagram(testDiagram);
+    localStorage.setItem("db-schema-viewer-diagrams", '{"unexpected":true}');
+    expect(listDiagrams().map((d) => d.id)).toEqual(["test-1"]);
+  });
+
+  it("rejects valid JSON that is not a diagram", () => {
+    localStorage.setItem("db-schema-viewer-diagram-bad", '{"tables":null}');
+    expect(loadDiagram("bad")).toBeNull();
+  });
+
   it("updates existing diagram in index", () => {
     saveDiagram(testDiagram);
     saveDiagram({ ...testDiagram, name: "Updated Name" });

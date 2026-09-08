@@ -14,7 +14,7 @@ Client-side database schema visualizer built with Next.js. Users upload SQL (or 
 - **Charts**: Recharts 3
 - **Sharing**: lz-string (URL compression)
 - **Export**: html-to-image + jspdf (lazy-loaded)
-- **Testing**: Vitest + happy-dom
+- **Testing**: Vitest + happy-dom; Playwright against production static output
 - **Package manager**: pnpm 10
 
 ## Commands
@@ -26,7 +26,10 @@ pnpm build:export     # Explicit static export for GitHub Pages
 pnpm lint             # ESLint on src/
 pnpm typecheck        # TypeScript strict mode check
 pnpm test             # Vitest watch mode
-pnpm test:ci          # Vitest single run (CI)
+pnpm test:ci          # Build toolkit, then run toolkit and web tests
+pnpm test:e2e         # Browser journeys; run pnpm build first
+pnpm benchmark       # Parser, graph and sharing microbenchmarks
+pnpm benchmark:browser # Browser import/filter and dump timings after pnpm build
 pnpm test:coverage    # Vitest with coverage report
 ```
 
@@ -97,16 +100,19 @@ src/
   hooks/
     use-keyboard-shortcuts.ts        # Cmd+I/E/K/S, Cmd+Shift+S, Escape
     use-theme.ts                     # Dark/light theme with localStorage persistence
-  __tests__/                         # Mirrors lib/ structure, 32 test files, 300+ tests
+  __tests__/                         # Web storage, sharing, projects, hooks and export tests
 ```
 
 ## Architecture Decisions
 
 - **Static export** (default): Deployed on GitHub Pages via `output: "export"`. No server needed.
 - **Standalone mode**: Set `NEXT_OUTPUT_MODE=standalone` for Docker deployment with CSP headers.
-- **All parsing is client-side**: node-sql-parser runs in the browser. No server round-trips.
+- **All parsing is client-side**: schema imports, dumps and fake data run in cancellable Web Workers in the web app. Toolkit parsers remain synchronous; browser APIs stay outside the package.
+- **Projects**: `src/lib/project/project.ts` validates the versioned `.dbschema.json` envelope. `useProjectSession` owns autosave, notes and view settings; storage uses one atomic record per project and reads legacy diagrams. Keep credentials, chats and dump rows out of project files.
+- **Filtering**: navigation hides tables without changing the source diagram. Every export uses the full diagram, including image exports.
+- **AI dependencies**: provider SDKs load on demand; only the selected SDK must be installed by library consumers.
 - **AI calls go direct**: Browser → AI provider API. Keys stored in cookies (never sent to our servers).
-- **URL sharing**: Diagram state compressed with lz-string into `?d=` query param. No database.
+- **URL sharing**: Diagram state compressed with lz-string into the `#d=` fragment; optional notes and view settings follow it. No database.
 - **Theme**: CSS class-based (`dark`/`light` on `<html>`), persisted in localStorage.
 
 ## Supported Formats
@@ -129,8 +135,10 @@ src/
 - Tests live in `src/__tests__/lib/` mirroring the `src/lib/` structure
 - Use Vitest with happy-dom environment
 - Import from `@/lib/...` (path alias works in vitest via resolve.alias)
-- DOM-dependent code (image-export, pdf-export) is not unit-tested — needs real browser
-- AI service is not unit-tested — requires SDK mocking
+- Image/PDF downloads are exercised in real browsers; PDF pagination also has a focused jsPDF test.
+- AI service tests mock the SDK; browser tests intercept provider responses. They do not validate live provider availability or response quality.
+- Toolkit parser/export/analysis/data/CLI tests live in `packages/db-schema-toolkit/__tests__/`.
+- Browser journeys in `e2e/` cover Chromium, Firefox, WebKit and mobile WebKit. Match `NEXT_PUBLIC_BASE_PATH` between the build and test commands.
 - Example schema fixtures in `examples/` (Drizzle, Prisma, DBML, TypeORM) are parsed and validated in tests
 
 ### Pre-commit checks
@@ -146,7 +154,7 @@ pnpm build            # Production build — must succeed
 
 ## CI/CD
 
-- **CI** (`.github/workflows/ci.yml`): On push/PR to main → typecheck → lint → test → build
+- **CI** (`.github/workflows/ci.yml`): On push/PR to main → typecheck → lint → tests → static build with base path → browser journeys → standalone build
 - **Deploy** (`.github/workflows/deploy.yml`): On push to main → build static export → deploy to GitHub Pages
 
 ## Docker

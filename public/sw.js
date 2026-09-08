@@ -1,77 +1,54 @@
-// Service Worker for DB Schema Viewer
-// Network-first for HTML pages, cache-first for hashed static assets
+// Cache the visited application shell and immutable assets, scoped to this app.
+const CACHE_PREFIX = "db-schema-viewer-";
+const CACHE_NAME = `${CACHE_PREFIX}v3-${self.registration.scope}`;
+const shellUrl = self.registration.scope;
 
-const CACHE_NAME = "db-schema-viewer-v2";
-
-// Install: activate immediately without pre-caching stale HTML
-self.addEventListener("install", () => {
-  self.skipWaiting();
+self.addEventListener("install", (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const response = await fetch(new Request(shellUrl, { cache: "reload" }));
+    if (!response.ok) throw new Error("Application shell unavailable");
+    const html = await response.clone().text();
+    await cache.put(shellUrl, response);
+    const assets = new Set();
+    for (const match of html.matchAll(/(?:src|href)="([^"<>]+)"/g)) {
+      const url = new URL(match[1].replace(/&amp;/g, "&"), shellUrl);
+      if (url.origin === self.location.origin && url.pathname.includes("/_next/static/")) assets.add(url.href);
+    }
+    await cache.addAll([...assets]);
+    await self.skipWaiting();
+  })());
 });
 
-// Activate: clean old caches and take control immediately
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      )
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME && (!key.includes("http") || key.endsWith(self.registration.scope))).map((key) => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
-// Returns true for static assets that include a content hash in their filename
-// These are safe to cache-first because the URL changes when the content changes
-function isHashedAsset(url) {
-  return /\/_next\/static\//.test(url.pathname);
-}
-
-// Fetch: network-first for navigation/HTML, cache-first for hashed assets
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-
-  // Skip non-GET and cross-origin (AI API calls, etc.)
-  if (event.request.method !== "GET" || url.origin !== self.location.origin) {
-    return;
-  }
-
-  // Navigation requests and non-hashed resources: network-first
-  // This ensures users always get the latest HTML on page load
-  if (event.request.mode === "navigate" || !isHashedAsset(url)) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response.ok && response.type === "basic") {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(event.request).then((cached) => {
-            if (cached) return cached;
-            if (event.request.mode === "navigate") {
-              return caches.match("./");
-            }
-            return new Response("Offline", { status: 503 });
-          });
-        })
-    );
-    return;
-  }
-
-  // Hashed static assets (_next/static/...): cache-first
-  // URL contains content hash, so cached version is always correct
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
+  if (event.request.method !== "GET" || url.origin !== self.location.origin || !url.href.startsWith(shellUrl)) return;
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const immutable = url.pathname.includes("/_next/static/");
+    if (immutable) {
+      const cached = await cache.match(event.request);
       if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (response.ok && response.type === "basic") {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      });
-    })
-  );
+    }
+    try {
+      const response = await fetch(event.request);
+      if (response.ok && response.type === "basic") {
+        const write = cache.put(event.request, response.clone()).catch(() => {});
+        event.waitUntil(write);
+      }
+      return response;
+    } catch {
+      return (await cache.match(event.request))
+        ?? (event.request.mode === "navigate" ? await cache.match(shellUrl) : undefined)
+        ?? new Response("Offline", { status: 503 });
+    }
+  })());
 });

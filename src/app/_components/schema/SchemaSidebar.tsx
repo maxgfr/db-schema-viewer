@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { Search, Table, Eye, ChevronDown, ChevronRight, KeyRound, Link, SearchX, ChevronsUpDown, ChevronsDownUp, Hash, FolderOpen } from "lucide-react";
 import type { Diagram } from "db-schema-toolkit";
+import { DEFAULT_FILTERS, type NavigationFilters } from "@/lib/project/project";
 import { useTranslation } from "@/lib/i18n/context";
 
 interface SchemaSidebarProps {
@@ -10,6 +11,10 @@ interface SchemaSidebarProps {
   selectedTableId: string | null;
   onTableSelect: (tableId: string) => void;
   onTableZoom?: (tableId: string) => void;
+  filters: NavigationFilters;
+  onFiltersChange: (filters: NavigationFilters) => void;
+  visibleDiagram: Diagram;
+  onFitResults: () => void;
 }
 
 /** Highlights all occurrences of `term` inside `text` with a <mark>. */
@@ -34,22 +39,16 @@ export function SchemaSidebar({
   diagram,
   selectedTableId,
   onTableSelect,
-  onTableZoom,
+  onTableZoom, filters, onFiltersChange, visibleDiagram, onFitResults,
 }: SchemaSidebarProps) {
   const { t } = useTranslation();
-  const [search, setSearch] = useState("");
+  const search = filters.search;
+  const setSearch = (value: string) => onFiltersChange({ ...filters, search: value });
+  const namespaces = useMemo(() => [...new Set(diagram.tables.map((table) => table.schema ?? ""))].sort(), [diagram.tables]);
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  const filteredTables = useMemo(() => {
-    if (!search.trim()) return diagram.tables;
-    const lower = search.toLowerCase();
-    return diagram.tables.filter(
-      (t) =>
-        t.name.toLowerCase().includes(lower) ||
-        t.fields.some((f) => f.name.toLowerCase().includes(lower))
-    );
-  }, [diagram.tables, search]);
+  const filteredTables = visibleDiagram.tables;
 
   const toggleExpand = useCallback((tableId: string) => {
     setExpandedTables((prev) => {
@@ -101,7 +100,7 @@ export function SchemaSidebar({
   const searchTerm = search.trim();
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-border bg-card">
+    <div className="flex h-full w-48 shrink-0 flex-col sm:w-64 border-r border-border bg-card">
       {/* Search + Expand/Collapse */}
       <div className="border-b border-border p-3">
         <div className="relative">
@@ -115,6 +114,19 @@ export function SchemaSidebar({
             aria-label={t("sidebar.searchAriaLabel")}
           />
         </div>
+        <label className="mt-3 block text-xs text-muted-foreground">
+          {t("navigation.namespace")}
+          <select aria-label={t("navigation.namespace")} value={filters.namespace === null ? "all" : `ns:${filters.namespace}`} onChange={(event) => onFiltersChange({ ...filters, namespace: event.target.value === "all" ? null : event.target.value.slice(3) })} className="mt-1 w-full rounded-md border border-border bg-card p-2 text-foreground">
+            <option value="all">{t("navigation.allNamespaces")}</option>
+            {namespaces.map((name) => <option key={name} value={`ns:${name}`}>{name || t("navigation.defaultNamespace")}</option>)}
+          </select>
+        </label>
+        <div className="mt-2 flex flex-wrap gap-1 text-xs">
+          <button disabled={!selectedTableId} className="rounded-md border border-border px-2 py-1.5 hover:bg-accent disabled:opacity-50" onClick={() => onFiltersChange({ ...DEFAULT_FILTERS, focusTableId: selectedTableId })}>{t("navigation.isolate")}</button>
+          <button disabled={!filteredTables.length} className="rounded-md border border-border px-2 py-1.5 hover:bg-accent disabled:opacity-50" onClick={onFitResults}>{t("navigation.fit")}</button>
+          <button className="rounded-md border border-border px-2 py-1.5 hover:bg-accent" onClick={() => onFiltersChange(DEFAULT_FILTERS)}>{t("navigation.showAll")}</button>
+        </div>
+        <p role="status" className="mt-2 text-xs text-muted-foreground">{t("navigation.visible", { visible: filteredTables.length, total: diagram.tables.length })}</p>
         <div className="mt-2 flex gap-1">
           <button
             onClick={expandAll}
@@ -137,14 +149,14 @@ export function SchemaSidebar({
 
       {/* Table List */}
       <div className="flex-1 overflow-y-auto p-2">
-        {filteredTables.length === 0 && searchTerm && (
+        {filteredTables.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             <SearchX className="h-8 w-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">
               {t("sidebar.noMatch", { term: searchTerm })}
             </p>
             <button
-              onClick={() => setSearch("")}
+              onClick={() => onFiltersChange(DEFAULT_FILTERS)}
               className="text-xs text-indigo-400 hover:underline"
             >
               {t("sidebar.clearSearch")}
@@ -186,6 +198,7 @@ export function SchemaSidebar({
                         onTableSelect(table.id);
                         toggleExpand(table.id);
                       }}
+                      aria-expanded={isExpanded}
                       onDoubleClick={() => onTableZoom?.(table.id)}
                       className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                         isSelected

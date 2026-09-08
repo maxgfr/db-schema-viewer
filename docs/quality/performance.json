@@ -1,0 +1,79 @@
+{
+  "node": "v24.19.0",
+  "platform": "darwin/arm64",
+  "rounds": 15,
+  "results": [
+    {
+      "tables": 100,
+      "relationships": 99,
+      "parseAndLayout": {
+        "medianMs": 4.829,
+        "p95Ms": 5.428
+      },
+      "graphBefore": {
+        "medianMs": 0.108,
+        "p95Ms": 0.116
+      },
+      "graphAfter": {
+        "medianMs": 0.02,
+        "p95Ms": 0.032
+      },
+      "viewUrlBefore": {
+        "medianMs": 4.336,
+        "p95Ms": 4.972
+      },
+      "viewUrlAfter": {
+        "medianMs": 0.01,
+        "p95Ms": 0.014
+      }
+    },
+    {
+      "tables": 500,
+      "relationships": 499,
+      "parseAndLayout": {
+        "medianMs": 21.192,
+        "p95Ms": 23.129
+      },
+      "graphBefore": {
+        "medianMs": 2.6,
+        "p95Ms": 2.709
+      },
+      "graphAfter": {
+        "medianMs": 0.072,
+        "p95Ms": 0.094
+      },
+      "viewUrlBefore": {
+        "medianMs": 24.88,
+        "p95Ms": 34.375
+      },
+      "viewUrlAfter": {
+        "medianMs": 0.004,
+        "p95Ms": 0.005
+      }
+    },
+    {
+      "tables": 1000,
+      "relationships": 999,
+      "parseAndLayout": {
+        "medianMs": 48.055,
+        "p95Ms": 56.24
+      },
+      "graphBefore": {
+        "medianMs": 9.426,
+        "p95Ms": 14.69
+      },
+      "graphAfter": {
+        "medianMs": 0.185,
+        "p95Ms": 0.796
+      },
+      "viewUrlBefore": {
+        "medianMs": 57.562,
+        "p95Ms": 67.505
+      },
+      "viewUrlAfter": {
+        "medianMs": 0.004,
+        "p95Ms": 0.004
+      }
+    }
+  ]
+}

@@ -103,6 +103,15 @@ describe("getStateFromUrl", () => {
     window.location.hash = "#d=garbage-data";
     expect(getStateFromUrl()).toBeNull();
   });
+
+  it("returns null for malformed URI escapes", () => {
+    window.location.hash = "#d=%ZZ";
+    expect(getStateFromUrl()).toBeNull();
+  });
+
+  it("omits empty view settings", () => {
+    expect(generateShareUrl(sampleDiagram, [], {})).not.toContain("&v=");
+  });
 });
 
 describe("view settings in shared URL", () => {

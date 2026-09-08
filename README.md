@@ -3,9 +3,9 @@
 [![CI](https://github.com/maxgfr/db-schema-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/maxgfr/db-schema-viewer/actions/workflows/ci.yml)
 [![Deploy](https://github.com/maxgfr/db-schema-viewer/actions/workflows/deploy.yml/badge.svg)](https://github.com/maxgfr/db-schema-viewer/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-616%20passing-brightgreen)](https://github.com/maxgfr/db-schema-viewer/actions)
+[![Tests](https://img.shields.io/badge/tests-automated-brightgreen)](https://github.com/maxgfr/db-schema-viewer/actions)
 
-> **100% client-side** database schema visualizer. Upload SQL, Drizzle, Prisma, TypeORM, Sequelize, MikroORM, Kysely, or DBML schemas, visualize interactive ER diagrams, analyze with AI, and export to 10 formats. Your data never leaves your browser.
+> **100% client-side** database schema visualizer. Upload SQL, Drizzle, Prisma, TypeORM, Sequelize, MikroORM, Kysely, or DBML schemas, visualize interactive ER diagrams, analyze with AI, and export to 10 formats. Parsing and visualization stay in your browser; optional AI requests send the relevant schema or data context directly to your chosen provider.
 
 **[Live Demo](https://maxgfr.github.io/db-schema-viewer/)**
 
@@ -13,7 +13,7 @@
 
 ## Philosophy
 
-- **Everything runs locally** — no backend, no data transmission, no account. API keys in cookies, diagrams in localStorage.
+- **Local parsing and visualization** — no application backend or account. AI features call the configured provider directly. API keys in cookies, diagrams in localStorage.
 - **Simple UI** — upload a schema, see a diagram. Primary keys, foreign keys, relations (1:1, 1:N, N:M) visible at a glance.
 - **Schema analysis, not schema editing** — the tool is a *viewer* and *analyzer*, not a full database designer.
 - **Multi-format input** — SQL (9 dialects), Drizzle ORM, Prisma, TypeORM, Sequelize, MikroORM, Kysely, DBML.
@@ -76,7 +76,7 @@ Weighted pattern matching detects the database type from SQL syntax:
 - **Report export** — Download challenge results as JSON or Markdown
 - **Review by category** — Filter issues by severity (critical/warning/info) and category (naming, security, performance...)
 - **Multi-provider** — OpenAI, Anthropic, Google Gemini, Mistral, or any OpenAI-compatible endpoint
-- **Secure** — API keys stored in cookies (365d, secure, sameSite strict), never sent to our servers
+- **Secure** — API keys stored in cookies (30d, secure outside localhost, sameSite strict), never sent to our servers
 
 ### Export
 
@@ -97,7 +97,17 @@ Weighted pattern matching detects the database type from SQL syntax:
 ### Sharing
 - Compress schema to URL via lz-string (like Excalidraw)
 - `#d=<encoded>` hash fragment, no server needed
-- Size warning when URL exceeds 8KB
+- Size warning when the complete URL exceeds 100,000 characters
+- View, notes and navigation filters travel with the link
+
+### Projects and large schemas
+
+- **Recent projects** on the home page, ordered by last modification, with open/delete actions.
+- **Autosave** includes the schema, original source, notes and view. The toolbar shows saving, saved or an error with a retry action. Storage failure keeps the open project in memory.
+- **Project files**: Export → Project file downloads `.dbschema.json`. Import it with Auto-Detect to restore the workspace. Credentials, conversations and dump rows are excluded.
+- **Navigation**: search table/field names, filter by namespace, isolate a selected table and its direct neighbours, fit results, or show all. Exports contain the complete schema even when the canvas is filtered.
+- **Background imports**: schema parsing, dump parsing and fake-data generation run in workers. Closing a schema import cancels it; newer requests supersede older ones.
+- Legacy local diagrams and shared links remain readable. Project files have an explicit format/version; unsupported versions are rejected without replacing the open project.
 
 ### Data Exploration
 - Upload small SQL dumps (INSERT INTO statements, 5MB max) or generate fake data from your schema
@@ -122,15 +132,17 @@ Weighted pattern matching detects the database type from SQL syntax:
 ### PWA
 - Installable as a desktop/mobile app
 - Service worker for offline access to the application shell
-- Cache-first strategy with background updates for static assets
+- Immutable assets are served from cache; other visited resources use the network with an offline fallback
 
 ### i18n
-- **English** and **French** language support
+- English, French, German, Italian, Spanish, Chinese, Japanese and Russian
 - Language toggle in the editor toolbar (Globe icon)
 - Browser language auto-detection with localStorage persistence
 - 400+ translation keys covering all UI surfaces
 
 ---
+
+See [the verification report](docs/quality/validation.md) for coverage, reproducible measurements and remaining limitations.
 
 ## Tech Stack
 
@@ -145,7 +157,7 @@ Weighted pattern matching detects the database type from SQL syntax:
 | Charts | Recharts 3 |
 | Sharing | lz-string |
 | Export | html-to-image + jsPDF |
-| Testing | Vitest + happy-dom (616 tests) |
+| Testing | Vitest + happy-dom + Playwright |
 | CI/CD | GitHub Actions → GitHub Pages |
 | Package Manager | pnpm 10 |
 
@@ -211,7 +223,10 @@ pnpm dev        # http://localhost:3000
 
 ```bash
 pnpm test       # Run tests in watch mode
-pnpm test:ci    # Run tests once (CI)
+pnpm test:ci    # Build package and run unit/integration tests
+pnpm build && pnpm test:e2e  # Browser journeys on the production export
+node scripts/benchmark.mjs  # Engine, graph and URL benchmarks
+node scripts/browser-benchmark.mjs  # Browser load/filter and 5 MB dump checks
 pnpm lint       # ESLint
 pnpm typecheck  # TypeScript
 pnpm build:export  # Static build for GitHub Pages

@@ -133,10 +133,10 @@ function processChartData(
         y = vals.length;
         break;
       case "min":
-        y = Math.min(...vals);
+        y = vals.reduce((a, b) => Math.min(a, b), Infinity);
         break;
       case "max":
-        y = Math.max(...vals);
+        y = vals.reduce((a, b) => Math.max(a, b), -Infinity);
         break;
       default:
         y = vals[0] ?? 0;
@@ -299,6 +299,14 @@ export function DataCharts({ table }: DataChartsProps) {
     }
   }, [table.name, t]);
 
+  const suggestionsController = useRef<AbortController | null>(null);
+  const customController = useRef<AbortController | null>(null);
+  useEffect(() => {
+    setIsLoadingAI(false);
+    setIsLoadingCustom(false);
+    return () => { suggestionsController.current?.abort(); customController.current?.abort(); };
+  }, [table]);
+
   const handleSuggestCharts = useCallback(async () => {
     const settings = loadAISettings();
     if (!settings || (!settings.apiKey && !settings.customEndpoint)) {
@@ -308,9 +316,13 @@ export function DataCharts({ table }: DataChartsProps) {
       return;
     }
 
+    suggestionsController.current?.abort();
+    const controller = new AbortController();
+    suggestionsController.current = controller;
     setIsLoadingAI(true);
     try {
-      const suggestions = await suggestCharts(settings, table, columnTypes);
+      const suggestions = await suggestCharts(settings, table, columnTypes, controller.signal);
+      if (controller.signal.aborted) return;
       if (suggestions.length === 0) {
         toast.warning(t("charts.noSuggestions"));
       } else {
@@ -318,11 +330,11 @@ export function DataCharts({ table }: DataChartsProps) {
         toast.success(t("charts.suggestionsGenerated", { count: suggestions.length }));
       }
     } catch (err) {
-      toast.error(
+      if (!controller.signal.aborted) toast.error(
         err instanceof Error ? err.message : t("charts.failedToGenerateSuggestions"),
       );
     } finally {
-      setIsLoadingAI(false);
+      if (suggestionsController.current === controller) setIsLoadingAI(false);
     }
   }, [table, columnTypes, update, t]);
 
@@ -337,6 +349,9 @@ export function DataCharts({ table }: DataChartsProps) {
       return;
     }
 
+    customController.current?.abort();
+    const controller = new AbortController();
+    customController.current = controller;
     setIsLoadingCustom(true);
     try {
       const chart = await generateCustomChart(
@@ -344,7 +359,9 @@ export function DataCharts({ table }: DataChartsProps) {
         table,
         columnTypes,
         customPrompt.trim(),
+        controller.signal,
       );
+      if (controller.signal.aborted) return;
       if (!chart) {
         toast.warning(t("charts.couldNotGenerate"));
       } else {
@@ -355,11 +372,11 @@ export function DataCharts({ table }: DataChartsProps) {
         toast.success(t("charts.chartCreated", { title: chart.title }));
       }
     } catch (err) {
-      toast.error(
+      if (!controller.signal.aborted) toast.error(
         err instanceof Error ? err.message : t("charts.couldNotGenerate"),
       );
     } finally {
-      setIsLoadingCustom(false);
+      if (customController.current === controller) setIsLoadingCustom(false);
     }
   }, [customPrompt, table, columnTypes, update, t]);
 
@@ -553,8 +570,8 @@ export function DataCharts({ table }: DataChartsProps) {
                     .filter((v): v is number => typeof v === "number");
                   if (values.length === 0) return null;
 
-                  const min = Math.min(...values);
-                  const max = Math.max(...values);
+                  const min = values.reduce((a, b) => Math.min(a, b), Infinity);
+                  const max = values.reduce((a, b) => Math.max(a, b), -Infinity);
                   const bucketCount = Math.min(15, Math.max(5, Math.ceil(Math.sqrt(values.length))));
                   const range = max - min || 1;
                   const bucketSize = range / bucketCount;

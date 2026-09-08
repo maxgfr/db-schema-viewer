@@ -2,15 +2,16 @@ import lzString from "lz-string";
 import type { Diagram } from "db-schema-toolkit";
 import { encodeState, decodeState } from "db-schema-toolkit";
 import type { SharedAnnotation } from "db-schema-toolkit";
+import { z } from "zod";
+import { AnnotationSchema, ViewSettingsSchema, type SharedViewSettings } from "@/lib/project/project";
 
 export { encodeState, decodeState };
 export type { SharedAnnotation };
 
-export interface SharedViewSettings {
-  erdNotation?: "crowsfoot" | "uml" | "chen";
-  coloredEdges?: boolean;
-  viewport?: { x: number; y: number; zoom: number };
-}
+export type { SharedViewSettings };
+
+// Diagrams are immutable React state. View-only updates reuse their compression.
+const compressedDiagrams = new WeakMap<Diagram, string>();
 
 /**
  * Build a shareable URL with the diagram compressed in the `#d=` hash fragment.
@@ -22,7 +23,11 @@ export function generateShareUrl(
   annotations?: SharedAnnotation[],
   viewSettings?: SharedViewSettings,
 ): string {
-  const compressed = encodeState(diagram);
+  let compressed = compressedDiagrams.get(diagram);
+  if (!compressed) {
+    compressed = encodeState(diagram);
+    compressedDiagrams.set(diagram, compressed);
+  }
   const base = typeof window !== "undefined"
     ? window.location.origin + window.location.pathname
     : "";
@@ -32,7 +37,7 @@ export function generateShareUrl(
     const notesCompressed = lzString.compressToEncodedURIComponent(notesJson);
     url += `&n=${notesCompressed}`;
   }
-  if (viewSettings && (viewSettings.erdNotation !== "crowsfoot" || viewSettings.coloredEdges || viewSettings.viewport)) {
+  if (viewSettings && ((viewSettings.erdNotation && viewSettings.erdNotation !== "crowsfoot") || viewSettings.coloredEdges || viewSettings.viewport || viewSettings.filters)) {
     const viewJson = JSON.stringify(viewSettings);
     const viewCompressed = lzString.compressToEncodedURIComponent(viewJson);
     url += `&v=${viewCompressed}`;
@@ -52,7 +57,12 @@ export function getStateFromUrl(): {
   const hash = window.location.hash;
   const dMatch = hash.match(/#d=([^&]+)/);
   if (!dMatch?.[1]) return null;
-  const diagram = decodeState(decodeURIComponent(dMatch[1]));
+  let diagram: Diagram | null;
+  try {
+    diagram = decodeState(decodeURIComponent(dMatch[1]));
+  } catch {
+    return null;
+  }
   if (!diagram) return null;
 
   let annotations: SharedAnnotation[] = [];
@@ -60,7 +70,7 @@ export function getStateFromUrl(): {
   if (nMatch?.[1]) {
     try {
       const json = lzString.decompressFromEncodedURIComponent(decodeURIComponent(nMatch[1]));
-      if (json) annotations = JSON.parse(json);
+      if (json) annotations = z.array(AnnotationSchema).parse(JSON.parse(json));
     } catch {}
   }
 
@@ -69,7 +79,7 @@ export function getStateFromUrl(): {
   if (vMatch?.[1]) {
     try {
       const json = lzString.decompressFromEncodedURIComponent(decodeURIComponent(vMatch[1]));
-      if (json) viewSettings = JSON.parse(json);
+      if (json) viewSettings = ViewSettingsSchema.parse(JSON.parse(json));
     } catch {}
   }
 

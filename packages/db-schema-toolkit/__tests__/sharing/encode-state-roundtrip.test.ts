@@ -65,6 +65,11 @@ function makeLargeDiagram(tableCount: number): Diagram {
 }
 
 describe("encode-state roundtrip with large schemas", () => {
+  it("preserves an empty string default", () => {
+    const diagram = makeLargeDiagram(1);
+    diagram.tables[0]!.fields[1]!.default = "";
+    expect(decodeState(encodeState(diagram))?.tables[0]?.fields[1]?.default).toBe("");
+  });
   it("round-trips a schema with 50+ tables", () => {
     const diagram = makeLargeDiagram(55);
     const encoded = encodeState(diagram);

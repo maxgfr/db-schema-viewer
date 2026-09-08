@@ -1,8 +1,4 @@
 import { streamText, generateObject, type LanguageModel } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createMistral } from "@ai-sdk/mistral";
 import { z } from "zod";
 import type { AISettings } from "./types";
 import type { Diagram } from "../domain";
@@ -36,12 +32,13 @@ const ChallengeResponseSchema = z.object({
 });
 export type ChallengeResponse = z.infer<typeof ChallengeResponseSchema>;
 
-function getModel(settings: AISettings): LanguageModel {
+async function getModel(settings: AISettings): Promise<LanguageModel> {
   const modelName = settings.customModel ?? settings.model;
 
   if (settings.customEndpoint) {
     // Custom/local endpoints (Ollama, LM Studio) only support Chat Completions API,
     // not the OpenAI Responses API — use .chat() explicitly.
+    const { createOpenAI } = await import("@ai-sdk/openai");
     const openai = createOpenAI({
       apiKey: settings.apiKey || "",
       baseURL: settings.customEndpoint,
@@ -51,6 +48,7 @@ function getModel(settings: AISettings): LanguageModel {
 
   switch (settings.providerNpm) {
     case "@ai-sdk/anthropic": {
+      const { createAnthropic } = await import("@ai-sdk/anthropic");
       const anthropic = createAnthropic({
         apiKey: settings.apiKey,
         headers: { "anthropic-dangerous-direct-browser-access": "true" },
@@ -58,14 +56,17 @@ function getModel(settings: AISettings): LanguageModel {
       return anthropic(modelName);
     }
     case "@ai-sdk/google": {
+      const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
       const google = createGoogleGenerativeAI({ apiKey: settings.apiKey });
       return google(modelName);
     }
     case "@ai-sdk/mistral": {
+      const { createMistral } = await import("@ai-sdk/mistral");
       const mistral = createMistral({ apiKey: settings.apiKey });
       return mistral(modelName);
     }
     default: {
+      const { createOpenAI } = await import("@ai-sdk/openai");
       // Other OpenAI-compatible providers may not support the Responses API,
       // so use .chat() (Chat Completions) which is universally supported.
       const openai = createOpenAI({
@@ -91,7 +92,7 @@ export async function querySchema(
   history: Array<{ prompt: string; response: string }> = [],
   abortSignal?: AbortSignal
 ): Promise<void> {
-  const model = getModel(settings);
+  const model = await getModel(settings);
   const schemaContext = schemaToPromptContext(diagram);
 
   const historyText = history
@@ -112,9 +113,11 @@ ${schemaContext}`,
 
   let fullText = "";
   for await (const textPart of result.textStream) {
+    abortSignal?.throwIfAborted();
     fullText += textPart;
     onChunk(textPart);
   }
+  abortSignal?.throwIfAborted();
   onComplete(fullText);
 }
 
@@ -154,8 +157,8 @@ function summarizeTable(table: ParsedDumpTable, columnTypes: Record<string, stri
     if (type === "number") {
       const nums = values.filter((v): v is number => typeof v === "number");
       if (nums.length > 0) {
-        const min = Math.min(...nums);
-        const max = Math.max(...nums);
+        const min = nums.reduce((a, b) => Math.min(a, b), Infinity);
+        const max = nums.reduce((a, b) => Math.max(a, b), -Infinity);
         const avg = Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 100) / 100;
         lines.push(`  - ${col} (${type}): ${uniqueCount} unique, min=${min}, max=${max}, avg=${avg}`);
       } else {
@@ -199,18 +202,22 @@ export async function suggestCharts(
   settings: AISettings,
   table: ParsedDumpTable,
   columnTypes: Record<string, string>,
+  abortSignal?: AbortSignal,
 ): Promise<ChartSuggestion[]> {
-  const model = getModel(settings);
+  const model = await getModel(settings);
   const summary = summarizeTable(table, columnTypes);
 
+  abortSignal?.throwIfAborted();
   const { object } = await generateObject({
     model,
+    abortSignal,
     schema: ChartSuggestionsResponseSchema,
     system: CHART_SYSTEM_PROMPT,
     prompt: `Analyze this dataset and suggest 2-4 insightful charts:\n\n${summary}`,
     temperature: 0.5,
   });
 
+  abortSignal?.throwIfAborted();
   // Validate that suggested columns actually exist
   return object.suggestions.filter(
     (s) => table.columns.includes(s.xColumn) && table.columns.includes(s.yColumn)
@@ -222,20 +229,25 @@ export async function generateCustomChart(
   table: ParsedDumpTable,
   columnTypes: Record<string, string>,
   userPrompt: string,
+  abortSignal?: AbortSignal,
 ): Promise<ChartSuggestion | null> {
-  const model = getModel(settings);
+  const model = await getModel(settings);
   const summary = summarizeTable(table, columnTypes);
 
+  abortSignal?.throwIfAborted();
   const { object } = await generateObject({
     model,
+    abortSignal,
     schema: SingleChartResponseSchema,
     system: CHART_SYSTEM_PROMPT,
     prompt: `User request: "${userPrompt}"\n\nDataset:\n${summary}\n\nCreate a single chart matching the user's request. If the request is impossible with the available data, set chart to null.`,
     temperature: 0.5,
   });
 
+  abortSignal?.throwIfAborted();
   if (!object.chart) return null;
 
+  abortSignal?.throwIfAborted();
   // Validate columns exist
   if (!table.columns.includes(object.chart.xColumn) || !table.columns.includes(object.chart.yColumn)) {
     return null;
@@ -253,7 +265,7 @@ export async function queryData(
   history: Array<{ prompt: string; response: string }> = [],
   abortSignal?: AbortSignal
 ): Promise<void> {
-  const model = getModel(settings);
+  const model = await getModel(settings);
 
   const tableSummaries = tables.map((table) => {
     const columnTypes = inferColumnTypes(table.columns, table.rows);
@@ -291,21 +303,26 @@ ${dataContext}`,
 
   let fullText = "";
   for await (const textPart of result.textStream) {
+    abortSignal?.throwIfAborted();
     fullText += textPart;
     onChunk(textPart);
   }
+  abortSignal?.throwIfAborted();
   onComplete(fullText);
 }
 
 export async function challengeSchema(
   settings: AISettings,
-  diagram: Diagram
+  diagram: Diagram,
+  abortSignal?: AbortSignal,
 ): Promise<ChallengeResponse> {
-  const model = getModel(settings);
+  const model = await getModel(settings);
   const schemaContext = schemaToPromptContext(diagram);
 
+  abortSignal?.throwIfAborted();
   const { object } = await generateObject({
     model,
+    abortSignal,
     schema: ChallengeResponseSchema,
     system: `You are a senior database architect performing a thorough review of a database schema. Be constructive but honest. Look for issues in naming conventions, normalization, missing indexes, relationship design, type choices, performance concerns, and security considerations.
 ${languageInstruction(settings)}`,
@@ -313,5 +330,6 @@ ${languageInstruction(settings)}`,
     temperature: 0.5,
   });
 
+  abortSignal?.throwIfAborted();
   return object;
 }

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { X, Upload, Plus, Minus, RefreshCw, ArrowRight, Brain, Loader2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/context";
 import type { Diagram } from "db-schema-toolkit";
 import { diffSchemas, type SchemaDiff, type TableDiff, type FieldDiff } from "db-schema-toolkit/analysis";
-import { parseSchemaFile } from "db-schema-toolkit";
+import { parseSchemaInput } from "@/lib/parsing/parse-input";
 import { loadAISettings } from "@/lib/storage/cookie-storage";
 import { querySchema } from "db-schema-toolkit/ai";
 import { MarkdownContent } from "../shared/MarkdownContent";
@@ -101,24 +101,10 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const newDiagramRef = useRef<Diagram | null>(null);
-
-  const handleCompare = useCallback(
-    (content: string, fileName?: string) => {
-      try {
-        const newDiagram = parseSchemaFile(content, fileName);
-        newDiagramRef.current = newDiagram;
-        const result = diffSchemas(currentDiagram, newDiagram);
-        setDiff(result);
-        setAiAnalysis("");
-        toast.success(result.summary);
-      } catch (err) {
-        toast.error(t("diff.failedToParse"), {
-          description: err instanceof Error ? err.message : t("common.unknownError"),
-        });
-      }
-    },
-    [currentDiagram, t]
-  );
+  const compareController = useRef<AbortController | null>(null);
+  const aiController = useRef<AbortController | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
+  useEffect(() => () => { compareController.current?.abort(); aiController.current?.abort(); }, []);
 
   const handleAIAnalysis = useCallback(async () => {
     if (!diff || !newDiagramRef.current) return;
@@ -130,6 +116,9 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
       return;
     }
 
+    aiController.current?.abort();
+    const controller = new AbortController();
+    aiController.current = controller;
     setIsAnalyzing(true);
     setAiAnalysis("");
 
@@ -151,29 +140,38 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
         settings,
         currentDiagram,
         `I'm comparing two versions of my schema. Here is the diff:\n\n${diffSummary}\n\nPlease:\n1. Evaluate if this migration is safe\n2. Identify potential data loss risks\n3. Suggest the migration order\n4. Flag any breaking changes`,
-        (chunk) => setAiAnalysis((prev) => prev + chunk),
+        (chunk) => { if (!controller.signal.aborted) setAiAnalysis((prev) => prev + chunk); },
         () => setIsAnalyzing(false),
+        [],
+        controller.signal,
       );
     } catch {
       setIsAnalyzing(false);
-      toast.error(t("diff.aiAnalysisFailed"));
+      if (!controller.signal.aborted) toast.error(t("diff.aiAnalysisFailed"));
     }
   }, [diff, currentDiagram, t]);
 
-  const handleFile = useCallback(
-    (file: File) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        if (content) handleCompare(content, file.name);
-      };
-      reader.onerror = () => {
-        toast.error(t("common.failedToReadFile"));
-      };
-      reader.readAsText(file);
-    },
-    [handleCompare, t]
-  );
+  const handleFile = useCallback(async (file: File) => {
+    compareController.current?.abort();
+    aiController.current?.abort();
+    setIsAnalyzing(false);
+    const controller = new AbortController();
+    compareController.current = controller;
+    setIsComparing(true);
+    try {
+      const content = await file.text();
+      controller.signal.throwIfAborted();
+      const project = await parseSchemaInput(content, file.name, controller.signal);
+      controller.signal.throwIfAborted();
+      newDiagramRef.current = project.diagram;
+      const result = diffSchemas(currentDiagram, project.diagram);
+      setDiff(result);
+      setAiAnalysis("");
+      toast.success(result.summary);
+    } catch (error) {
+      if (!controller.signal.aborted) toast.error(t("diff.failedToParse"), { description: error instanceof Error ? error.message : undefined });
+    } finally { if (compareController.current === controller) setIsComparing(false); }
+  }, [currentDiagram, t]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -213,6 +211,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {isComparing && <p role="status">{t("project.importing")}</p>}
             {!diff ? (
               <>
                 <p className="text-sm text-muted-foreground">
@@ -242,7 +241,7 @@ export function SchemaDiffPanel({ currentDiagram, onClose }: SchemaDiffPanelProp
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".sql,.txt,.ts,.js,.prisma,.dbml"
+                    accept=".sql,.txt,.ts,.js,.prisma,.dbml,.json"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];

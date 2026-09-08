@@ -78,7 +78,7 @@ function saveChallengeEntry(entry: ChallengeHistoryEntry) {
   history.push(entry);
   // Keep last 20 entries
   const trimmed = history.slice(-20);
-  localStorage.setItem(CHALLENGE_HISTORY_KEY, JSON.stringify(trimmed));
+  try { localStorage.setItem(CHALLENGE_HISTORY_KEY, JSON.stringify(trimmed)); } catch {}
 }
 
 const QUICK_ACTIONS = [
@@ -105,6 +105,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamingTextRef = useRef("");
+  useEffect(() => () => abortControllerRef.current?.abort(), []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -117,7 +118,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
   const handleCopyMessage = useCallback((content: string) => {
     navigator.clipboard.writeText(content).then(() => {
       toast.success(t("common.copiedToClipboard"));
-    });
+    }).catch(() => toast.error(t("project.clipboardError")));
   }, [t]);
 
   const handleStop = useCallback(() => {
@@ -223,7 +224,10 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
     setChallengeResult(null);
 
     try {
-      const result = await challengeSchema(settings, diagram);
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const result = await challengeSchema(settings, diagram, controller.signal);
+      if (controller.signal.aborted) return;
       setChallengeResult(result);
       const entry: ChallengeHistoryEntry = {
         score: result.overallScore,
@@ -234,7 +238,7 @@ export function AIPanel({ diagram, onClose, visible = true }: AIPanelProps) {
       saveChallengeEntry(entry);
       setChallengeHistory(loadChallengeHistory());
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("ai.challengeFailed"));
+      if ((err as Error)?.name !== "AbortError") toast.error(err instanceof Error ? err.message : t("ai.challengeFailed"));
     } finally {
       setIsLoading(false);
     }

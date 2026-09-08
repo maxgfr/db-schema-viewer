@@ -61,5 +61,28 @@ jobs:
       - name: Test
         run: pnpm run test:ci
 
-      - name: Build
+      - name: Build static site with deployment base path
         run: pnpm run build
+        env:
+          NEXT_PUBLIC_BASE_PATH: /db-schema-viewer
+
+      - name: Install test browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+
+      - name: Browser journeys
+        run: pnpm test:e2e
+        env:
+          NEXT_PUBLIC_BASE_PATH: /db-schema-viewer
+
+      - name: Upload browser failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failures
+          path: test-results/
+          retention-days: 7
+
+      - name: Build standalone
+        run: pnpm exec next build
+        env:
+          NEXT_OUTPUT_MODE: standalone

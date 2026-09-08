@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useCallback } from "react";
+import { memo, useState } from "react";
 import { type NodeProps } from "@xyflow/react";
 import { X } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/context";
@@ -35,14 +35,6 @@ function StickyNoteNodeComponent({ id, data }: NodeProps) {
   const [showColors, setShowColors] = useState(false);
   const colorClasses = getColorClasses(color);
 
-  const handleBlur = useCallback(
-    (e: React.FocusEvent<HTMLTextAreaElement>) => {
-      setIsEditing(false);
-      onTextChange(id, e.target.value);
-    },
-    [id, onTextChange],
-  );
-
   return (
     <div
       className={`group relative min-w-[140px] max-w-[220px] rounded-lg border-2 ${colorClasses} p-3 shadow-lg`}
@@ -76,7 +68,8 @@ function StickyNoteNodeComponent({ id, data }: NodeProps) {
         <textarea
           autoFocus
           defaultValue={text}
-          onBlur={handleBlur}
+          onChange={(event) => onTextChange(id, event.target.value)}
+          onBlur={() => setIsEditing(false)}
           onKeyDown={(e) => {
             if (e.key === "Escape") e.currentTarget.blur();
           }}

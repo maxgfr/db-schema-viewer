@@ -202,3 +202,9 @@ When using `--json` or `-f json`, the output follows these structures:
   "summary": "string"
 }
 ```
+
+## Library compatibility and cancellation
+
+The package exposes native ESM entry points and synchronous schema parsers. For AI calls, install `ai` and the SDK for the selected provider; other provider SDKs load only when selected. `querySchema` and `queryData` accept an optional final `AbortSignal` after history. `challengeSchema`, `suggestCharts` and `generateCustomChart` also accept a final signal. Treat `AbortError` as cancellation and retain partial streaming text in the caller if needed.
+
+CLI `parse` output is a `Diagram`. The web viewer's versioned `.dbschema.json` project file also contains annotations and view settings; import that envelope through the web viewer rather than a CLI schema parser.

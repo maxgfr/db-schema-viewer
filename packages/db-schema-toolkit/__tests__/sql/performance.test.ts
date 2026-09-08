@@ -26,7 +26,8 @@ describe("SQL parsing performance", () => {
     const diagram = parseSQLToDiagram(sql);
     const duration = performance.now() - start;
 
-    expect(diagram.tables.length).toBeGreaterThanOrEqual(90);
+    expect(diagram.tables).toHaveLength(100);
+    expect(diagram.relationships).toHaveLength(99);
     expect(duration).toBeLessThan(2000);
   });
 
@@ -36,7 +37,8 @@ describe("SQL parsing performance", () => {
     const diagram = parseSQLToDiagram(sql);
     const duration = performance.now() - start;
 
-    expect(diagram.tables.length).toBeGreaterThanOrEqual(400);
+    expect(diagram.tables).toHaveLength(500);
+    expect(diagram.relationships).toHaveLength(499);
     expect(duration).toBeLessThan(10000);
   });
 
@@ -46,7 +48,8 @@ describe("SQL parsing performance", () => {
     const diagram = parseSQLToDiagram(sql);
     const duration = performance.now() - start;
 
-    expect(diagram.tables.length).toBeGreaterThanOrEqual(800);
+    expect(diagram.tables).toHaveLength(1000);
+    expect(diagram.relationships).toHaveLength(999);
     expect(duration).toBeLessThan(30000);
     expect(isFinite(duration)).toBe(true);
   });

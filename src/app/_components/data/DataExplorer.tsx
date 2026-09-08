@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n/context";
@@ -24,8 +24,9 @@ import {
 	Trash2,
 	MessageSquare,
 } from "lucide-react";
-import { parseSQLDump, type ParsedDumpTable } from "db-schema-toolkit/data";
-import { generateFakeData } from "db-schema-toolkit/data";
+import type { ParsedDumpTable } from "db-schema-toolkit/data";
+import { loadData } from "@/lib/parsing/parse-data";
+import { downloadBlob } from "@/lib/export/image-export";
 import { inferColumnTypes, type InferredType } from "db-schema-toolkit/data";
 import type { Diagram } from "db-schema-toolkit";
 import { DataCharts } from "./DataCharts";
@@ -80,6 +81,7 @@ function DataExplorerContent({
 		dataSource,
 		setDataSource,
 		setFakeSeed,
+    fakeSeed,
 		tableViewStates,
 		updateTableViewState,
 		chatHistory,
@@ -88,7 +90,10 @@ function DataExplorerContent({
 	} = useDataExplorer();
 
 	const [isDragOver, setIsDragOver] = useState(false);
-	const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dataController = useRef<AbortController | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  useEffect(() => () => dataController.current?.abort(), []);
 	const PAGE_SIZE = 50;
 	const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
@@ -104,74 +109,53 @@ function DataExplorerContent({
 		[currentTableKey, updateTableViewState],
 	);
 
-	const handleFile = useCallback(
-		(file: File) => {
-			if (file.size > MAX_FILE_SIZE) {
-				toast.error(t("data.fileTooLarge"), {
-					description: t("data.fileTooLargeDesc"),
-				});
-				return;
-			}
-			const reader = new FileReader();
-			reader.onload = (e) => {
-				try {
-					const content = e.target?.result as string;
-					const parsed = parseSQLDump(content);
-					if (parsed.length === 0) {
-						toast.error(t("data.noInsertStatements"));
-						return;
-					}
-					setTables(parsed);
-					setSelectedTable(parsed[0]!.name);
-					setDataSource("upload");
-					toast.success(t("data.loadedTablesWithData", { count: parsed.length }));
-				} catch (err) {
-					toast.error(
-						err instanceof Error ? err.message : t("data.failedToParseDump"),
-					);
-				}
-			};
-			reader.onerror = () => {
-				toast.error(t("common.failedToReadFile"));
-			};
-			reader.readAsText(file);
-		},
-		[setTables, setSelectedTable, setDataSource, t],
-	);
+  const handleFile = useCallback(async (file: File) => {
+    if (file.size > MAX_FILE_SIZE) { toast.error(t("data.fileTooLarge"), { description: t("data.fileTooLargeDesc") }); return; }
+    dataController.current?.abort();
+    const controller = new AbortController();
+    dataController.current = controller;
+    setIsLoadingData(true);
+    try {
+      const content = await file.text();
+      controller.signal.throwIfAborted();
+      const parsed = await loadData({ kind: "dump", content }, controller.signal);
+      if (!parsed.length) { toast.error(t("data.noInsertStatements")); return; }
+      clearAll();
+      setTables(parsed);
+      setSelectedTable(parsed[0]!.name);
+      setDataSource("upload");
+      toast.success(t("data.loadedTablesWithData", { count: parsed.length }));
+    } catch (error) {
+      if (!controller.signal.aborted) toast.error(error instanceof Error ? error.message : t("data.failedToParseDump"));
+    } finally { if (dataController.current === controller) setIsLoadingData(false); }
+  }, [setTables, setSelectedTable, setDataSource, clearAll, t]);
 
-	const handleGenerateFakeData = useCallback(() => {
-		if (!diagram || diagram.tables.length === 0) {
-			toast.error(t("data.noSchemaLoaded"));
-			return;
-		}
-		try {
-			setFakeSeed((prev) => {
-				const nextSeed = prev + 1;
-				const faked = generateFakeData(diagram.tables, diagram.relationships, {
-					seed: nextSeed,
-				});
-				if (faked.length === 0) {
-					toast.error(t("data.couldNotGenerate"));
-					return prev;
-				}
-				setTables(faked);
-				setSelectedTable(faked[0]!.name);
-				setDataSource("fake");
-				toast.success(
-					t("data.generatedFakeData", { count: faked.length, rows: faked[0]!.rows.length }),
-				);
-				return nextSeed;
-			});
-		} catch (err) {
-			toast.error(
-				err instanceof Error ? err.message : t("data.couldNotGenerate"),
-			);
-		}
-	}, [diagram, setFakeSeed, setTables, setSelectedTable, setDataSource, t]);
+  const handleGenerateFakeData = useCallback(async () => {
+    if (!diagram?.tables.length) { toast.error(t("data.noSchemaLoaded")); return; }
+    dataController.current?.abort();
+    const controller = new AbortController();
+    dataController.current = controller;
+    setIsLoadingData(true);
+    const nextSeed = fakeSeed + 1;
+    try {
+      const faked = await loadData({ kind: "generate", diagram, seed: nextSeed }, controller.signal);
+      if (!faked.length) { toast.error(t("data.couldNotGenerate")); return; }
+      clearAll();
+      setFakeSeed(nextSeed);
+      setTables(faked);
+      setSelectedTable(faked[0]!.name);
+      setDataSource("fake");
+      toast.success(t("data.generatedFakeData", { count: faked.length, rows: faked[0]!.rows.length }));
+    } catch (error) {
+      if (!controller.signal.aborted) toast.error(error instanceof Error ? error.message : t("data.couldNotGenerate"));
+    } finally { if (dataController.current === controller) setIsLoadingData(false); }
+  }, [diagram, fakeSeed, setFakeSeed, setTables, setSelectedTable, setDataSource, clearAll, t]);
 
-	const handleClearData = useCallback(() => {
-		clearAll();
-	}, [clearAll]);
+  const handleClearData = useCallback(() => {
+    dataController.current?.abort();
+    setIsLoadingData(false);
+    clearAll();
+  }, [clearAll]);
 
 	const handleDragOver = useCallback((e: React.DragEvent) => {
 		e.preventDefault();
@@ -313,12 +297,13 @@ function DataExplorerContent({
 	}, [currentTable, searchQuery, sortColumn, sortDirection]);
 
 	const totalPages = Math.ceil(filteredRows.length / PAGE_SIZE);
-	const pageRows = filteredRows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+	const safePage = Math.min(page, Math.max(0, totalPages - 1));
+	const pageRows = filteredRows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
 	const handleExportCSV = useCallback(() => {
 		if (!currentTable) return;
 		const escapeCSV = (str: string) => {
-			if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+			if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
 				return `"${str.replace(/"/g, '""')}"`;
 			}
 			return str;
@@ -328,19 +313,13 @@ function DataExplorerContent({
 			currentTable.columns
 				.map((col) => {
 					const val = row[col];
-					if (val === null) return "";
+					if (val === null || val === undefined) return "";
 					return escapeCSV(String(val));
 				})
 				.join(","),
 		);
 		const csv = [header, ...rows].join("\n");
-		const blob = new Blob([csv], { type: "text/csv" });
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement("a");
-		link.href = url;
-		link.download = `${currentTable.name}.csv`;
-		link.click();
-		URL.revokeObjectURL(url);
+    downloadBlob(csv, `${currentTable.name}.csv`, "text/csv;charset=utf-8");
 		toast.success(t("data.csvExported"));
 	}, [currentTable, filteredRows, t]);
 
@@ -397,7 +376,8 @@ function DataExplorerContent({
 					className="animate-scale-in pointer-events-auto flex max-h-[95vh] min-h-[95vh] w-full max-w-[90vw] flex-col rounded-2xl border border-border bg-card shadow-2xl"
 					onClick={(e) => e.stopPropagation()}
 				>
-					{/* Header */}
+					{isLoadingData && <p role="status" className="px-6 py-2 text-sm text-muted-foreground">{t("project.importing")}</p>}
+      {/* Header */}
 					<div className="flex items-center justify-between border-b border-border px-6 py-4">
 						<div className="flex items-center gap-3">
 							<h2 className="text-lg font-bold text-foreground">
@@ -423,6 +403,7 @@ function DataExplorerContent({
 								</span>
 							)}
 						</div>
+            <button className="ml-auto rounded-md px-3 py-2 text-sm hover:bg-accent" onClick={() => fileInputRef.current?.click()}>{t("data.uploadDump")}</button>
 						<button
 							onClick={onClose}
 							className="rounded-lg p-2 hover:bg-accent"
@@ -431,9 +412,20 @@ function DataExplorerContent({
 						</button>
 					</div>
 
-					{tables.length === 0 ? (
+
+									<input
+										ref={fileInputRef}
+										type="file"
+										accept=".sql,.txt"
+										className="hidden"
+										onChange={(e) => {
+											const file = e.target.files?.[0];
+											if (file) handleFile(file);
+										}}
+									/>
+          {tables.length === 0 ? (
 						/* ── Empty state ── */
-						<div className="flex flex-col items-center p-12">
+						<div className="flex flex-col items-center overflow-y-auto p-4 sm:p-12">
 							<h3 className="mb-2 text-xl font-bold text-foreground">
 								{t("data.exploreYourData")}
 							</h3>
@@ -441,7 +433,7 @@ function DataExplorerContent({
 								{t("data.exploreDesc")}
 							</p>
 
-							<div className="flex w-full max-w-2xl gap-6">
+							<div className="flex w-full max-w-2xl flex-col gap-6 sm:flex-row">
 								{/* Upload card */}
 								<div
 									className={`flex flex-1 flex-col items-center rounded-xl border-2 border-dashed p-6 transition-colors ${
@@ -466,16 +458,6 @@ function DataExplorerContent({
 									>
 									{t("data.chooseFile")}
 									</button>
-									<input
-										ref={fileInputRef}
-										type="file"
-										accept=".sql,.txt"
-										className="hidden"
-										onChange={(e) => {
-											const file = e.target.files?.[0];
-											if (file) handleFile(file);
-										}}
-									/>
 									<p className="mt-3 text-xs text-muted-foreground/60">
 										{t("data.max5mb")}
 									</p>
@@ -493,6 +475,7 @@ function DataExplorerContent({
 										</p>
 										<button
 											onClick={handleGenerateFakeData}
+                  disabled={isLoadingData}
 											className="rounded-lg bg-purple-600 px-5 py-2 text-sm font-semibold text-white hover:bg-purple-500"
 										>
 											{t("data.generateData")}
@@ -523,7 +506,7 @@ function DataExplorerContent({
 								</div>
 							)}
 							{/* ── Left sidebar: table list ── */}
-							<div className="flex w-52 shrink-0 flex-col border-r border-border">
+							<div className="flex w-28 shrink-0 flex-col border-r border-border sm:w-52">
 								{/* Sidebar header */}
 								<div className="flex items-center justify-between border-b border-border px-3 py-2">
 									<span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -534,6 +517,7 @@ function DataExplorerContent({
 											<button
 												type="button"
 												onClick={handleGenerateFakeData}
+                  disabled={isLoadingData}
 												className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
 												title={t("data.regenerateData")}
 											>
@@ -595,7 +579,7 @@ function DataExplorerContent({
 							{/* ── Right content ── */}
 							<div className="flex flex-1 flex-col overflow-hidden">
 								{/* Toolbar: view toggle + actions */}
-								<div className="flex items-center gap-2 border-b border-border px-4 py-2">
+								<div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2">
 									{/* View toggle */}
 									<div className="flex rounded-lg border border-border">
 										<button
@@ -918,16 +902,16 @@ function DataExplorerContent({
 											type="button"
 											onClick={() =>
 												updateTableViewState(currentTableKey, (prev) => ({
-													page: Math.max(0, prev.page - 1),
+													page: Math.max(0, Math.min(prev.page, totalPages - 1) - 1),
 												}))
 											}
-											disabled={page === 0}
+											disabled={safePage === 0}
 											className="rounded px-3 py-1 text-sm text-muted-foreground hover:bg-accent disabled:opacity-50"
 										>
 											{t("common.previous")}
 										</button>
 										<span className="text-xs text-muted-foreground">
-											{t("data.pageOf", { current: page + 1, total: totalPages })}
+											{t("data.pageOf", { current: safePage + 1, total: totalPages })}
 										</span>
 										<button
 											type="button"
@@ -936,7 +920,7 @@ function DataExplorerContent({
 													page: Math.min(totalPages - 1, prev.page + 1),
 												}))
 											}
-											disabled={page >= totalPages - 1}
+											disabled={safePage >= totalPages - 1}
 											className="rounded px-3 py-1 text-sm text-muted-foreground hover:bg-accent disabled:opacity-50"
 										>
 											{t("common.next")}

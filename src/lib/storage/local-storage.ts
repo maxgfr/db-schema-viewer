@@ -1,8 +1,7 @@
-import type { Diagram } from "db-schema-toolkit";
+import { Diagram as DiagramSchema, type Diagram } from "db-schema-toolkit";
+import { createProject, ProjectSchema, type Project } from "@/lib/project/project";
 
-const PREFIX = "db-schema-viewer-";
-const DIAGRAMS_KEY = `${PREFIX}diagrams`;
-
+const RECORD_PREFIX = "db-schema-viewer-diagram-";
 export interface StoredDiagram {
   id: string;
   name: string;
@@ -11,56 +10,52 @@ export interface StoredDiagram {
   updatedAt: string;
 }
 
-export function saveDiagram(diagram: Diagram): void {
+/** One atomic record per project; the recent list is derived, never a second write. */
+export function saveProject(project: Project): void {
   if (typeof window === "undefined") return;
-
-  // Save full diagram
-  localStorage.setItem(`${PREFIX}diagram-${diagram.id}`, JSON.stringify(diagram));
-
-  // Update index
-  const index = listDiagrams();
-  const existing = index.findIndex((d) => d.id === diagram.id);
-  const entry: StoredDiagram = {
-    id: diagram.id,
-    name: diagram.name,
-    databaseType: diagram.databaseType,
-    tableCount: diagram.tables.length,
-    updatedAt: new Date().toISOString(),
-  };
-
-  if (existing >= 0) {
-    index[existing] = entry;
-  } else {
-    index.push(entry);
-  }
-
-  localStorage.setItem(DIAGRAMS_KEY, JSON.stringify(index));
+  const validated = ProjectSchema.parse(project);
+  localStorage.setItem(`${RECORD_PREFIX}${validated.diagram.id}`, JSON.stringify(validated));
 }
-
-export function loadDiagram(id: string): Diagram | null {
+export function saveDiagram(diagram: Diagram): void {
+  const existing = loadProject(diagram.id);
+  saveProject({ ...(existing ?? createProject(diagram)), diagram });
+}
+export function loadProject(id: string): Project | null {
   if (typeof window === "undefined") return null;
-  const stored = localStorage.getItem(`${PREFIX}diagram-${id}`);
-  if (!stored) return null;
   try {
-    return JSON.parse(stored) as Diagram;
+    const stored = localStorage.getItem(`${RECORD_PREFIX}${id}`);
+    if (!stored) return null;
+    const data: unknown = JSON.parse(stored);
+    // Legacy records migrate only on a successful save.
+    const project = data && typeof data === "object" && "version" in data
+      ? ProjectSchema.parse(data)
+      : createProject(DiagramSchema.parse(data));
+    return project.diagram.id === id ? project : null;
   } catch {
     return null;
   }
 }
-
+export function loadDiagram(id: string): Diagram | null {
+  return loadProject(id)?.diagram ?? null;
+}
 export function deleteDiagram(id: string): void {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(`${PREFIX}diagram-${id}`);
-  const index = listDiagrams().filter((d) => d.id !== id);
-  localStorage.setItem(DIAGRAMS_KEY, JSON.stringify(index));
+  localStorage.removeItem(`${RECORD_PREFIX}${id}`);
 }
-
 export function listDiagrams(): StoredDiagram[] {
   if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem(DIAGRAMS_KEY);
-  if (!stored) return [];
   try {
-    return JSON.parse(stored) as StoredDiagram[];
+    const result: StoredDiagram[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(RECORD_PREFIX)) continue;
+      const project = loadProject(key.slice(RECORD_PREFIX.length));
+      if (!project) continue;
+      const d = project.diagram;
+      result.push({ id: d.id, name: d.name, databaseType: d.databaseType,
+        tableCount: d.tables.length, updatedAt: project.updatedAt ?? d.updatedAt ?? d.createdAt });
+    }
+    return result.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   } catch {
     return [];
   }

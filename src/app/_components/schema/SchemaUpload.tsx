@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useTranslation } from "@/lib/i18n/context";
@@ -19,7 +19,7 @@ import {
 
 interface SchemaUploadProps {
   onClose: () => void;
-  onSQLParsed: (sql: string, fileName?: string) => void;
+  onSQLParsed: (sql: string, fileName?: string, signal?: AbortSignal) => void | Promise<void>;
 }
 
 type SchemaFormat = "sql" | "drizzle" | "prisma" | "typeorm" | "dbml" | "auto";
@@ -42,8 +42,8 @@ const FORMAT_OPTIONS: FormatOption[] = [
     labelKey: "upload.format.auto.label",
     icon: Sparkles,
     descriptionKey: "upload.format.auto.description",
-    accepts: ".sql,.txt,.ts,.js,.prisma,.dbml",
-    extensions: ".sql, .txt, .ts, .js, .prisma, .dbml",
+    accepts: ".sql,.txt,.ts,.js,.prisma,.dbml,.json",
+    extensions: ".sql, .txt, .ts, .js, .prisma, .dbml, .json",
     placeholderKey: "upload.format.auto.placeholder",
     example: "",
     synthesizedFileName: undefined,
@@ -131,6 +131,29 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [showExample, setShowExample] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importController = useRef<AbortController | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  useEffect(() => () => importController.current?.abort(), []);
+
+  const submit = useCallback(async (read: () => Promise<string>, fileName?: string) => {
+    importController.current?.abort();
+    const controller = new AbortController();
+    importController.current = controller;
+    setIsImporting(true);
+    try {
+      const content = await read();
+      controller.signal.throwIfAborted();
+      await onSQLParsed(content, fileName, controller.signal);
+      controller.signal.throwIfAborted();
+      onClose();
+    } catch (error) {
+      if (!controller.signal.aborted) toast.error(t("common.failedToParseSchema"), {
+        description: error instanceof Error ? error.message : t("common.unknownError"),
+      });
+    } finally {
+      if (importController.current === controller) setIsImporting(false);
+    }
+  }, [onSQLParsed, onClose, t]);
 
   const formatOption = selectedFormat
     ? FORMAT_OPTIONS.find((f) => f.id === selectedFormat)!
@@ -150,23 +173,9 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
     setShowExample(false);
   }, []);
 
-  const handleFile = useCallback(
-    (file: File) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        if (content) {
-          onSQLParsed(content, file.name);
-          onClose();
-        }
-      };
-      reader.onerror = () => {
-        toast.error(t("common.failedToReadFile"));
-      };
-      reader.readAsText(file);
-    },
-    [onSQLParsed, onClose, t],
-  );
+  const handleFile = useCallback((file: File) => {
+    void submit(() => file.text(), file.name);
+  }, [submit]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -180,10 +189,9 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
 
   const handlePaste = useCallback(() => {
     if (pasteContent.trim() && formatOption) {
-      onSQLParsed(pasteContent, formatOption.synthesizedFileName);
-      onClose();
+      void submit(() => Promise.resolve(pasteContent), formatOption.synthesizedFileName);
     }
-  }, [pasteContent, formatOption, onSQLParsed, onClose]);
+  }, [pasteContent, formatOption, submit]);
 
   const modalContent = (
     <>
@@ -202,6 +210,8 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
               {step === 2 && (
                 <button
                   onClick={handleBack}
+                  disabled={isImporting}
+                  aria-label={t("project.back")}
                   className="rounded-lg p-1.5 transition-colors hover:bg-accent"
                 >
                   <ArrowLeft className="h-4 w-4 text-muted-foreground" />
@@ -220,12 +230,14 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
             </div>
             <button
               onClick={onClose}
+              aria-label={t("project.cancel")}
               className="rounded-lg p-2 transition-colors hover:bg-accent"
             >
               <X className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
 
+          {isImporting && <p role="status" className="px-6 pt-4 text-sm text-muted-foreground">{t("project.importing")}</p>}
           {/* Content */}
           <div className="p-6">
             {step === 1 && (
@@ -265,6 +277,9 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
                   }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleDrop}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
                   onClick={() => fileInputRef.current?.click()}
                   className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 transition-colors ${
                     isDragging
@@ -312,6 +327,7 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
                     </div>
                   )}
                   <textarea
+                    aria-label={t("upload.title")}
                     value={pasteContent}
                     onChange={(e) => setPasteContent(e.target.value)}
                     placeholder={t(formatOption.placeholderKey)}
@@ -319,10 +335,10 @@ export function SchemaUpload({ onClose, onSQLParsed }: SchemaUploadProps) {
                   />
                   <button
                     onClick={handlePaste}
-                    disabled={!pasteContent.trim()}
+                    disabled={!pasteContent.trim() || isImporting}
                     className="w-full rounded-xl bg-indigo-600 px-4 py-3 font-semibold text-white transition-all hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {t("upload.parseFormat", { format: t(formatOption.labelKey) })}
+                    {isImporting ? t("project.importing") : t("upload.parseFormat", { format: t(formatOption.labelKey) })}
                   </button>
                 </div>
               </div>

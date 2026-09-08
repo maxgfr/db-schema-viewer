@@ -43,6 +43,7 @@ export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataCh
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const streamingTextRef = useRef("");
+  useEffect(() => () => abortControllerRef.current?.abort(), []);
   const streamChatKeyRef = useRef<string | null>(null);
 
   // Only show streaming UI for the conversation that started it
@@ -66,7 +67,7 @@ export function DataChat({ tables, messages, onMessagesChange, chatKey }: DataCh
   const handleCopy = useCallback((content: string) => {
     navigator.clipboard.writeText(content).then(() => {
       toast.success(t("common.copiedToClipboard"));
-    });
+    }).catch(() => toast.error(t("project.clipboardError")));
   }, [t]);
 
   const handleStop = useCallback(() => {

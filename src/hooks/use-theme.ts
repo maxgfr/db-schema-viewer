@@ -14,7 +14,8 @@ function getSystemTheme(): Theme {
 
 function getInitialMode(): ThemeMode {
   if (typeof window === "undefined") return "system";
-  const stored = localStorage.getItem(STORAGE_KEY);
+  let stored: string | null = null;
+  try { stored = localStorage.getItem(STORAGE_KEY); } catch {}
   if (stored === "light" || stored === "dark" || stored === "system") return stored;
   return "system";
 }
@@ -53,7 +54,7 @@ export function useTheme() {
   const toggleTheme = useCallback(() => {
     setModeState((prev) => {
       const next: ThemeMode = prev === "light" ? "dark" : prev === "dark" ? "system" : "light";
-      localStorage.setItem(STORAGE_KEY, next);
+      try { localStorage.setItem(STORAGE_KEY, next); } catch {}
       setThemeState(resolveTheme(next));
       return next;
     });
@@ -62,7 +63,7 @@ export function useTheme() {
   const setTheme = useCallback((t: Theme) => {
     setModeState(t);
     setThemeState(t);
-    localStorage.setItem(STORAGE_KEY, t);
+    try { localStorage.setItem(STORAGE_KEY, t); } catch {}
   }, []);
 
   return { theme, mode, toggleTheme, setTheme };

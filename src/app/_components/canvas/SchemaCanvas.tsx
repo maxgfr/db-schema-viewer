@@ -10,6 +10,7 @@ import {
   useEdgesState,
   useReactFlow,
   ReactFlowProvider,
+  ViewportPortal,
   type Node,
   type Edge,
   type NodeChange,
@@ -17,6 +18,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { Diagram } from "db-schema-toolkit";
+import { indexRelationships } from "@/lib/graph/navigation";
 import { TableNode } from "./TableNode";
 import { RelationshipEdge, type ERDNotation } from "./RelationshipEdge";
 import { StickyNoteNode } from "./StickyNoteNode";
@@ -33,7 +35,9 @@ interface SchemaCanvasProps {
   diagram: Diagram;
   selectedTableId: string | null;
   onTableSelect: (tableId: string) => void;
-  onTablePositionUpdate: (tableId: string, x: number, y: number) => void;
+  onTablePositionsUpdate: (positions: Array<{ id: string; x: number; y: number }>) => void;
+  visibleTableIds?: Set<string>;
+  fitRequest?: number;
   notation?: ERDNotation;
   coloredEdges?: boolean;
   zoomTarget?: { id: string; key: number } | null;
@@ -43,6 +47,8 @@ interface SchemaCanvasProps {
   initialViewport?: { x: number; y: number; zoom: number };
   onViewportChange?: (viewport: { x: number; y: number; zoom: number }) => void;
 }
+
+const EMPTY_RELATIONSHIPS: Diagram["relationships"] = [];
 
 const nodeTypes = { table: TableNode, stickyNote: StickyNoteNode };
 const edgeTypes = { relationship: RelationshipEdge };
@@ -65,7 +71,7 @@ const EDGE_COLOR_PALETTE = [
   "#d946ef", // fuchsia
 ];
 
-function FitViewHandler({ zoomTarget }: { zoomTarget?: { id: string; key: number } | null }) {
+function FitViewHandler({ zoomTarget, fitRequest = 0 }: { zoomTarget?: { id: string; key: number } | null; fitRequest?: number }) {
   const { fitView } = useReactFlow();
   const lastKey = useRef<number | null>(null);
 
@@ -76,6 +82,9 @@ function FitViewHandler({ zoomTarget }: { zoomTarget?: { id: string; key: number
     }
   }, [zoomTarget, fitView]);
 
+  useEffect(() => {
+    if (fitRequest) fitView({ duration: 300, padding: 0.2 });
+  }, [fitRequest, fitView]);
   return null;
 }
 
@@ -83,7 +92,7 @@ function SchemaCanvasInner({
   diagram,
   selectedTableId,
   onTableSelect,
-  onTablePositionUpdate,
+  onTablePositionsUpdate, visibleTableIds, fitRequest,
   notation = "crowsfoot",
   coloredEdges = false,
   zoomTarget,
@@ -108,18 +117,18 @@ function SchemaCanvasInner({
     [onAnnotationUpdate],
   );
 
+  const relationshipIndex = useMemo(() => indexRelationships(diagram.relationships), [diagram.relationships]);
   const initialNodes: Node[] = useMemo(
     () => [
       ...diagram.tables.map((table) => ({
         id: table.id,
         type: "table" as const,
+        hidden: visibleTableIds ? !visibleTableIds.has(table.id) : false,
         position: { x: table.x, y: table.y },
         data: {
           table,
           isSelected: table.id === selectedTableId,
-          relationships: diagram.relationships.filter(
-            (r) => r.sourceTableId === table.id || r.targetTableId === table.id
-          ),
+          relationships: relationshipIndex.get(table.id) ?? EMPTY_RELATIONSHIPS,
         },
         selected: table.id === selectedTableId,
       })),
@@ -136,7 +145,7 @@ function SchemaCanvasInner({
         },
       })),
     ],
-    [diagram.tables, diagram.relationships, selectedTableId, annotations, handleNoteTextChange, handleNoteDelete, handleNoteColorChange]
+    [diagram.tables, relationshipIndex, visibleTableIds, selectedTableId, annotations, handleNoteTextChange, handleNoteDelete, handleNoteColorChange]
   );
 
   const initialEdges: Edge[] = useMemo(
@@ -144,6 +153,7 @@ function SchemaCanvasInner({
       diagram.relationships.map((rel, index) => ({
         id: rel.id,
         type: "relationship",
+        hidden: visibleTableIds ? !(visibleTableIds.has(rel.sourceTableId) && visibleTableIds.has(rel.targetTableId)) : false,
         source: rel.sourceTableId,
         target: rel.targetTableId,
         sourceHandle: `${rel.sourceFieldId}-right`,
@@ -154,73 +164,32 @@ function SchemaCanvasInner({
           edgeColor: coloredEdges ? EDGE_COLOR_PALETTE[index % EDGE_COLOR_PALETTE.length] : undefined,
         },
       })),
-    [diagram.relationships, notation, coloredEdges]
+    [diagram.relationships, notation, coloredEdges, visibleTableIds]
   );
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  // Sync edge changes when relationships/notation/colors change (useEdgesState only uses initialEdges on mount)
-  useEffect(() => {
-    setEdges(
-      diagram.relationships.map((rel, index) => ({
-        id: rel.id,
-        type: "relationship",
-        source: rel.sourceTableId,
-        target: rel.targetTableId,
-        sourceHandle: `${rel.sourceFieldId}-right`,
-        targetHandle: `${rel.targetFieldId}-left`,
-        data: {
-          relationship: rel,
-          notation,
-          edgeColor: coloredEdges ? EDGE_COLOR_PALETTE[index % EDGE_COLOR_PALETTE.length] : undefined,
-        },
-      }))
-    );
-  }, [diagram.relationships, notation, coloredEdges, setEdges]);
+  useEffect(() => { setEdges(initialEdges); }, [initialEdges, setEdges]);
 
-  // Sync table + annotation changes into React Flow nodes (useNodesState only uses initialNodes on mount)
   useEffect(() => {
     setNodes((currentNodes) => {
-      const tableNodes: Node[] = diagram.tables.map((table) => {
-        const existing = currentNodes.find((n) => n.id === table.id);
-        return {
-          id: table.id,
-          type: "table" as const,
-          position: { x: table.x, y: table.y },
-          data: {
-            table,
-            isSelected: table.id === selectedTableId,
-            relationships: diagram.relationships.filter(
-              (r) => r.sourceTableId === table.id || r.targetTableId === table.id
-            ),
-          },
-          selected: table.id === selectedTableId,
-          // Preserve drag state if the node already exists and position hasn't changed externally
-          ...(existing && existing.position.x === table.x && existing.position.y === table.y
-            ? { position: existing.position }
-            : {}),
-        };
+      const index = new Map(currentNodes.map((node) => [node.id, node]));
+      return initialNodes.map((next) => {
+        const old = index.get(next.id);
+        if (!old) return next;
+        const samePosition = old.position.x === next.position.x && old.position.y === next.position.y;
+        const sameData = Object.keys(next.data).every((key) => old.data[key] === next.data[key]);
+        if (samePosition && sameData && old.selected === next.selected && old.hidden === next.hidden) return old;
+        return { ...old, ...next, position: samePosition ? old.position : next.position, data: sameData ? old.data : next.data };
       });
-      const noteNodes: Node[] = annotations.map((note) => ({
-        id: note.id,
-        type: "stickyNote" as const,
-        position: { x: note.x, y: note.y },
-        data: {
-          text: note.text,
-          color: note.color,
-          onTextChange: handleNoteTextChange,
-          onDelete: handleNoteDelete,
-          onColorChange: handleNoteColorChange,
-        },
-      }));
-      return [...tableNodes, ...noteNodes];
     });
-  }, [diagram.tables, diagram.relationships, selectedTableId, annotations, setNodes, handleNoteTextChange, handleNoteDelete, handleNoteColorChange]);
+  }, [initialNodes, setNodes]);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       onNodesChange(changes);
+      const positions: Array<{ id: string; x: number; y: number }> = [];
       for (const change of changes) {
         if (change.type === "position" && change.position && !change.dragging) {
           // Check if this is a sticky note or a table
@@ -228,17 +197,18 @@ function SchemaCanvasInner({
           if (isNote) {
             onAnnotationUpdate?.(change.id, { x: change.position.x, y: change.position.y });
           } else {
-            onTablePositionUpdate(change.id, change.position.x, change.position.y);
+            positions.push({ id: change.id, x: change.position.x, y: change.position.y });
           }
         }
       }
+      if (positions.length) onTablePositionsUpdate(positions);
     },
-    [onNodesChange, onTablePositionUpdate, annotations, onAnnotationUpdate]
+    [onNodesChange, onTablePositionsUpdate, annotations, onAnnotationUpdate]
   );
 
   const handleNodeClick = useCallback(
     (_: React.MouseEvent, node: Node) => {
-      onTableSelect(node.id);
+      if (node.type === "table") onTableSelect(node.id);
     },
     [onTableSelect]
   );
@@ -275,8 +245,8 @@ function SchemaCanvasInner({
           className="!rounded-lg !border !border-border !bg-muted"
         />
         <Controls />
-        <MarkerDefinitions />
-        <FitViewHandler zoomTarget={zoomTarget} />
+        <ViewportPortal><MarkerDefinitions /></ViewportPortal>
+        <FitViewHandler zoomTarget={zoomTarget} fitRequest={fitRequest} />
       </ReactFlow>
     </div>
   );

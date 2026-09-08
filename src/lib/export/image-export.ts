@@ -106,6 +106,20 @@ export async function exportToSvg(
   return dataUrl;
 }
 
+export async function exportFullDiagramToSvg(options: ImageExportOptions = {}): Promise<string> {
+  const viewport = document.querySelector(".react-flow__viewport") as HTMLElement | null;
+  if (!viewport) throw new Error("Canvas not found");
+  const bounds = getNodesBounds(viewport);
+  if (!isFinite(bounds.minX)) throw new Error("No nodes found in diagram");
+  const padding = 60;
+  return toSvg(viewport, {
+    width: Math.ceil(bounds.maxX - bounds.minX + padding * 2),
+    height: Math.ceil(bounds.maxY - bounds.minY + padding * 2),
+    backgroundColor: options.transparent ? undefined : getCanvasBackground(),
+    style: { transform: `translate(${-bounds.minX + padding}px, ${-bounds.minY + padding}px)` },
+  });
+}
+
 export function downloadDataUrl(dataUrl: string, filename: string): void {
   const link = document.createElement("a");
   link.download = filename;

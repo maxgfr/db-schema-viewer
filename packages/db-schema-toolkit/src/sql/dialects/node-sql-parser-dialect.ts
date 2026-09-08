@@ -1,4 +1,7 @@
-import { Parser } from "node-sql-parser";
+import { stripSQLComments } from "../../parsing/strip-sql-comments";
+import sqlParser from "node-sql-parser";
+
+const { Parser } = sqlParser;
 import type { DatabaseType } from "../../domain";
 import type { ParseResult, ParsedTable, ParsedColumn, ParsedIndex, ParsedRelationship } from "../../parsing/types";
 
@@ -7,8 +10,7 @@ function preprocessSQL(sql: string, dbType: DatabaseType): string {
   let processed = sql;
 
   // Remove comments
-  processed = processed.replace(/--[^\n]*/g, "");
-  processed = processed.replace(/\/\*[\s\S]*?\*\//g, "");
+  processed = stripSQLComments(processed);
 
   // Remove SET statements that node-sql-parser can't handle
   processed = processed.replace(/^\s*SET\s+[^;]+;/gim, "");

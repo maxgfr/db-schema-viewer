@@ -8,7 +8,7 @@ import { useTranslation } from "@/lib/i18n/context";
 import type { Diagram, DatabaseType } from "db-schema-toolkit";
 import { DATABASE_TYPE_LABELS } from "db-schema-toolkit";
 
-import { exportFullDiagramToPng, exportToSvg, downloadDataUrl } from "@/lib/export/image-export";
+import { exportFullDiagramToPng, exportFullDiagramToSvg, downloadDataUrl, downloadBlob } from "@/lib/export/image-export";
 import { exportToPdf } from "@/lib/export/pdf-export";
 import {
   exportDiagramToSQL,
@@ -19,18 +19,21 @@ import {
   exportDiagramToDBML,
   exportDiagramToPlantUML,
 } from "db-schema-toolkit/export";
+import { serializeProject, type Project } from "@/lib/project/project";
 import { generateShareUrl } from "@/lib/sharing/encode-state";
 
 interface ExportDialogProps {
   diagram: Diagram;
   onClose: () => void;
+  project: Project;
+  captureFullDiagram: <T>(capture: () => Promise<T>) => Promise<T>;
 }
 
-type ExportTab = "image" | "pdf" | "sql" | "markdown" | "mermaid" | "dbml" | "plantuml" | "prisma" | "drizzle" | "embed";
+type ExportTab = "project" | "image" | "pdf" | "sql" | "markdown" | "mermaid" | "dbml" | "plantuml" | "prisma" | "drizzle" | "embed";
 
-const TEXT_TABS: Set<ExportTab> = new Set(["sql", "markdown", "mermaid", "dbml", "plantuml", "prisma", "drizzle"]);
+const TEXT_TABS: Set<ExportTab> = new Set(["project", "sql", "markdown", "mermaid", "dbml", "plantuml", "prisma", "drizzle"]);
 
-export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
+export function ExportDialog({ diagram, onClose, project, captureFullDiagram }: ExportDialogProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<ExportTab>("image");
   const [imageScale, setImageScale] = useState(2);
@@ -43,6 +46,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   // Generate text output for the active text tab
   const textOutput = useMemo(() => {
     switch (tab) {
+      case "project": return serializeProject(project);
       case "sql": return exportDiagramToSQL(diagram, targetDb);
       case "markdown": return exportDiagramToMarkdown(diagram, {
         database: t("exportFile.database"),
@@ -70,7 +74,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
       case "drizzle": return exportDiagramToDrizzle(diagram);
       default: return "";
     }
-  }, [tab, diagram, targetDb]);
+  }, [tab, diagram, targetDb, t, project]);
 
   const handleCopyText = useCallback(() => {
     if (!textOutput) return;
@@ -85,7 +89,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
         drizzle: t("export.drizzleCopied"),
       };
       toast.success(msg[tab] ?? t("export.copyToClipboard"));
-    });
+    }).catch(() => toast.error(t("project.clipboardError")));
   }, [textOutput, tab, t]);
 
   const handleTextDownload = useCallback(() => {
@@ -99,12 +103,10 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
       prisma: { ext: "prisma", mime: "text/plain" },
       drizzle: { ext: "ts", mime: "text/typescript" },
     };
+    configs.project = { ext: "dbschema.json", mime: "application/json" };
     const c = configs[tab];
     if (!c) return;
-    const blob = new Blob([textOutput], { type: c.mime });
-    const url = URL.createObjectURL(blob);
-    downloadDataUrl(url, `${diagram.name}.${c.ext}`);
-    URL.revokeObjectURL(url);
+    downloadBlob(textOutput, `${diagram.name}.${c.ext}`, c.mime);
     const successMsg: Partial<Record<ExportTab, string>> = {
       sql: t("export.exportedAs", { format: DATABASE_TYPE_LABELS[targetDb] + " SQL" }),
       markdown: t("export.exportedAsMarkdown"),
@@ -121,15 +123,10 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     setIsExporting(true);
     try {
       if (imageFormat === "png") {
-        const { dataUrl } = await exportFullDiagramToPng({ scale: imageScale, transparent });
+        const { dataUrl } = await captureFullDiagram(() => exportFullDiagramToPng({ scale: imageScale, transparent }));
         downloadDataUrl(dataUrl, `${diagram.name}.png`);
       } else {
-        const viewport = document.querySelector(".react-flow__viewport") as HTMLElement;
-        if (!viewport) {
-          toast.error(t("export.canvasNotFound"));
-          return;
-        }
-        const dataUrl = await exportToSvg(viewport, { transparent });
+        const dataUrl = await captureFullDiagram(() => exportFullDiagramToSvg({ transparent }));
         downloadDataUrl(dataUrl, `${diagram.name}.svg`);
       }
       toast.success(t("export.exportedAs", { format: imageFormat.toUpperCase() }));
@@ -140,12 +137,12 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [diagram.name, imageFormat, imageScale, transparent, t]);
+  }, [diagram.name, imageFormat, imageScale, transparent, t, captureFullDiagram]);
 
   const handlePdfExport = useCallback(async () => {
     setIsExporting(true);
     try {
-      await exportToPdf(diagram);
+      await captureFullDiagram(() => exportToPdf(diagram));
       toast.success(t("export.exportedAsPdf"));
     } catch (err) {
       toast.error(t("export.exportFailed"), {
@@ -154,9 +151,10 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [diagram, t]);
+  }, [diagram, t, captureFullDiagram]);
 
   const TAB_ITEMS: Array<{ id: ExportTab; labelKey: string; icon: typeof Image }> = [
+    { id: "project", labelKey: "project.file", icon: FileText },
     { id: "image", labelKey: "export.tab.image", icon: Image },
     { id: "pdf", labelKey: "export.tab.pdf", icon: FileText },
     { id: "sql", labelKey: "export.tab.sql", icon: Code },
@@ -170,6 +168,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   ];
 
   const textTabDescriptions: Partial<Record<ExportTab, string>> = {
+    project: t("project.fileDescription"),
     markdown: t("export.markdownDescription"),
     mermaid: t("export.mermaidDescription"),
     dbml: t("export.dbmlDescription"),
@@ -179,6 +178,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
   };
 
   const downloadLabels: Partial<Record<ExportTab, string>> = {
+    project: t("project.download"),
     sql: t("export.downloadSql"),
     markdown: t("export.downloadMd"),
     mermaid: t("export.downloadMmd"),
@@ -364,7 +364,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                 {!embedSnippet ? (
                   <button
                     onClick={() => {
-                      const url = generateShareUrl(diagram);
+                      const url = generateShareUrl(diagram, project.annotations, project.viewSettings);
                       const snippet = `<iframe\n  src="${url}"\n  width="100%"\n  height="600"\n  frameborder="0"\n  style="border: 1px solid #e5e7eb; border-radius: 8px;"\n  title="DB Schema Viewer"\n></iframe>`;
                       setEmbedSnippet(snippet);
                     }}
@@ -384,7 +384,7 @@ export function ExportDialog({ diagram, onClose }: ExportDialogProps) {
                       onClick={() => {
                         navigator.clipboard.writeText(embedSnippet).then(() => {
                           toast.success(t("export.embedCopied"));
-                        });
+                        }).catch(() => toast.error(t("project.clipboardError")));
                       }}
                       className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 font-semibold text-foreground hover:bg-accent"
                     >

@@ -122,7 +122,8 @@ function renderTitlePage(
 function renderTableOfContents(
   pdf: JsPDFType,
   diagram: Diagram,
-  tablePageMap: Map<string, number>
+  tablePageMap: Map<string, number>,
+  diagramPageNumber: number,
 ) {
   pdf.setFontSize(HEADING_SIZE);
   pdf.setFont("helvetica", "bold");
@@ -137,7 +138,7 @@ function renderTableOfContents(
   pdf.setFont("helvetica", "normal");
   setTextColor(pdf, COLOR_PRIMARY);
   pdf.text(t("exportFile.schemaDiagram"), MARGIN + 10, y);
-  pdf.text("3", pageWidth - MARGIN, y, { align: "right" });
+  pdf.text(String(diagramPageNumber), pageWidth - MARGIN, y, { align: "right" });
 
   // Dotted line
   setDrawColor(pdf, COLOR_BORDER);
@@ -162,7 +163,7 @@ function renderTableOfContents(
 
   for (const table of sortedTables) {
     if (y > getUsableHeight(pdf)) {
-      addPageWithFooterPlaceholder(pdf);
+      pdf.setPage(pdf.getCurrentPageInfo().pageNumber + 1);
       y = MARGIN + 20;
     }
 
@@ -363,21 +364,20 @@ function renderTableDetail(
   table: DBTable,
   currentY: number,
   diagram: Diagram
-): { endY: number; startedNewPage: boolean } {
+): { endY: number; startPage: number } {
   // Estimate the height needed
   const headerHeight = 30;
   const minRequired = headerHeight + 14 * 3; // At least header + 2 field rows
 
   let y = currentY;
-  let startedNewPage = false;
 
   // If we don't have room for even the minimum, start a new page
   if (y + minRequired > getUsableHeight(pdf)) {
     addPageWithFooterPlaceholder(pdf);
     y = MARGIN + 20;
-    startedNewPage = true;
   }
 
+  const startPage = pdf.getCurrentPageInfo().pageNumber;
   // Table heading
   pdf.setFontSize(SUBHEADING_SIZE);
   pdf.setFont("helvetica", "bold");
@@ -431,7 +431,7 @@ function renderTableDetail(
     }
   }
 
-  return { endY: y + 16, startedNewPage };
+  return { endY: y + 16, startPage };
 }
 
 // ── Main Export ─────────────────────────────────────────────────────────
@@ -454,55 +454,17 @@ export async function exportToPdf(
   // ── Page 1: Title ──
   renderTitlePage(pdf, diagram);
 
-  // We need to first render all table detail pages to know page numbers,
-  // then come back and render the TOC. We'll do a two-pass approach:
-  // Pass 1: render table details into a temporary PDF to calculate page assignments.
-  // Pass 2: render everything into the real PDF.
-
-  // Since jsPDF doesn't support easy page re-ordering, we'll calculate
-  // page numbers by simulating the layout first.
-
   const tablePageMap = new Map<string, number>();
-  const sortedTables = [...diagram.tables].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
-
-  // Simulate table detail layout to determine page numbers
-  // Page 1 = title, Page 2 = TOC, Page 3 = diagram, Page 4+ = tables
-  let simPageNumber = 4;
-  let simY = MARGIN + 20;
-
-  const simPdf = await createPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-  simPdf.setFontSize(BODY_SIZE);
-
-  for (const table of sortedTables) {
-    const headerHeight = 30 + (table.comment ? 14 : 0);
-    const minRequired = headerHeight + 14 * 3;
-
-    if (simY + minRequired > getUsableHeight(simPdf)) {
-      simPageNumber++;
-      simY = MARGIN + 20;
-    }
-
-    tablePageMap.set(table.id, simPageNumber);
-
-    // Estimate how much space this table takes
-    const fieldsHeight = (table.fields.length + 1) * 14;
-    const indexesHeight = table.indexes.length > 0 ? (table.indexes.length + 1) * LINE_HEIGHT + 22 : 0;
-    const totalHeight = headerHeight + 18 + fieldsHeight + indexesHeight + 16;
-
-    simY += totalHeight;
-
-    // Check if fields would overflow to next pages
-    while (simY > getUsableHeight(simPdf)) {
-      simY -= (getUsableHeight(simPdf) - MARGIN - 20);
-      simPageNumber++;
-    }
+  const sortedTables = [...diagram.tables].sort((a, b) => a.name.localeCompare(b.name));
+  // Reserve TOC pages; populate them with actual page numbers after rendering details.
+  let tocPages = 1;
+  let tocY = MARGIN + 50 + LINE_HEIGHT + 4 + LINE_HEIGHT + 2;
+  for (let tableIndex = 0; tableIndex < sortedTables.length; tableIndex++) {
+    if (tocY > getUsableHeight(pdf)) { tocPages++; tocY = MARGIN + 20; }
+    tocY += LINE_HEIGHT;
   }
-
-  // ── Page 2: Table of Contents ──
-  addPageWithFooterPlaceholder(pdf);
-  renderTableOfContents(pdf, diagram, tablePageMap);
+  for (let i = 0; i < tocPages; i++) pdf.addPage();
+  const diagramPageNumber = tocPages + 2;
 
   // ── Page 3: Diagram Image (landscape if diagram is wide) ──
   renderDiagramPage(pdf, pngDataUrl, imgWidth, imgHeight, diagramIsLandscape);
@@ -521,7 +483,11 @@ export async function exportToPdf(
   for (const table of sortedTables) {
     const result = renderTableDetail(pdf, table, currentY, diagram);
     currentY = result.endY;
+    tablePageMap.set(table.id, result.startPage);
   }
+
+  pdf.setPage(2);
+  renderTableOfContents(pdf, diagram, tablePageMap, diagramPageNumber);
 
   // ── Add footers to all pages ──
   const finalTotalPages = pdf.getNumberOfPages();

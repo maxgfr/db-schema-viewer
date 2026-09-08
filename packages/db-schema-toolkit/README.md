@@ -173,6 +173,8 @@ console.log(diagram.tables);        // 2 tables
 console.log(diagram.relationships); // 1 FK relationship
 ```
 
+The built ESM entry points are tested directly under Node.js 24, without a bundler. Parser functions remain synchronous. Browser consumers can run them in their own worker.
+
 ## Entry Points
 
 | Import | Contents |
@@ -296,6 +298,22 @@ await querySchema(settings, diagram, "What indexes should I add?",
   (full) => console.log("\nDone"),
 );
 ```
+
+### Cancelling AI work
+
+Pass an optional final `AbortSignal` to `querySchema`, `queryData`, `challengeSchema`, `suggestCharts` or `generateCustomChart`. For the streaming functions it follows the history argument. Cancellation rejects with `AbortError`; an aborted stream does not call its successful completion callback. The selected provider SDK loads on demand, so only that provider's SDK needs to be installed alongside `ai`.
+
+```ts
+const controller = new AbortController();
+const review = challengeSchema(settings, diagram, controller.signal);
+// Cancel when the owning view closes or its schema changes:
+controller.abort();
+try { await review; } catch (error) {
+  if (!(error instanceof Error) || error.name !== "AbortError") throw error;
+}
+```
+
+The viewer's `.dbschema.json` project envelope is a web application format. The CLI `parse` command continues to emit a `Diagram`; its command names, options and output format are unchanged.
 
 ## Data
 

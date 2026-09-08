@@ -1,0 +1,63 @@
+{
+  "browser": "153.0.8010.12",
+  "viewport": "1440x900",
+  "rounds": 3,
+  "results": [
+    {
+      "tables": 100,
+      "samples": [
+        {
+          "displayMs": 276,
+          "filterMs": 38
+        },
+        {
+          "displayMs": 240,
+          "filterMs": 27
+        },
+        {
+          "displayMs": 214,
+          "filterMs": 28
+        }
+      ]
+    },
+    {
+      "tables": 500,
+      "samples": [
+        {
+          "displayMs": 441,
+          "filterMs": 84
+        },
+        {
+          "displayMs": 434,
+          "filterMs": 74
+        },
+        {
+          "displayMs": 440,
+          "filterMs": 74
+        }
+      ]
+    },
+    {
+      "tables": 1000,
+      "samples": [
+        {
+          "displayMs": 720,
+          "filterMs": 200
+        },
+        {
+          "displayMs": 735,
+          "filterMs": 203
+        },
+        {
+          "displayMs": 755,
+          "filterMs": 204
+        }
+      ]
+    }
+  ],
+  "dump": {
+    "bytes": 4817820,
+    "rows": 40000,
+    "displayMs": 931
+  }
+}

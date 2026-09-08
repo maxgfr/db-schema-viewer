@@ -56,6 +56,14 @@ describe("cookie-storage", () => {
     expect(loaded).toBeNull();
   });
 
+  it("clears previous provider metadata when switching to a minimal configuration", () => {
+    saveAISettings(testSettings);
+    saveAISettings({ apiKey: "test", model: "local", providerId: "custom" });
+    expect(loadAISettings()?.providerApi).toBeUndefined();
+    expect(loadAISettings()?.providerNpm).toBeUndefined();
+    expect(loadAISettings()?.providerName).toBeUndefined();
+  });
+
   it("clears all settings", () => {
     saveAISettings(testSettings);
     clearAISettings();

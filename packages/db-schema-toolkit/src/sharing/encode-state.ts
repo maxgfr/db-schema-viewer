@@ -28,7 +28,7 @@ export function encodeState(diagram: Diagram): string {
         ...(f.unique ? { unique: true } : {}),
         ...(f.nullable === false ? { nullable: false } : {}),
         ...(f.isForeignKey ? { isForeignKey: true } : {}),
-        ...(f.default ? { default: f.default } : {}),
+        ...(f.default !== undefined ? { default: f.default } : {}),
         ...(f.comment ? { comment: f.comment } : {}),
         ...(f.references ? { references: f.references } : {}),
       })),

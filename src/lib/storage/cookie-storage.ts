@@ -20,12 +20,18 @@ export function saveAISettings(settings: AISettings): void {
   Cookies.set(`${PREFIX}provider-id`, settings.providerId, COOKIE_OPTIONS);
   if (settings.providerName) {
     Cookies.set(`${PREFIX}provider-name`, settings.providerName, COOKIE_OPTIONS);
+  } else {
+    Cookies.remove(`${PREFIX}provider-name`);
   }
   if (settings.providerNpm) {
     Cookies.set(`${PREFIX}provider-npm`, settings.providerNpm, COOKIE_OPTIONS);
+  } else {
+    Cookies.remove(`${PREFIX}provider-npm`);
   }
   if (settings.providerApi) {
     Cookies.set(`${PREFIX}provider-api`, settings.providerApi, COOKIE_OPTIONS);
+  } else {
+    Cookies.remove(`${PREFIX}provider-api`);
   }
   if (settings.customEndpoint) {
     Cookies.set(`${PREFIX}custom-endpoint`, settings.customEndpoint, COOKIE_OPTIONS);

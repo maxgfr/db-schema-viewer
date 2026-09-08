@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Database,
@@ -24,18 +24,19 @@ import {
   GitCompareArrows,
   Monitor,
 } from "lucide-react";
-import type { Diagram } from "db-schema-toolkit";
+import type { Project } from "@/lib/project/project";
+import { parseSchemaInput } from "@/lib/parsing/parse-input";
+import { RecentProjects } from "./RecentProjects";
 import { SAMPLE_SCHEMAS } from "db-schema-toolkit";
 import { SCHEMA_TEMPLATES } from "db-schema-toolkit";
 import { EXAMPLE_SCHEMAS } from "db-schema-toolkit";
-import { parseSchemaFile } from "db-schema-toolkit";
 import type { Theme, ThemeMode } from "@/hooks/use-theme";
 import { SchemaUpload } from "../schema/SchemaUpload";
 import { useTranslation } from "@/lib/i18n/context";
 import { LanguageToggle } from "../I18nWrapper";
 
 interface LandingProps {
-  onDiagramCreated: (diagram: Diagram) => void;
+  onProjectOpened: (project: Project) => void;
   theme: Theme;
   themeMode: ThemeMode;
   onToggleTheme: () => void;
@@ -99,34 +100,32 @@ const ALL_SAMPLES = [
   ...EXAMPLE_SCHEMAS.map((s) => ({ ...s, tab: "orm" as SampleTab })),
 ];
 
-export function Landing({ onDiagramCreated, theme, themeMode, onToggleTheme }: LandingProps) {
+export function Landing({ onProjectOpened, theme, themeMode, onToggleTheme }: LandingProps) {
   const [showUpload, setShowUpload] = useState(false);
   const [activeTab, setActiveTab] = useState<SampleTab>("sql");
   const { t } = useTranslation();
 
-  const handleSQLParsed = useCallback(
-    (sql: string, fileName?: string) => {
-      try {
-        const diagram = parseSchemaFile(sql, fileName);
-        onDiagramCreated({ ...diagram, sourceContent: sql });
-        toast.success(
-          t("common.loadedTables", { tables: diagram.tables.length, rels: diagram.relationships.length })
-        );
-      } catch (err) {
-        toast.error(t("common.failedToParseSchema"), {
-          description: err instanceof Error ? err.message : t("common.unknownError"),
-        });
-      }
-    },
-    [onDiagramCreated, t]
-  );
+  const sampleController = useRef<AbortController | null>(null);
+  const [loadingSample, setLoadingSample] = useState(false);
+  useEffect(() => () => sampleController.current?.abort(), []);
 
-  const handleSample = useCallback(
-    (sql: string, name: string) => {
-      handleSQLParsed(sql, name);
-    },
-    [handleSQLParsed]
-  );
+  const handleSQLParsed = useCallback(async (sql: string, fileName?: string, signal?: AbortSignal) => {
+    const project = await parseSchemaInput(sql, fileName, signal);
+    signal?.throwIfAborted();
+    onProjectOpened(project);
+    toast.success(t("common.loadedTables", { tables: project.diagram.tables.length, rels: project.diagram.relationships.length }));
+  }, [onProjectOpened, t]);
+
+  const handleSample = useCallback(async (sql: string, name: string) => {
+    sampleController.current?.abort();
+    const controller = new AbortController();
+    sampleController.current = controller;
+    setLoadingSample(true);
+    try { await handleSQLParsed(sql, name, controller.signal); }
+    catch (error) {
+      if (!controller.signal.aborted) toast.error(t("common.failedToParseSchema"), { description: error instanceof Error ? error.message : undefined });
+    } finally { if (sampleController.current === controller) setLoadingSample(false); }
+  }, [handleSQLParsed, t]);
 
   const filteredSamples = useMemo(
     () => ALL_SAMPLES.filter((s) => s.tab === activeTab),
@@ -195,6 +194,8 @@ export function Landing({ onDiagramCreated, theme, themeMode, onToggleTheme }: L
         </div>
       </div>
 
+      <RecentProjects onOpen={onProjectOpened} />
+      {loadingSample && <p role="status" className="text-center text-sm text-muted-foreground">{t("project.importing")}</p>}
       {/* Samples — Tabbed */}
       <div className="mx-auto max-w-6xl px-6 py-12">
         <h2 className="mb-2 text-center text-2xl font-bold text-foreground">
