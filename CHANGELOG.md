@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.13...v1.2.0) (2026-09-08)
+
+
+### Features
+
+* add persistent projects and improve viewer reliability ([f05785a](https://github.com/maxgfr/db-schema-viewer/commit/f05785a5bd8338f505fd26f7d3d33729ee7d9a84))
+
 ## [1.1.13](https://github.com/maxgfr/db-schema-viewer/compare/v1.1.12...v1.1.13) (2026-04-06)
 
 
