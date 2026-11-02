@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/maxgfr/db-schema-viewer/compare/v3.0.0...v3.0.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* Next.js 16.4 and audit fixes, delete a diagram's challenge history with it ([#26](https://github.com/maxgfr/db-schema-viewer/issues/26)) ([672d26c](https://github.com/maxgfr/db-schema-viewer/commit/672d26c0374e371607df70c548c7ee3505bdbc09))
+
 # [3.0.0](https://github.com/maxgfr/db-schema-viewer/compare/v2.1.6...v3.0.0) (2026-11-02)
 
 
