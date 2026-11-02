@@ -202,6 +202,26 @@ describe("ai-settings storage", () => {
     expect(sessionStorage.getItem("db-schema-viewer:ai-settings-key")).toContain("ciphertext");
   });
 
+  it("keeps the db-sv-* copy when the new one cannot be stored, and moves it later", async () => {
+    const legacy = secureStorage({ prefsKey: "db-sv-ai-settings", dbName: "db-sv-secrets" });
+    await legacy.save(testSettings, { rememberKey: true });
+    const original = localStorage.setItem.bind(localStorage);
+    const full = vi.spyOn(localStorage, "setItem").mockImplementation((key: string, value: string) => {
+      if (key === "db-schema-viewer:ai-settings") throw new DOMException("Full", "QuotaExceededError");
+      original(key, value);
+    });
+    try {
+      await loadAISettings();
+      expect(localStorage.getItem("db-sv-ai-settings")).not.toBeNull();
+      expect(localStorage.getItem("db-schema-viewer:ai-settings")).toBeNull();
+    } finally {
+      full.mockRestore();
+    }
+    resetAISettingsCacheForTests();
+    expect((await loadAISettings())?.apiKey).toBe("test-key-123");
+    expect(localStorage.getItem("db-sv-ai-settings")).toBeNull();
+  });
+
   it("reports settings the browser did not keep", async () => {
     expect(await saveAISettings(testSettings, { rememberKey: true })).toBe(true);
     expect(wereAISettingsKept()).toBe(true);

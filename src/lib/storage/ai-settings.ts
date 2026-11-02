@@ -58,6 +58,14 @@ function readItem(key: string): string | null {
   }
 }
 
+function removeItem(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Nothing to clean up
+  }
+}
+
 /* ---------- Older names ---------- */
 
 const legacyStorage = () => secureStorage({ prefsKey: LEGACY_SETTINGS_KEY, dbName: LEGACY_DB_NAME });
@@ -76,17 +84,25 @@ function deleteDatabase(name: string): Promise<void> {
 /**
  * Moves settings saved under the old `db-sv-*` names: decrypted with the old
  * key, saved again (encrypted) under the new names, and the old copy erased
- * once the new one reads back. Runs again harmlessly until it succeeds.
+ * once the new one reads back. The old preferences are removed first so a
+ * nearly full localStorage has room for the new ones, and put back if the new
+ * copy was not kept: the move is retried on the next load.
  */
 async function migrateLegacyNames(): Promise<void> {
-  if (readItem(SETTINGS_KEY) !== null || readItem(LEGACY_SETTINGS_KEY) === null) return;
+  const raw = readItem(LEGACY_SETTINGS_KEY);
+  if (raw === null || readItem(SETTINGS_KEY) !== null) return;
   const legacy = legacyStorage();
   const saved = await legacy.loadDraft?.();
   if (!saved) return;
   const { rememberKey, ...settings } = saved as AISettings & { rememberKey?: boolean };
-  if (!(await saveAISettings(settings, { rememberKey: rememberKey === true }))) return;
-  await legacy.clear();
-  await deleteDatabase(LEGACY_DB_NAME);
+  removeItem(LEGACY_SETTINGS_KEY);
+  if (await saveAISettings(settings, { rememberKey: rememberKey === true })) {
+    await legacy.clear();
+    await deleteDatabase(LEGACY_DB_NAME);
+  } else {
+    removeItem(SETTINGS_KEY);
+    try { localStorage.setItem(LEGACY_SETTINGS_KEY, raw); } catch { /* the space just freed was taken */ }
+  }
 }
 
 /* ---------- Legacy cookies ---------- */
