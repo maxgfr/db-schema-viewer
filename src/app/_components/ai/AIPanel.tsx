@@ -32,6 +32,7 @@ import {
 } from "db-schema-toolkit/ai";
 import { MarkdownContent } from "../shared/MarkdownContent";
 import { useTranslation } from "@/lib/i18n/context";
+import { loadChallengeHistory, saveChallengeEntry, type ChallengeHistoryEntry } from "@/lib/storage/challenge-history";
 
 interface AIPanelProps {
   diagram: Diagram;
@@ -55,39 +56,8 @@ type CategoryFilter =
   | "performance"
   | "security";
 
-interface ChallengeHistoryEntry {
-  score: number;
-  issueCount: number;
-  timestamp: string;
-  schemaName: string;
-}
-
-const CHALLENGE_HISTORY_KEY = "db-schema-viewer-challenge-history";
 /** Delay before revoking a download URL so Safari and Firefox can start the download first. */
 const REVOKE_DOWNLOAD_URL_DELAY_MS = 1000;
-
-function challengeHistoryKey(diagramId: string): string {
-  return `${CHALLENGE_HISTORY_KEY}:${diagramId}`;
-}
-
-function loadChallengeHistory(diagramId: string): ChallengeHistoryEntry[] {
-  try {
-    const raw = localStorage.getItem(challengeHistoryKey(diagramId));
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as ChallengeHistoryEntry[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveChallengeEntry(diagramId: string, entry: ChallengeHistoryEntry) {
-  const history = loadChallengeHistory(diagramId);
-  history.push(entry);
-  // Keep last 20 entries
-  const trimmed = history.slice(-20);
-  try { localStorage.setItem(challengeHistoryKey(diagramId), JSON.stringify(trimmed)); } catch {}
-}
 
 function downloadText(content: string, type: string, fileName: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));

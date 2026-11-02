@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Diagram as DiagramSchema, encodeState, generateId, type Diagram } from "db-schema-toolkit";
 import { createProject, ProjectSchema, type Project } from "@/lib/project/project";
+import { deleteChallengeHistory, pruneChallengeHistory } from "@/lib/storage/challenge-history";
 
 /*
  * Projects live in IndexedDB. The app is served from maxgfr.github.io, an origin shared by every
@@ -96,6 +97,7 @@ function openDatabase(): Promise<IDBDatabase> {
     // A failed copy leaves the old records in place, to be copied on the next start.
     await migrateFromLocalStorage(db).catch(() => {});
     await recoverUnsaved(db).catch(() => {});
+    await pruneOrphanedHistory(db).catch(() => {});
     return db;
   })();
   opening = attempt;
@@ -156,6 +158,21 @@ async function write(id: string, record: Project, entry: StoredDiagram): Promise
   await writeTo(await openDatabase(), id, record, entry);
   // Saved for real: an older copy stashed while the page was leaving is obsolete.
   try { sessionStorage.removeItem(UNSAVED_KEY); } catch { /* blocked: nothing was stashed */ }
+}
+
+/** Drops the challenge history of diagrams deleted before deleting one removed it too. */
+async function pruneOrphanedHistory(db: IDBDatabase): Promise<void> {
+  const ids = new Set((await result(db.transaction(RECORDS, "readonly").objectStore(RECORDS).getAllKeys())).map(String));
+  // Projects still waiting in localStorage (a copy that failed) keep their history too.
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(LEGACY_RECORD_PREFIX)) ids.add(key.slice(LEGACY_RECORD_PREFIX.length));
+    }
+  } catch {
+    return; // Unreadable: prune nothing rather than guess.
+  }
+  pruneChallengeHistory(ids);
 }
 
 /** Keeps the stashed project unless IndexedDB already holds a newer copy. */
@@ -242,6 +259,7 @@ export async function deleteDiagram(id: string): Promise<void> {
   tx.objectStore(RECORDS).delete(id);
   tx.objectStore(ENTRIES).delete(id);
   await done;
+  deleteChallengeHistory(id);
 }
 export async function listDiagrams(): Promise<StoredDiagram[]> {
   try {

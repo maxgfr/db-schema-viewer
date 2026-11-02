@@ -6,6 +6,7 @@ import {
   resolveSharedProject, resetProjectStorageForTests, stashUnsavedProject,
 } from "@/lib/storage/project-storage";
 import { createProject } from "@/lib/project/project";
+import { loadChallengeHistory, saveChallengeEntry } from "@/lib/storage/challenge-history";
 import type { Diagram } from "db-schema-toolkit";
 
 const testDiagram: Diagram = {
@@ -245,5 +246,35 @@ describe("id conflicts", () => {
   it("opens an unknown shared link as is", async () => {
     const shared = createProject({ ...stored.diagram, id: "other" });
     expect((await resolveSharedProject(shared, false)).diagram.id).toBe("other");
+  });
+});
+
+describe("challenge history", () => {
+  const history = (id: string) => `db-schema-viewer-challenge-history:${id}`;
+  const entry = { score: 80, issueCount: 2, timestamp: "2026-01-01T00:00:00.000Z", schemaName: "Test" };
+
+  it("is deleted with its diagram", async () => {
+    await saveDiagram(testDiagram);
+    await saveDiagram({ ...testDiagram, id: "test-2" });
+    saveChallengeEntry("test-1", entry);
+    saveChallengeEntry("test-2", entry);
+    await deleteDiagram("test-1");
+    expect(localStorage.getItem(history("test-1"))).toBeNull();
+    expect(loadChallengeHistory("test-2")).toEqual([entry]);
+  });
+
+  it("of diagrams no longer stored is removed on start, the rest is kept", async () => {
+    await saveDiagram(testDiagram);
+    await resetProjectStorageForTests();
+    saveChallengeEntry("test-1", entry);
+    saveChallengeEntry("gone", entry);
+    localStorage.setItem("db-schema-viewer-diagram-waiting", "{not json");
+    saveChallengeEntry("waiting", entry);
+    localStorage.setItem("another-site:history", "keep");
+    await listDiagrams();
+    expect(loadChallengeHistory("test-1")).toEqual([entry]);
+    expect(loadChallengeHistory("waiting")).toEqual([entry]);
+    expect(localStorage.getItem(history("gone"))).toBeNull();
+    expect(localStorage.getItem("another-site:history")).toBe("keep");
   });
 });
