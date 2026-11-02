@@ -13,7 +13,7 @@
 
 ## Philosophy
 
-- **Local parsing and visualization** — no application backend or account. AI features call the configured provider directly. API keys encrypted in IndexedDB, projects in localStorage.
+- **Local parsing and visualization** — no application backend or account. AI features call the configured provider directly. API keys encrypted in IndexedDB, projects in IndexedDB.
 - **Simple UI** — upload a schema, see a diagram. Primary keys, foreign keys, relations (1:1, 1:N, N:M) visible at a glance.
 - **Schema analysis, not schema editing** — the tool is a *viewer* and *analyzer*, not a full database designer.
 - **Multi-format input** — SQL (9 dialects), Drizzle ORM, Prisma, TypeORM, Sequelize, MikroORM, Kysely, DBML.
@@ -317,7 +317,7 @@ src/
 │   ├── parsing/                # Cancellable worker requests
 │   ├── graph/                  # Relationship index + navigation filters
 │   ├── project/                # Versioned .dbschema.json project files
-│   ├── storage/                # AI settings + encrypted key (localStorage / IndexedDB), projects (localStorage)
+│   ├── storage/                # AI settings + encrypted key (localStorage / IndexedDB), projects (IndexedDB)
 │   ├── security/               # Content-Security-Policy (meta tag in export, header in standalone)
 │   ├── export/                 # PNG/SVG/PDF
 │   ├── sharing/                # URL fragment with diagram, notes and view settings

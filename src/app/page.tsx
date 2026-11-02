@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { getStateFromUrl, generateShareUrl } from "@/lib/sharing/encode-state";
 import { createProject, type Project } from "@/lib/project/project";
-import { resolveSharedProject, withoutIdConflict } from "@/lib/storage/local-storage";
+import { resolveSharedProject, withoutIdConflict } from "@/lib/storage/project-storage";
 import { useProjectSession } from "@/hooks/use-project-session";
 import { useTheme } from "@/hooks/use-theme";
 import { useTranslation } from "@/lib/i18n/context";
@@ -24,15 +24,19 @@ export default function Home() {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-    setMounted(true);
-    if (!window.location.hash.startsWith("#d=")) return;
-    const shared = getStateFromUrl();
+    const shared = window.location.hash.startsWith("#d=") ? getStateFromUrl() : null;
     if (!shared) {
-      toast.error(t("page.failedToLoadSharedSchema"), { description: t("page.failedToLoadSharedSchemaDesc") });
+      setMounted(true);
+      if (window.location.hash.startsWith("#d=")) {
+        toast.error(t("page.failedToLoadSharedSchema"), { description: t("page.failedToLoadSharedSchemaDesc") });
+      }
       return;
     }
     const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-    openProject(resolveSharedProject({ ...createProject(shared.diagram), ...shared }, navigation?.type === "reload"));
+    // The local copy is read from IndexedDB first; the landing page is not shown in between.
+    void resolveSharedProject({ ...createProject(shared.diagram), ...shared }, navigation?.type === "reload")
+      .then(openProject)
+      .finally(() => setMounted(true));
   }, [openProject, t]);
 
   useEffect(() => {
@@ -48,16 +52,16 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [project]);
 
-  const handleOpen = useCallback((next: Project): boolean => {
+  const handleOpen = useCallback(async (next: Project): Promise<boolean> => {
     // Save the current project first so an import is compared with what is really stored.
-    flush();
-    const opened = openProject(withoutIdConflict(next));
+    await flush();
+    const opened = await openProject(await withoutIdConflict(next));
     if (!opened) toast.error(t("project.saveError"));
     return opened;
   }, [flush, openProject, t]);
 
-  const handleBack = useCallback(() => {
-    if (!closeProject()) { toast.error(t("project.saveError")); return; }
+  const handleBack = useCallback(async () => {
+    if (!(await closeProject())) { toast.error(t("project.saveError")); return; }
     window.history.replaceState({}, "", window.location.pathname + window.location.search);
   }, [closeProject, t]);
 

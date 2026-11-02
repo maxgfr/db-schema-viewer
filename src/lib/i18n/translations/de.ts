@@ -427,6 +427,7 @@ export const de: Record<string, string> = {
   "settings.retry": "Erneut versuchen",
   "settings.test": "Testen",
   "settings.saved": "KI-Einstellungen gespeichert",
+  "settings.notKept": "Der Speicher dieser Website ist voll oder blockiert: Diese KI-Einstellungen gelten bis zum Neuladen der Seite und gehen dann verloren.",
   "settings.cleared": "KI-Einstellungen gelöscht",
   "settings.connectionSuccessful": "Verbindung erfolgreich!",
   "settings.enterApiKeyFirst": "Bitte gib zuerst einen API-Schlüssel ein",

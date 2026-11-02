@@ -1,14 +1,16 @@
 import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   saveAISettings,
   loadAISettings,
   loadAISettingsDraft,
   clearAISettings,
   resetAISettingsCacheForTests,
+  wereAISettingsKept,
   type AISettings,
 } from "@/lib/storage/ai-settings";
+import { secureStorage } from "llm-connect";
 
 const testSettings: AISettings = {
   apiKey: "test-key-123",
@@ -28,9 +30,9 @@ function clearCookies() {
   }
 }
 
-async function readRawSecrets(): Promise<unknown[]> {
+async function readRawSecrets(dbName = "db-schema-viewer-secrets"): Promise<unknown[]> {
   return new Promise((resolve, reject) => {
-    const open = indexedDB.open("db-sv-secrets");
+    const open = indexedDB.open(dbName);
     open.onerror = () => reject(open.error);
     open.onsuccess = () => {
       const db = open.result;
@@ -96,7 +98,7 @@ describe("ai-settings storage", () => {
     for (let i = 0; i < sessionStorage.length; i++) {
       expect(sessionStorage.getItem(sessionStorage.key(i)!)).not.toContain("test-key-123");
     }
-    expect(sessionStorage.getItem("db-sv-ai-settings-key")).toContain("ciphertext");
+    expect(sessionStorage.getItem("db-schema-viewer:ai-settings-key")).toContain("ciphertext");
 
     // A reload keeps it, closing the tab loses it
     resetAISettingsCacheForTests();
@@ -152,7 +154,7 @@ describe("ai-settings storage", () => {
 
   it("reads the language names stored before 2.1 as codes", async () => {
     localStorage.setItem(
-      "db-sv-ai-settings",
+      "db-schema-viewer:ai-settings",
       JSON.stringify({ model: "gpt-4o", providerId: "openai", language: "Japanese", rememberKey: false }),
     );
     expect((await loadAISettingsDraft())?.language).toBe("ja");
@@ -173,5 +175,44 @@ describe("ai-settings storage", () => {
 
     resetAISettingsCacheForTests();
     expect((await loadAISettings())?.apiKey).toBe("legacy-key");
+  });
+
+  it("moves settings saved under the db-sv-* names, key included, and erases the old copy", async () => {
+    const legacy = secureStorage({ prefsKey: "db-sv-ai-settings", dbName: "db-sv-secrets" });
+    await legacy.save({ ...testSettings, language: "fr" }, { rememberKey: true });
+
+    const loaded = await loadAISettings();
+    expect(loaded?.apiKey).toBe("test-key-123");
+    expect(loaded?.model).toBe("gpt-4o");
+    expect(loaded?.rememberKey).toBe(true);
+    expect(localStorage.getItem("db-sv-ai-settings")).toBeNull();
+    const databases = (await indexedDB.databases()).map((db) => db.name);
+    expect(databases).not.toContain("db-sv-secrets");
+    expect(await readRawSecrets()).not.toHaveLength(0);
+
+    resetAISettingsCacheForTests();
+    expect((await loadAISettings())?.apiKey).toBe("test-key-123");
+  });
+
+  it("moves a key kept for the tab only", async () => {
+    const legacy = secureStorage({ prefsKey: "db-sv-ai-settings", dbName: "db-sv-secrets" });
+    await legacy.save(testSettings, { rememberKey: false });
+    expect((await loadAISettings())?.apiKey).toBe("test-key-123");
+    expect(sessionStorage.getItem("db-sv-ai-settings-key")).toBeNull();
+    expect(sessionStorage.getItem("db-schema-viewer:ai-settings-key")).toContain("ciphertext");
+  });
+
+  it("reports settings the browser did not keep", async () => {
+    expect(await saveAISettings(testSettings, { rememberKey: true })).toBe(true);
+    expect(wereAISettingsKept()).toBe(true);
+    const full = vi.spyOn(localStorage, "setItem").mockImplementation(() => {
+      throw new DOMException("Full", "QuotaExceededError");
+    });
+    try {
+      expect(await saveAISettings({ ...testSettings, model: "gpt-5" }, { rememberKey: true })).toBe(false);
+      expect(wereAISettingsKept()).toBe(false);
+    } finally {
+      full.mockRestore();
+    }
   });
 });

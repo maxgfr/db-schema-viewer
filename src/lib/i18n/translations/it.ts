@@ -427,6 +427,7 @@ export const it: Record<string, string> = {
   "settings.retry": "Riprova",
   "settings.test": "Test",
   "settings.saved": "Impostazioni IA salvate",
+  "settings.notKept": "Lo spazio di archiviazione di questo sito è pieno o bloccato: queste impostazioni IA funzionano fino al ricaricamento della pagina, poi vanno perse.",
   "settings.cleared": "Impostazioni IA cancellate",
   "settings.connectionSuccessful": "Connessione riuscita!",
   "settings.enterApiKeyFirst": "Inserisci prima una chiave API",

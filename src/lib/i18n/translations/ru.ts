@@ -427,6 +427,7 @@ export const ru: Record<string, string> = {
   "settings.retry": "Повторить",
   "settings.test": "Тест",
   "settings.saved": "Настройки ИИ сохранены",
+  "settings.notKept": "Хранилище этого сайта заполнено или заблокировано: эти настройки ИИ действуют до перезагрузки страницы, после чего будут потеряны.",
   "settings.cleared": "Настройки ИИ очищены",
   "settings.connectionSuccessful": "Подключение успешно!",
   "settings.enterApiKeyFirst": "Пожалуйста, сначала введите API-ключ",

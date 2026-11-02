@@ -427,6 +427,7 @@ export const fr: Record<string, string> = {
   "settings.retry": "Réessayer",
   "settings.test": "Tester",
   "settings.saved": "Param\u00e8tres IA enregistr\u00e9s",
+  "settings.notKept": "Le stockage de ce site est plein ou bloqué : ces réglages IA fonctionnent jusqu'au rechargement de la page, puis ils sont perdus.",
   "settings.cleared": "Param\u00e8tres IA effac\u00e9s",
   "settings.connectionSuccessful": "Connexion r\u00e9ussie\u00a0!",
   "settings.enterApiKeyFirst": "Veuillez d\u2019abord saisir une cl\u00e9 API",

@@ -427,6 +427,7 @@ export const ja: Record<string, string> = {
   "settings.retry": "再試行",
   "settings.test": "テスト",
   "settings.saved": "AI設定を保存しました",
+  "settings.notKept": "このサイトのストレージがいっぱいか、ブロックされています。この AI 設定はページを再読み込みするまで有効で、その後は失われます。",
   "settings.cleared": "AI設定をクリアしました",
   "settings.connectionSuccessful": "接続に成功しました！",
   "settings.enterApiKeyFirst": "先にAPIキーを入力してください",

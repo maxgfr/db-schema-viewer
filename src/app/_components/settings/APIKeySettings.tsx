@@ -7,7 +7,7 @@ import { X, Key, Eye, EyeOff, Server, Loader2, Zap, Check, AlertTriangle, Search
 import { ENDPOINT_PRESETS, liveCatalog, RESPONSE_LANGUAGES } from "llm-connect";
 import { useLlmStore } from "llm-connect/react";
 import { useTranslation } from "@/lib/i18n/context";
-import { aiSettingsStorage } from "@/lib/storage/ai-settings";
+import { aiSettingsStorage, wereAISettingsKept } from "@/lib/storage/ai-settings";
 
 const OLLAMA = ENDPOINT_PRESETS.ollama;
 const LM_STUDIO = ENDPOINT_PRESETS.lmstudio;
@@ -62,7 +62,9 @@ export function APIKeySettings({ onClose }: APIKeySettingsProps) {
       toast.error(err instanceof Error ? err.message : String(err));
       return;
     }
-    toast.success(t("settings.saved"));
+    // They apply to this page either way; say so when the browser did not keep them.
+    if (wereAISettingsKept()) toast.success(t("settings.saved"));
+    else toast.warning(t("settings.notKept"));
     onClose();
   };
 

@@ -37,7 +37,7 @@ import { LanguageToggle } from "../I18nWrapper";
 
 interface LandingProps {
   /** Returns false when the project could not be opened (the caller reports why). */
-  onProjectOpened: (project: Project) => boolean | void;
+  onProjectOpened: (project: Project) => Promise<boolean> | boolean | void;
   theme: Theme;
   themeMode: ThemeMode;
   onToggleTheme: () => void;
@@ -113,7 +113,7 @@ export function Landing({ onProjectOpened, theme, themeMode, onToggleTheme }: La
   const handleSQLParsed = useCallback(async (sql: string, fileName?: string, signal?: AbortSignal) => {
     const project = await parseSchemaInput(sql, fileName, signal);
     signal?.throwIfAborted();
-    if (onProjectOpened(project) === false) return;
+    if ((await onProjectOpened(project)) === false) return;
     toast.success(t("common.loadedTables", { tables: project.diagram.tables.length, rels: project.diagram.relationships.length }));
   }, [onProjectOpened, t]);
 

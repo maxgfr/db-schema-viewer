@@ -427,6 +427,7 @@ export const en: Record<string, string> = {
   "settings.retry": "Retry",
   "settings.test": "Test",
   "settings.saved": "AI settings saved",
+  "settings.notKept": "Storage for this site is full or blocked: these AI settings work until you reload, then they are lost.",
   "settings.cleared": "AI settings cleared",
   "settings.connectionSuccessful": "Connection successful!",
   "settings.enterApiKeyFirst": "Please enter an API key first",
