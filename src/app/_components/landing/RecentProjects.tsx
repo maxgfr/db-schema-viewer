@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { listDiagrams, loadProject, deleteDiagram } from "@/lib/storage/local-storage";
+import { listDiagrams, loadProject, deleteDiagram, type StoredDiagram } from "@/lib/storage/project-storage";
 import type { Project } from "@/lib/project/project";
 import { useTranslation } from "@/lib/i18n/context";
 
 export function RecentProjects({ onOpen }: { onOpen: (project: Project) => void }) {
-  const [recent, setRecent] = useState(listDiagrams);
+  const [recent, setRecent] = useState<StoredDiagram[]>([]);
   const { t, locale } = useTranslation();
+  const refresh = useCallback(() => listDiagrams().then(setRecent), []);
+  useEffect(() => {
+    let live = true;
+    void listDiagrams().then((list) => { if (live) setRecent(list); });
+    return () => { live = false; };
+  }, []);
   if (!recent.length) return null;
   return (
     <section aria-label={t("project.recent")} className="mx-auto mb-12 max-w-5xl px-6">
@@ -17,17 +23,17 @@ export function RecentProjects({ onOpen }: { onOpen: (project: Project) => void 
       <ul className="max-h-72 divide-y divide-border overflow-y-auto border-y border-border">
         {recent.map((entry) => (
           <li key={entry.id} className="flex items-center gap-3 py-3">
-            <button className="min-w-0 flex-1 rounded-md p-2 text-left hover:bg-accent" onClick={() => {
-              const project = loadProject(entry.id);
+            <button className="min-w-0 flex-1 rounded-md p-2 text-left hover:bg-accent" onClick={async () => {
+              const project = await loadProject(entry.id);
               if (project) onOpen(project);
-              else { toast.error(t("project.invalid")); setRecent(listDiagrams()); }
+              else { toast.error(t("project.invalid")); await refresh(); }
             }}>
               <span className="block truncate font-medium">{entry.name}</span>
               <span className="text-xs text-muted-foreground">{t("sidebar.tables", { count: entry.tableCount })} · {entry.databaseType} · {Number.isNaN(Date.parse(entry.updatedAt)) ? entry.updatedAt : new Date(entry.updatedAt).toLocaleString(locale)}</span>
             </button>
-            <button className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-destructive" aria-label={t("project.delete", { name: entry.name })} onClick={() => {
+            <button className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-destructive" aria-label={t("project.delete", { name: entry.name })} onClick={async () => {
               if (!window.confirm(t("project.confirmDelete", { name: entry.name }))) return;
-              try { deleteDiagram(entry.id); setRecent(listDiagrams()); }
+              try { await deleteDiagram(entry.id); await refresh(); }
               catch { toast.error(t("project.saveError")); }
             }}><Trash2 className="h-4 w-4" /></button>
           </li>

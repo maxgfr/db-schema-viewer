@@ -57,9 +57,9 @@ import { LanguageToggle } from "../I18nWrapper";
 interface EditorLayoutProps {
   project: Project;
   onProjectChange: (update: Partial<Project> | ((project: Project) => Partial<Project>)) => void;
-  onProjectOpened: (project: Project) => boolean | void;
+  onProjectOpened: (project: Project) => Promise<boolean> | boolean | void;
   saveStatus: SaveStatus;
-  onSave: () => boolean;
+  onSave: () => Promise<boolean> | boolean;
   onBack: () => void;
   theme: Theme;
   themeMode: ThemeMode;
@@ -204,7 +204,7 @@ export function EditorLayout({ project, onProjectChange, onProjectOpened, saveSt
       onAI: () => { closeAll(); setShowAI(true); },
       onEscape: closeAll,
       onShare: handleShare,
-      onSave: () => { onSave(); },
+      onSave: () => { void onSave(); },
     }),
     [closeAll, handleShare, onSave]
   );
@@ -254,7 +254,7 @@ export function EditorLayout({ project, onProjectChange, onProjectOpened, saveSt
 
         <div role="status" className="text-xs text-muted-foreground">
           {t(`project.${saveStatus}`)}
-          {saveStatus === "error" && <button className="ml-2 rounded px-2 py-1 text-foreground underline" onClick={() => onSave()}>{t("project.retry")}</button>}
+          {saveStatus === "error" && <button className="ml-2 rounded px-2 py-1 text-foreground underline" onClick={() => { void onSave(); }}>{t("project.retry")}</button>}
         </div>
         <div className="flex-1" />
 

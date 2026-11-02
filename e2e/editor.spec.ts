@@ -27,7 +27,18 @@ test("import, filter, isolate, save, reload and reopen recent project", async ({
   await page.getByRole("button", { name: "Isolate selection", exact: true }).click();
   await expect(page.locator(".react-flow__node-table")).toHaveCount(2);
   await page.getByRole("button", { name: "Fit results", exact: true }).click();
-  await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith("db-schema-viewer-diagram-")).some((key) => JSON.parse(localStorage.getItem(key)!).viewSettings.filters?.focusTableId))).toBeTruthy();
+  await expect.poll(() => page.evaluate(() => new Promise<boolean>((resolve, reject) => {
+    const open = indexedDB.open("db-schema-viewer-projects");
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const request = open.result.transaction("projects").objectStore("projects").getAll();
+      request.onsuccess = () => {
+        open.result.close();
+        resolve((request.result as { viewSettings?: { filters?: { focusTableId?: string | null } } }[]).some((project) => project.viewSettings?.filters?.focusTableId));
+      };
+      request.onerror = () => reject(request.error);
+    };
+  }))).toBeTruthy();
   await page.reload();
   await expect(page.locator(".react-flow__node-table")).toHaveCount(2);
   page.on("dialog", (dialog) => dialog.accept());

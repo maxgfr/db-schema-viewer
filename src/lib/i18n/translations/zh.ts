@@ -427,6 +427,7 @@ export const zh: Record<string, string> = {
   "settings.retry": "重试",
   "settings.test": "测试",
   "settings.saved": "AI 设置已保存",
+  "settings.notKept": "此网站的存储空间已满或被阻止：这些 AI 设置在重新加载页面前有效，之后将丢失。",
   "settings.cleared": "AI 设置已清除",
   "settings.connectionSuccessful": "连接成功！",
   "settings.enterApiKeyFirst": "请先输入 API 密钥",
