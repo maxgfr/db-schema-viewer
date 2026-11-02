@@ -10,11 +10,12 @@ vi.mock("@/lib/storage/ai-settings", () => ({
     save: vi.fn(async () => {}),
     clear: vi.fn(async () => {}),
   },
+  wereAISettingsKept: vi.fn(() => true),
 }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
 
 import { toast } from "sonner";
-import { aiSettingsStorage } from "@/lib/storage/ai-settings";
+import { aiSettingsStorage, wereAISettingsKept } from "@/lib/storage/ai-settings";
 import { APIKeySettings } from "@/app/_components/settings/APIKeySettings";
 
 const catalog = {
@@ -73,6 +74,17 @@ it("saves the provider's default model from the catalog", async () => {
     },
     { rememberKey: false },
   ]);
+});
+
+it("says the settings will not survive a reload when the browser did not keep them", async () => {
+  vi.mocked(wereAISettingsKept).mockReturnValueOnce(false);
+  stubFetch(() => new Response(JSON.stringify(catalog), { status: 200 }));
+  renderSettings();
+  const save = screen.getByRole("button", { name: "Save" });
+  await waitFor(() => expect(save).toBeEnabled());
+  fireEvent.click(save);
+  await waitFor(() => expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining("full or blocked")));
+  expect(toast.success).not.toHaveBeenCalled();
 });
 
 it("saves the response language as a code", async () => {
