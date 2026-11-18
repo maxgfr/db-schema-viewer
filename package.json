@@ -39,7 +39,7 @@
 		"llm-connect": "^1.1.0",
 		"lucide-react": "^0.556.0",
 		"lz-string": "^1.5.0",
-		"next": "^16.4.3",
+		"next": "^16.4.5",
 		"react": "^19.2.1",
 		"react-dom": "^19.2.1",
 		"react-markdown": "^10.1.0",
